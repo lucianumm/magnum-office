@@ -37,7 +37,7 @@ app.setPath('userData', dataRoot);
 const deferredLock = Boolean(recovering && getArg('--wait-pid='));
 let isPrimary = deferredLock || app.requestSingleInstanceLock();
 if (!isPrimary) app.quit();
-let win, tray, store, settings, messaging, updater, documents, backups, library, imports, agentAPI, pdfTools, weeklyBackups;
+let win, tray, store, settings, messaging, updater, documents, backups, library, imports, agentAPI, pdfTools, weeklyBackups, birthdays;
 const operations = new Operations();
 let notificationTimer;
 let quitting = false;
@@ -93,7 +93,7 @@ function bindHandlers() {
   register('copyAgentToken', ()=>{const token=agentAPI.token();if(!token)throw new Error('Gere o token primeiro.');clipboard.writeText(token);return true;});
   register('ready', () => { markRendererReady(); return true; });
   register('state', state);
-  register('save', data => operations.run('Gravação de cadastro', () => store.save(data.kind, data.entity)));
+  register('save', data => operations.run('Gravação de cadastro', () => {const result=store.save(data.kind,data.entity);if(data.kind==='clients')birthdays.tick(true);return result;}));
   register('remove', data => operations.run('Exclusão de registro', async () => {
     const response = await dialog.showMessageBox(win, { type: 'warning', title: 'Excluir registro', message: 'Excluir este registro permanentemente?', detail: 'Os vínculos existentes serão verificados antes da exclusão.', buttons: ['Cancelar', 'Excluir'], defaultId: 0, cancelId: 0, noLink: true });
     if (response.response !== 1) return false;
@@ -219,7 +219,7 @@ async function createWindow() {
   if (devURL) await win.loadURL(devURL); else await win.loadURL('advocacia://app/index.html');
   tray = new Tray(icon()); tray.setToolTip('Advocacia — Gestão');
   tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir Advocacia — Gestão', click: show }, { type: 'separator' }, { label: 'Sair do sistema', click: () => { quitting = true; app.quit(); } }]));
-  tray.on('double-click', show);
+  tray.on('click', show);tray.on('double-click', show);
   applyBranding();
 }
 async function boot() {
@@ -269,6 +269,7 @@ async function boot() {
   documents = new Documents(store); documents.clean();
   messaging = new Messaging(store, settings, operations);messaging.canProcess=()=>settings.get().termsAcceptedVersion===terms.version;
   pdfTools=new PDFTools();library=new Library(store);imports=new Imports(store);agentAPI=new AgentAPI({store,settings,operations,library,messaging});agentAPI.requireTerms=true;await agentAPI.start();
+  birthdays=new (require('../backend/birthdays.cjs').Birthdays)({store,settings,library,messaging});messaging.birthdays=birthdays;
   weeklyBackups=new WeeklyBackups({store,settings,backups,operations,messaging});
   updater = new Updater({ store, settings, operations, backups, app });updater.canOperate=()=>settings.get().termsAcceptedVersion===terms.version;
   bindHandlers(); await createWindow();

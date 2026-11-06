@@ -4,10 +4,10 @@
 
 **Dados e processamento no seu computador.** Sistema desktop gratuito e independente para organizar um escritório de advocacia. Clientes, processos, agenda, documentos, modelos e comunicação ficam no computador do usuário.
 
-**Windows x64 · Versão oficial 1.0.0**
+**Windows x64 · Versão oficial 1.1.0**
 [Baixar instalador](https://github.com/lucianumm/magnum-office/releases/latest) · [Changelog](CHANGELOG.md) · [Instalação](docs/INSTALACAO.md) · [API/MCP](docs/API-MCP.md)
 
-> Enquanto o repositório estiver privado, downloads exigem acesso autorizado ao GitHub. A instalação rápida e as atualizações públicas ficam disponíveis após o mantenedor tornar o repositório público.
+> Baixe o aplicativo e suas atualizações somente pela release do repositório oficial.
 
 ## Funciona localmente
 
@@ -18,6 +18,7 @@ O aplicativo é instalado no computador. Cadastros, processos, agenda, anotaçõ
 ## Recursos
 
 - **Clientes e processos:** cadastros, vínculos, contatos, preferência de recebimento e busca no escritório.
+- **Aniversários:** data de nascimento opcional, modelo Mensagem aniversário e envio anual de WhatsApp com ativação por cliente, horário, variáveis e proteção contra duplicatas.
 - **Agenda e prazos:** compromissos, anotações, notificações no computador e disparos únicos ou recorrentes em datas específicas, semanas ou meses, com quantidade e intervalo definidos. Prazos processuais são cadastrados manualmente.
 - **Documentos e modelos:** biblioteca única com arquivos criptografados, grupos de modelos jurídicos, mensagens de WhatsApp e e-mails, com importação e edição interna. Não há limite de quantidade de modelos imposto pelo aplicativo; o armazenamento depende do espaço do computador.
 - **WhatsApp:** conexão Baileys individual por instalação, QR Code, reconexão, modelos de mensagem e agendamento simplificado com histórico de resultados.
@@ -68,7 +69,7 @@ Abra o **PowerShell** e cole o bloco abaixo. Ele baixa a versão oficial mais re
 }
 ```
 
-O bloco funciona quando o repositório estiver público. Se o download não estiver disponível, use o [instalador pela página de releases](https://github.com/lucianumm/magnum-office/releases/latest); repositórios privados exigem login autorizado. O pacote atual não possui certificado Authenticode de editor Windows. A conferência SHA-256 verifica a integridade do download a partir dos metadados da release oficial. [Código de instalação](installers/quick-install.ps1).
+Se o download não estiver disponível, use o [instalador pela página de releases](https://github.com/lucianumm/magnum-office/releases/latest); repositórios privados exigem login autorizado. O pacote atual não possui certificado Authenticode de editor Windows. A conferência SHA-256 verifica a integridade do download a partir dos metadados da release oficial. [Código de instalação](installers/quick-install.ps1).
 
 ## Começar
 
@@ -84,6 +85,22 @@ O bloco funciona quando o repositório estiver público. Se o download não esti
 Os envios agendados e lembretes exigem computador ligado, conexão disponível e aplicativo aberto ou na bandeja. A integração Baileys é não oficial; cada usuário usa sua própria sessão e conta. Resend e outros serviços externos podem ter limites e custos próprios, independentemente da gratuidade deste projeto.
 
 As ferramentas de PDF usam CPU e memória e podem deixar o computador lento. As saídas são PDF/A-2b com páginas renderizadas como imagens, até 180 dpi, perfil sRGB e metadados de arquivamento. Originais são preservados; texto pesquisável, links, formulários e assinaturas digitais não são preservados nas cópias. Uma página maior que o limite escolhido é exportada inteira com aviso.
+
+## Mensagem de aniversário
+
+Em **Clientes → Novo cliente** ou **Editar**, informe a data de nascimento e ative **Enviar mensagem de aniversário automaticamente**. Selecione um modelo e o horário. O envio usa o WhatsApp do cadastro e fica na agenda e na fila de mensagens.
+
+O modelo **Mensagem aniversário** já vem cadastrado em **Documentos e modelos → Modelos de WhatsApp**. Edite-o ou crie outros com a finalidade **Mensagem aniversário**:
+
+| Variável | Substituição |
+| --- | --- |
+| `{1}` | Nome completo do cliente |
+| `{2}` | Primeiro nome |
+| `{3}` | Nome do escritório |
+
+O envio é opcional e ocorre uma vez por cliente e por ano. Se o programa abrir após o horário, pode enviar no mesmo dia; aniversários de dias anteriores não são enviados automaticamente. Para nascimento em 29/02, considera 28/02 nos anos sem esse dia. Cliente inativo, recebimento desativado ou modelo removido impedem o envio. Confira a base legal e a preferência do cliente antes de ativar. Ao restaurar uma cópia portátil, revise e reative essa opção no cadastro.
+
+Em **Configurações → Escritório**, a opção **Ao fechar (X), continuar funcionando em segundo plano** mantém o aplicativo na bandeja. Clique no ícone para reabrir e use **Sair do sistema** no menu do ícone para encerrar. O computador precisa permanecer ligado e o WhatsApp conectado para o envio.
 
 ## Atualizações e dados
 
@@ -109,6 +126,7 @@ npm run test:workspace
 npm run test:release-features
 npm run test:privacy-email-backup
 npm run test:corrections
+npm run test:birthdays
 npm run dev
 ```
 

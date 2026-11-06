@@ -81,3 +81,8 @@ O responsável deve aceitar os termos da versão atual na interface antes de uti
 `save_record` exige `name` e `phone` (WhatsApp com DDD) ao criar contatos. Contatos históricos sem telefone continuam consultáveis; ao editar, informe o campo obrigatório.
 
 `draft_recurring_message_schedule` recebe `message` com o mesmo conteúdo de um disparo e `scheduledFor` ISO UTC obrigatório; `recurrence` tem `frequency` (`weekly`, `monthly` ou `dates`), `timeZone` IANA, `count` e `interval` para repetição ou `dates` ISO UTC extras. Quantidade inclui a primeira ocorrência. Limites: 260 semanais, 60 mensais ou 100 datas específicas, sempre em até cinco anos. Todas as ocorrências ficam em revisão; o agente não autoriza envio automático.
+
+
+## Aniversários
+
+Contatos aceitam `birthDate` em AAAA-MM-DD. A ativação da automação e a mudança de suas datas/horários exigem confirmação no cadastro local; agentes não podem ativá-la por `save_record`. Modelos de WhatsApp aceitam `purpose: "birthday"`, com `{1}` nome completo, `{2}` primeiro nome e `{3}` escritório. A biblioteca inclui um modelo inicial, editável e removível.

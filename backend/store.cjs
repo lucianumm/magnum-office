@@ -55,6 +55,7 @@ class Store {
   save(kind, input) {
     if (kind === 'documents') throw new Error('Use a importação de documentos.');
     const payload = validation.entity(kind, input);
+    if(kind==='clients'&&payload.birthdayEnabled){const row=this.db.prepare('SELECT payload FROM templates WHERE id=?').get(payload.birthdayTemplateId);const model=row&&this.vault.unseal(row.payload);if(!model||model.kind!=='whatsapp'||model.purpose!=='birthday')throw new Error('Escolha um modelo de WhatsApp com finalidade Mensagem aniversário.');if(require('../app/message-variables.mjs').personalizeMessage(model.body,payload).length>30000)throw new Error('A mensagem de aniversário personalizada excede 30 mil caracteres.');}
     if (payload.clientId) this.get('clients', payload.clientId);
     if (payload.caseId) this.get('cases', payload.caseId);
     const id = input.id ? validation.uuid(input.id) : randomUUID();

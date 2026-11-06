@@ -46,7 +46,7 @@ export default function Records({ kind, data, create, edit, act, save, remove, r
 }
 export function Agenda({ data, create, edit, composeMessage, navigate }) {
   const [month, setMonth] = useState(() => new Date()), [selected, setSelected] = useState(() => dayKey(new Date()));
-  const dispatches = data.messages.filter(m => m.scheduledFor && m.status !== 'cancelled').map(m => ({ id:m.id, due:localDateTime(m.scheduledFor), title:(m.channel==='whatsapp'?'WhatsApp':'E-mail')+' · '+(data.entities.clients.find(c=>c.id===m.clientId)?.name||m.recipient), type:(m.channel==='whatsapp'?'Disparo de WhatsApp':'Disparo de e-mail')+(m.seriesId?` · ${m.seriesIndex}/${m.seriesCount}`:''), status:m.status==='sent'?'Concluída':'Pendente', notes:m.body, sourceMessage:m }));
+  const dispatches = data.messages.filter(m => m.scheduledFor && m.status !== 'cancelled').map(m => ({ id:m.id, due:localDateTime(m.scheduledFor), title:(m.autoBirthday?'🎂 Aniversário':m.channel==='whatsapp'?'WhatsApp':'E-mail')+' · '+(data.entities.clients.find(c=>c.id===m.clientId)?.name||m.recipient), type:(m.channel==='whatsapp'?'Disparo de WhatsApp':'Disparo de e-mail')+(m.seriesId?` · ${m.seriesIndex}/${m.seriesCount}`:''), status:m.status==='sent'?'Concluída':'Pendente', notes:m.body, sourceMessage:m }));
   const all = [...data.entities.tasks,...dispatches];
   const tasks = all.filter(t => t.due.startsWith(selected)).sort((a,b)=>a.due.localeCompare(b.due));
   const schedule = () => composeMessage({ channel:'whatsapp', scheduleDate:selected===dayKey(new Date())?localDateTime(Date.now()+3600000):selected+'T09:00' },true);

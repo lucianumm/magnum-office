@@ -162,10 +162,11 @@ class Messaging {
   async process() {
     if(this.canProcess&&!this.canProcess())return;
     if (this.running || this.operations.maintenance || this.stopping) return;
+    if(this.birthdays)try{this.birthdays.tick();}catch{this.store.audit('birthday.schedule.failed',{code:'BIRTHDAY_CONFIG'});}
     const config = this.settings.get();
     const expired = new Date(Date.now() - config.scheduleGraceMinutes * 60000).toISOString();
-    const missed = this.store.db.prepare("SELECT id FROM queue WHERE status='pending' AND scheduled_for IS NOT NULL AND scheduled_for<?").all(expired);
-    for (const item of missed) { this.store.db.prepare("UPDATE queue SET status='needs_review',last_error='SCHEDULE_MISSED',updated_at=? WHERE id=?").run(new Date().toISOString(), item.id); this.store.audit('message.schedule.missed', { id: item.id, code: 'SCHEDULE_MISSED' }); }
+    const missed = this.store.db.prepare("SELECT id,payload FROM queue WHERE status='pending' AND scheduled_for IS NOT NULL AND scheduled_for<?").all(expired);
+    for (const item of missed) {const data=this.store.vault.unseal(item.payload);if(data.autoBirthday&&data.birthdayDate===require('./birthdays.cjs').dayKey(new Date()))continue; this.store.db.prepare("UPDATE queue SET status='needs_review',last_error='SCHEDULE_MISSED',updated_at=? WHERE id=?").run(new Date().toISOString(), item.id); this.store.audit('message.schedule.missed', { id: item.id, code: 'SCHEDULE_MISSED' }); }
     if (config.queuePaused) return;
     const ready = this.store.db.prepare("SELECT * FROM queue WHERE status='pending' AND available_at<=? ORDER BY available_at,created_at").all(new Date().toISOString());
     const row = ready.find(item => item.channel === 'whatsapp' ? this.wa.status === 'connected' : this.emailReady() === 'configured');
@@ -173,7 +174,7 @@ class Messaging {
     this.running = true;
     try {
       await this.operations.run('Envio de mensagem', async () => {
-        const data = this.store.vault.unseal(row.payload);
+        let data = this.store.vault.unseal(row.payload);if(data.autoBirthday&&this.birthdays){data=this.birthdays.prepare(data);if(!data){this.store.db.prepare("UPDATE queue SET status='cancelled',last_error='BIRTHDAY_CONFIG',updated_at=? WHERE id=?").run(new Date().toISOString(),row.id);return;}this.store.db.prepare('UPDATE queue SET payload=? WHERE id=?').run(this.store.vault.seal(data),row.id);}
         if(row.channel==='email' && this.store.list('clients').some(c=>c.email?.toLowerCase()===data.recipient.toLowerCase()&&(c.emailPreference==='Não receber'||c.status==='Inativo'))){this.store.db.prepare("UPDATE queue SET status='cancelled',last_error='OPTED_OUT',updated_at=? WHERE id=?").run(new Date().toISOString(),row.id);this.store.audit('message.opted-out',{id:row.id});return;}
         if(row.channel==='email' && data.clientId){let client;try{client=this.store.get('clients',data.clientId);}catch{/* Deleted clients require review. */}if(!client||client.emailPreference==='Não receber'){this.store.db.prepare("UPDATE queue SET status='cancelled',last_error='OPTED_OUT',updated_at=? WHERE id=?").run(new Date().toISOString(),row.id);this.store.audit('message.opted-out',{id:row.id});return;}}
         this.store.db.prepare("UPDATE queue SET status='sending', attempts=attempts+1, updated_at=? WHERE id=?").run(new Date().toISOString(), row.id);

@@ -1,6 +1,6 @@
 # Privacidade, proteção de dados e LGPD
 
-Versão: 1.0.0 · Magnum Office.
+Versão: 1.1.0 · Magnum Office.
 
 ## Onde os dados ficam
 
@@ -38,3 +38,8 @@ Proteja a conta do sistema operacional, controle quem pode abrir o aplicativo e 
 O aceite registra versão e data no computador. Disparos, mensagens, lembretes e rotinas de backup exigem o aplicativo aberto ou na bandeja e o computador ligado; funções externas também exigem conexão. O contato com Lucianum é opcional e não concede acesso automático aos dados do escritório.
 
 Fontes oficiais de referência: [LGPD — texto atualizado](https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-normaatualizada-pl.html) e [Guia de segurança da informação da ANPD](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-orientativo-sobre-seguranca-da-informacao-para-agentes-de-tratamento-de-pequeno-porte).
+
+
+## Felicitações de aniversário
+
+A data de nascimento é opcional e permanece no cadastro criptografado. O escritório decide se pode usar esse dado para felicitações e ativa o envio por cliente. Modelos podem utilizar nome completo, primeiro nome e nome do escritório. Ao ativar, o WhatsApp recebe a mensagem personalizada na data programada; desative a opção para interromper envios automáticos futuros. A cópia portátil restaura a automação desativada e preserva o histórico de prevenção de duplicatas.

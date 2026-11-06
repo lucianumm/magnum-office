@@ -26,6 +26,7 @@ jobs:
       - run: npm run test:release-features
       - run: npm run test:privacy-email-backup
       - run: npm run test:corrections
+      - run: npm run test:birthdays
       - uses: actions/upload-artifact@v4
         if: always()
         with:

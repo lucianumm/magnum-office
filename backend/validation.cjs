@@ -1,6 +1,6 @@
 const kinds = ['clients', 'cases', 'tasks', 'notes', 'documents'];
 const fields = {
-  clients: { name: 160, email: 254, phone: 40, document: 32, address: 500, notes: 12000, status: 30, emailPreference: 30 },
+  clients: { name: 160, email: 254, phone: 40, document: 32, address: 500, notes: 12000, status: 30, emailPreference: 30, birthDate:10, birthdayTemplateId:36, birthdayTime:5 },
   cases: { title: 200, number: 40, clientId: 36, court: 200, area: 60, status: 40, notes: 16000 },
   tasks: { title: 200, caseId: 36, clientId: 36, due: 30, type: 40, priority: 20, status: 30, notes: 12000 },
   notes: { title: 200, content: 60000, caseId: 36 },
@@ -16,6 +16,11 @@ function entity(kind, data, {allowLegacyContact=false}={}) {
   for (const [key, max] of Object.entries(fields[kind])) result[key] = text(data[key] ?? '', max);
   if (!(result.name || result.title)) throw new Error('Informe o nome ou título do registro.');
   if (kind === 'clients') {
+    if(data.birthdayEnabled!==undefined&&typeof data.birthdayEnabled!=='boolean')throw new Error('Opção de aniversário inválida.');result.birthdayEnabled=data.birthdayEnabled===true;result.birthdayTime=result.birthdayTime||'09:00';
+    if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.birthdayTime))throw new Error('Horário de aniversário inválido.');
+    if(result.birthDate){const d=new Date(result.birthDate+'T12:00:00Z');const now=new Date();const today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;if(!/^\d{4}-\d{2}-\d{2}$/.test(result.birthDate)||!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==result.birthDate||result.birthDate<'1900-01-01'||result.birthDate>today)throw new Error('Informe uma data de nascimento válida, sem data futura.');}
+    if(result.birthdayTemplateId)uuid(result.birthdayTemplateId);
+    if(result.birthdayEnabled&&(!result.birthDate||!result.birthdayTemplateId))throw new Error('Informe o nascimento e escolha um modelo de mensagem aniversário.');
     if(!allowLegacyContact)result.phone=require('./phone.cjs').whatsappNumber(result.phone);
     if(!['Receber','Não receber'].includes(result.emailPreference))result.emailPreference='Receber';
     if (result.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(result.email)) throw new Error('E-mail inválido.');
