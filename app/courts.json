@@ -1,0 +1,2476 @@
+{
+  "updatedAt": "2026-11-05",
+  "source": "https://www.cnj.jus.br/tribunais/",
+  "courts": [
+    {
+      "id": "cjf",
+      "acronym": "CJF",
+      "name": "Conselho da Justiça Federal",
+      "category": "Conselhos e serviços",
+      "uf": "Nacional",
+      "url": "https://www.cjf.jus.br/cjf",
+      "source": "https://www.cjf.jus.br/",
+      "systems": [
+        {
+          "label": "PJe",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://www.cjf.jus.br/cjf"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "cnj",
+      "acronym": "CNJ",
+      "name": "Conselho Nacional de Justiça",
+      "category": "Conselhos e serviços",
+      "uf": "Nacional",
+      "url": "https://www.cnj.jus.br/",
+      "source": "https://www.cnj.jus.br/",
+      "systems": [
+        {
+          "label": "Processo Judicial eletrônico",
+          "url": "https://www.cnj.jus.br/programas-e-acoes/processo-judicial-eletronico-pje/",
+          "source": "https://www.cnj.jus.br/"
+        },
+        {
+          "label": "Comunicações Processuais",
+          "url": "https://www.cnj.jus.br/programas-e-acoes/processo-judicial-eletronico-pje/comunicacoes-processuais/",
+          "source": "https://www.cnj.jus.br/"
+        },
+        {
+          "label": "PJeCor",
+          "url": "https://www.cnj.jus.br/corregedoriacnj/pjecor/",
+          "source": "https://www.cnj.jus.br/"
+        },
+        {
+          "label": "PJe Mídias",
+          "url": "https://www.cnj.jus.br/sistemas/sistema-de-gravacao-de-audiencia-pje-midias/",
+          "source": "https://www.cnj.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "csjt",
+      "acronym": "CSJT",
+      "name": "Conselho Superior da Justiça do Trabalho",
+      "category": "Conselhos e serviços",
+      "uf": "Nacional",
+      "url": "https://www.csjt.jus.br/",
+      "source": "https://www.csjt.jus.br/",
+      "systems": [
+        {
+          "label": "PJe",
+          "url": "https://pje.tst.jus.br/consultaprocessual/consulta-cidadao/",
+          "source": "https://www.csjt.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.csjt.jus.br/web/pje",
+          "source": "https://www.csjt.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "djen",
+      "acronym": "DJEN",
+      "name": "Diário de Justiça Eletrônico Nacional",
+      "category": "Conselhos e serviços",
+      "uf": "Nacional",
+      "url": "https://comunica.pje.jus.br/",
+      "source": "https://comunica.pje.jus.br/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "jusbr",
+      "acronym": "Jus.br",
+      "name": "Portal de serviços do Poder Judiciário",
+      "category": "Conselhos e serviços",
+      "uf": "Nacional",
+      "url": "https://www.jus.br/",
+      "source": "https://www.jus.br/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "pjeoffice",
+      "acronym": "PJeOffice Pro",
+      "name": "Assinador do PJe — documentação oficial",
+      "category": "Conselhos e serviços",
+      "uf": "Nacional",
+      "url": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro/",
+      "source": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro",
+      "systems": [
+        {
+          "label": "Acesso ao PJe Nacional",
+          "url": "https://www.pje.jus.br/navegador/",
+          "source": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro/"
+        },
+        {
+          "label": "PJe Wiki (legado)",
+          "url": "https://www.pje.jus.br/wiki/index.php/P%C3%A1gina_principal",
+          "source": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro/"
+        },
+        {
+          "label": "Arquitetura do PJe",
+          "url": "https://docs.pje.jus.br/manuais-basicos/arquitetura-pje",
+          "source": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro/"
+        },
+        {
+          "label": "Padrões de API do PJe",
+          "url": "https://docs.pje.jus.br/manuais-basicos/padroes-de-api-do-pje",
+          "source": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro/"
+        },
+        {
+          "label": "Serviço PJeLegacy",
+          "url": "https://docs.pje.jus.br/servicos-negociais/servico-pje-legacy",
+          "source": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro/"
+        },
+        {
+          "label": "Serviço PJe-Web",
+          "url": "https://docs.pje.jus.br/servicos-negociais/servico-pje-web",
+          "source": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro/"
+        },
+        {
+          "label": "Serviço SSO - PJe-KC",
+          "url": "https://docs.pje.jus.br/servicos-negociais/servico-sso-pje-kc",
+          "source": "https://docs.pje.jus.br/servicos-negociais/pjeoffice-pro/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tre-ac",
+      "acronym": "TRE-AC",
+      "name": "Tribunal Regional Eleitoral — Acre",
+      "category": "Eleitoral",
+      "uf": "AC",
+      "url": "https://www.tre-ac.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-ac.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-al",
+      "acronym": "TRE-AL",
+      "name": "Tribunal Regional Eleitoral — Alagoas",
+      "category": "Eleitoral",
+      "uf": "AL",
+      "url": "https://www.tre-al.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-al.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-am",
+      "acronym": "TRE-AM",
+      "name": "Tribunal Regional Eleitoral — Amazonas",
+      "category": "Eleitoral",
+      "uf": "AM",
+      "url": "https://www.tre-am.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-am.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-ap",
+      "acronym": "TRE-AP",
+      "name": "Tribunal Regional Eleitoral — Amapá",
+      "category": "Eleitoral",
+      "uf": "AP",
+      "url": "https://www.tre-ap.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-ap.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-ba",
+      "acronym": "TRE-BA",
+      "name": "Tribunal Regional Eleitoral — Bahia",
+      "category": "Eleitoral",
+      "uf": "BA",
+      "url": "https://www.tre-ba.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-ba.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-ce",
+      "acronym": "TRE-CE",
+      "name": "Tribunal Regional Eleitoral — Ceará",
+      "category": "Eleitoral",
+      "uf": "CE",
+      "url": "https://www.tre-ce.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-ce.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-df",
+      "acronym": "TRE-DF",
+      "name": "Tribunal Regional Eleitoral — Distrito Federal",
+      "category": "Eleitoral",
+      "uf": "DF",
+      "url": "https://www.tre-df.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-df.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-es",
+      "acronym": "TRE-ES",
+      "name": "Tribunal Regional Eleitoral — Espírito Santo",
+      "category": "Eleitoral",
+      "uf": "ES",
+      "url": "https://www.tre-es.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-es.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-go",
+      "acronym": "TRE-GO",
+      "name": "Tribunal Regional Eleitoral — Goiás",
+      "category": "Eleitoral",
+      "uf": "GO",
+      "url": "https://www.tre-go.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-go.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-ma",
+      "acronym": "TRE-MA",
+      "name": "Tribunal Regional Eleitoral — Maranhão",
+      "category": "Eleitoral",
+      "uf": "MA",
+      "url": "https://www.tre-ma.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-ma.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-mg",
+      "acronym": "TRE-MG",
+      "name": "Tribunal Regional Eleitoral — Minas Gerais",
+      "category": "Eleitoral",
+      "uf": "MG",
+      "url": "https://www.tre-mg.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-mg.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-ms",
+      "acronym": "TRE-MS",
+      "name": "Tribunal Regional Eleitoral — Mato Grosso do Sul",
+      "category": "Eleitoral",
+      "uf": "MS",
+      "url": "https://www.tre-ms.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-ms.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-mt",
+      "acronym": "TRE-MT",
+      "name": "Tribunal Regional Eleitoral — Mato Grosso",
+      "category": "Eleitoral",
+      "uf": "MT",
+      "url": "https://www.tre-mt.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-mt.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-pa",
+      "acronym": "TRE-PA",
+      "name": "Tribunal Regional Eleitoral — Pará",
+      "category": "Eleitoral",
+      "uf": "PA",
+      "url": "https://www.tre-pa.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-pa.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-pb",
+      "acronym": "TRE-PB",
+      "name": "Tribunal Regional Eleitoral — Paraíba",
+      "category": "Eleitoral",
+      "uf": "PB",
+      "url": "https://www.tre-pb.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-pb.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-pe",
+      "acronym": "TRE-PE",
+      "name": "Tribunal Regional Eleitoral — Pernambuco",
+      "category": "Eleitoral",
+      "uf": "PE",
+      "url": "https://www.tre-pe.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-pe.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-pi",
+      "acronym": "TRE-PI",
+      "name": "Tribunal Regional Eleitoral — Piauí",
+      "category": "Eleitoral",
+      "uf": "PI",
+      "url": "https://www.tre-pi.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-pi.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-pr",
+      "acronym": "TRE-PR",
+      "name": "Tribunal Regional Eleitoral — Paraná",
+      "category": "Eleitoral",
+      "uf": "PR",
+      "url": "https://www.tre-pr.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-pr.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-rj",
+      "acronym": "TRE-RJ",
+      "name": "Tribunal Regional Eleitoral — Rio de Janeiro",
+      "category": "Eleitoral",
+      "uf": "RJ",
+      "url": "https://www.tre-rj.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-rj.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-rn",
+      "acronym": "TRE-RN",
+      "name": "Tribunal Regional Eleitoral — Rio Grande do Norte",
+      "category": "Eleitoral",
+      "uf": "RN",
+      "url": "https://www.tre-rn.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-rn.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-ro",
+      "acronym": "TRE-RO",
+      "name": "Tribunal Regional Eleitoral — Rondônia",
+      "category": "Eleitoral",
+      "uf": "RO",
+      "url": "https://www.tre-ro.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-ro.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-rr",
+      "acronym": "TRE-RR",
+      "name": "Tribunal Regional Eleitoral — Roraima",
+      "category": "Eleitoral",
+      "uf": "RR",
+      "url": "https://www.tre-rr.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-rr.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-rs",
+      "acronym": "TRE-RS",
+      "name": "Tribunal Regional Eleitoral — Rio Grande do Sul",
+      "category": "Eleitoral",
+      "uf": "RS",
+      "url": "https://www.tre-rs.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-rs.jus.br/pje/login.seam",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-sc",
+      "acronym": "TRE-SC",
+      "name": "Tribunal Regional Eleitoral — Santa Catarina",
+      "category": "Eleitoral",
+      "uf": "SC",
+      "url": "https://www.tre-sc.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-sc.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-se",
+      "acronym": "TRE-SE",
+      "name": "Tribunal Regional Eleitoral — Sergipe",
+      "category": "Eleitoral",
+      "uf": "SE",
+      "url": "https://www.tre-se.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-se.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-sp",
+      "acronym": "TRE-SP",
+      "name": "Tribunal Regional Eleitoral — São Paulo",
+      "category": "Eleitoral",
+      "uf": "SP",
+      "url": "https://www.tre-sp.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-sp.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tre-to",
+      "acronym": "TRE-TO",
+      "name": "Tribunal Regional Eleitoral — Tocantins",
+      "category": "Eleitoral",
+      "uf": "TO",
+      "url": "https://www.tre-to.jus.br/",
+      "source": "https://www.cnj.jus.br/tribunais/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.tre-to.jus.br/pje",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ]
+    },
+    {
+      "id": "tjac",
+      "acronym": "TJAC",
+      "name": "Tribunal de Justiça do Acre",
+      "category": "Estadual",
+      "uf": "AC",
+      "url": "https://www.tjac.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-acre/",
+      "systems": [
+        {
+          "label": "Processo de 1º grau",
+          "url": "https://esaj.tjac.jus.br/cpo/pg/open.do",
+          "source": "https://www.tjac.jus.br/"
+        },
+        {
+          "label": "Processo de 2º grau",
+          "url": "https://esaj.tjac.jus.br/cposg5/open.do",
+          "source": "https://www.tjac.jus.br/"
+        },
+        {
+          "label": "Conferência de Documentos e-SAJ",
+          "url": "https://esaj.tjac.jus.br/esaj/portal.do?servico=920100",
+          "source": "https://www.tjac.jus.br/"
+        },
+        {
+          "label": "Jurisprudência",
+          "url": "https://esaj.tjac.jus.br/cjsg/resultadoCompleta.do",
+          "source": "https://www.tjac.jus.br/"
+        },
+        {
+          "label": "CÁLCULO JUDICIAL",
+          "url": "https://eproc1g.tjac.jus.br/eproc/externo_controlador.php?acao=md_cj_publico_inicio",
+          "source": "https://www.tjac.jus.br/"
+        },
+        {
+          "label": "PJeCor",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://www.tjac.jus.br/"
+        },
+        {
+          "label": "DJEN – Diário Eletrônico Nacional",
+          "url": "https://comunica.pje.jus.br/consulta?siglaTribunal=TJAC",
+          "source": "https://www.tjac.jus.br/"
+        },
+        {
+          "label": "eproc",
+          "url": "https://www.tjac.jus.br/eproc/",
+          "source": "https://www.tjac.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjal",
+      "acronym": "TJAL",
+      "name": "Tribunal de Justiça de Alagoas",
+      "category": "Estadual",
+      "uf": "AL",
+      "url": "https://www.tjal.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-alagoas-tjal/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjam",
+      "acronym": "TJAM",
+      "name": "Tribunal de Justiça do Amazonas",
+      "category": "Estadual",
+      "uf": "AM",
+      "url": "https://www.tjam.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunal-de-justica-do-amazonas-tjam/",
+      "systems": [
+        {
+          "label": "Peticionamento (PROJUDI)",
+          "url": "https://projudi.tjam.jus.br/projudi/",
+          "source": "https://www.tjam.jus.br/"
+        },
+        {
+          "label": "COMUNICADO: Migração de varas para o PROJUDI",
+          "url": "https://www.tjam.jus.br/index.php/notas-oficiais/10691-comunicado-migracao-de-varias-para-o-projudi",
+          "source": "https://www.tjam.jus.br/"
+        },
+        {
+          "label": "Projudi",
+          "url": "https://www.tjam.jus.br/index.php/notas-oficiais/11212-comunicado-nova-migracao-do-sistema-saj-para-o-projudi-contemplara-1-e-2-juizados-da-fazenda-publica-estadual-e-municipal-da-comarca-de-manaus",
+          "source": "https://www.tjam.jus.br/"
+        },
+        {
+          "label": "SISBAJUD",
+          "url": "https://sso.cloud.pje.jus.br/auth/realms/pje/protocol/openid-connect/auth?client_id=sisbajud&redirect_uri=https%3A%2F%2Fsisbajud.cloud.pje.jus.br&state=038f67da-500c-453a-85ab-c331c9bf834c&response_mode=fragment&response_type=code&scope=openid&nonce=271ec859-3f9b-4d64-8fd2-d4f51eac632c",
+          "source": "https://www.tjam.jus.br/"
+        },
+        {
+          "label": "Turma Recursal",
+          "url": "https://projudi-consulta.tjam.jus.br/publica/",
+          "source": "https://www.tjam.jus.br/"
+        },
+        {
+          "label": "Consulta de Jurisprudência",
+          "url": "https://consultasaj.tjam.jus.br/esaj/portal.do?servico=789900",
+          "source": "https://www.tjam.jus.br/"
+        },
+        {
+          "label": "PJECOR",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://www.tjam.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjap",
+      "acronym": "TJAP",
+      "name": "Tribunal de Justiça do Amapá",
+      "category": "Estadual",
+      "uf": "AP",
+      "url": "https://www.tjap.jus.br/portal/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunal-de-justica-do-amapa-tjap/",
+      "systems": [
+        {
+          "label": "PJe 1º Grau",
+          "url": "https://pje.tjap.jus.br/1g/login.seam",
+          "source": "https://www.tjap.jus.br/portal/"
+        },
+        {
+          "label": "PJe 2º Grau",
+          "url": "https://pje.tjap.jus.br/2g/login.seam",
+          "source": "https://www.tjap.jus.br/portal/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.tjap.jus.br/portal/pje-inicio.html",
+          "source": "https://www.tjap.jus.br/portal/"
+        },
+        {
+          "label": "SEEU",
+          "url": "https://seeu.pje.jus.br/seeu/",
+          "source": "https://www.tjap.jus.br/portal/"
+        },
+        {
+          "label": "Eproc",
+          "url": "https://www.tjap.jus.br/portal/portal-eproc.html",
+          "source": "https://www.tjap.jus.br/portal/"
+        },
+        {
+          "label": "PJe Cor",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://www.tjap.jus.br/portal/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjba",
+      "acronym": "TJBA",
+      "name": "Tribunal de Justiça da Bahia",
+      "category": "Estadual",
+      "uf": "BA",
+      "url": "https://www5.tjba.jus.br/portal/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-da-bahia-tjba/",
+      "systems": [],
+      "portalHttp": 0
+    },
+    {
+      "id": "tjce",
+      "acronym": "TJCE",
+      "name": "Tribunal de Justiça do Ceará",
+      "category": "Estadual",
+      "uf": "CE",
+      "url": "https://www.tjce.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-ceara-tjce/",
+      "systems": [
+        {
+          "label": "Processo Judicial Eletrônico - PJe",
+          "url": "https://www.tjce.jus.br/pje/",
+          "source": "https://www.tjce.jus.br/"
+        },
+        {
+          "label": "PJe-Cor",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://www.tjce.jus.br/"
+        },
+        {
+          "label": "Acompanhamento das Sessões Virtuais",
+          "url": "https://pje-plenario-virtual.tjce.jus.br/",
+          "source": "https://www.tjce.jus.br/"
+        },
+        {
+          "label": "Pesquisa de Acórdão - eSAJ",
+          "url": "https://esaj.tjce.jus.br/cjsg/consultaCompleta.do;jsessionid=84FFC0DEAFF9BDB0716D804C76102D27.cjsg2",
+          "source": "https://www.tjce.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjdft",
+      "acronym": "TJDFT",
+      "name": "Tribunal de Justiça do Distrito Federal e Territórios",
+      "category": "Estadual",
+      "uf": "DF",
+      "url": "https://www.tjdft.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-distrito-federal-e-territorios-tjdft/",
+      "systems": [
+        {
+          "label": "Processo Judicial Eletrônico",
+          "url": "https://www.tjdft.jus.br/pje",
+          "source": "https://www.tjdft.jus.br/"
+        },
+        {
+          "label": "Cadastro de login no PJe",
+          "url": "https://www.tjdft.jus.br/servicos/distribuicao-e-atendimento/cadastro-de-login-no-pje",
+          "source": "https://www.tjdft.jus.br/"
+        },
+        {
+          "label": "Aqui tem PJe",
+          "url": "https://www.tjdft.jus.br/pje/aqui-tem-pje",
+          "source": "https://www.tjdft.jus.br/"
+        },
+        {
+          "label": "Cadastro Empresas - PJE",
+          "url": "https://www.tjdft.jus.br/pje/cadastro-empresas-pje",
+          "source": "https://www.tjdft.jus.br/"
+        },
+        {
+          "label": "Comitê Gestor",
+          "url": "https://www.tjdft.jus.br/pje/comite-gestor",
+          "source": "https://www.tjdft.jus.br/"
+        },
+        {
+          "label": "Atas",
+          "url": "https://www.tjdft.jus.br/pje/comite-gestor/reunioes",
+          "source": "https://www.tjdft.jus.br/"
+        },
+        {
+          "label": "Atas do grupo de trabalho do projeto criminal",
+          "url": "https://www.tjdft.jus.br/pje/comite-gestor/atas-do-grupo-de-trabalho-do-projeto-criminal",
+          "source": "https://www.tjdft.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjes",
+      "acronym": "TJES",
+      "name": "Tribunal de Justiça do Espírito Santo",
+      "category": "Estadual",
+      "uf": "ES",
+      "url": "https://www.tjes.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-espirito-santo-tjes/",
+      "systems": [
+        {
+          "label": "1º Grau",
+          "url": "https://www.tjes.jus.br/pje/1o-grau/",
+          "source": "https://www.tjes.jus.br/"
+        },
+        {
+          "label": "Acesso ao sistema de 1º Grau",
+          "url": "https://pje.tjes.jus.br/pje/login.seam",
+          "source": "https://www.tjes.jus.br/"
+        },
+        {
+          "label": "Consulta de documentos de 1º Grau",
+          "url": "https://pje.tjes.jus.br/pje/Processo/ConsultaDocumento/listView.seam",
+          "source": "https://www.tjes.jus.br/"
+        },
+        {
+          "label": "Consulta pública de 1º Grau",
+          "url": "https://pje.tjes.jus.br/pje/ConsultaPublica/listView.seam",
+          "source": "https://www.tjes.jus.br/"
+        },
+        {
+          "label": "Push – 1º Grau",
+          "url": "https://pje.tjes.jus.br/pje/Push/loginPush.seam",
+          "source": "https://www.tjes.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.tjes.jus.br/pje/",
+          "source": "https://www.tjes.jus.br/"
+        },
+        {
+          "label": "Pré-requisitos",
+          "url": "https://www.tjes.jus.br/pje/1o-grau/pre-requisitos/",
+          "source": "https://www.tjes.jus.br/"
+        },
+        {
+          "label": "Cronograma",
+          "url": "https://www.tjes.jus.br/pje/projetodocumentos/cronograma/",
+          "source": "https://www.tjes.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjgo",
+      "acronym": "TJGO",
+      "name": "Tribunal de Justiça de Goiás",
+      "category": "Estadual",
+      "uf": "GO",
+      "url": "https://www.tjgo.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-goias-tjgo/",
+      "systems": [
+        {
+          "label": "Projudi / PJD",
+          "url": "https://projudi.tjgo.jus.br/",
+          "source": "https://docs.tjgo.jus.br/institucional/ouvidoria/FAQ-Informa%C3%A7%C3%B5esSobreServi%C3%A7osJudiciarios-SIC-v2.pdf"
+        },
+        {
+          "label": "Consulta pública",
+          "url": "https://projudi.tjgo.jus.br/BuscaProcesso",
+          "source": "https://transparencia.tjgo.jus.br/ti-comunicacoes/consulta-publica-de-processos-numeracao-unica-api-datajud"
+        }
+      ],
+      "portalHttp": 403
+    },
+    {
+      "id": "tjpa",
+      "acronym": "TJPA",
+      "name": "Tribunal de Justiça do Pará",
+      "category": "Estadual",
+      "uf": "PA",
+      "url": "https://www.tjpa.jus.br/PortalExterno/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-para-tjpa/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjpb",
+      "acronym": "TJPB",
+      "name": "Tribunal de Justiça da Paraíba",
+      "category": "Estadual",
+      "uf": "PB",
+      "url": "https://www.tjpb.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-da-paraiba-tjpb/",
+      "systems": [],
+      "portalHttp": 403
+    },
+    {
+      "id": "tjpe",
+      "acronym": "TJPE",
+      "name": "Tribunal de Justiça de Pernambuco",
+      "category": "Estadual",
+      "uf": "PE",
+      "url": "https://www.tjpe.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-da-justica-de-pernambuco-tjpe/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjpi",
+      "acronym": "TJPI",
+      "name": "Tribunal de Justiça do Piauí",
+      "category": "Estadual",
+      "uf": "PI",
+      "url": "https://www.tjpi.jus.br/portaltjpi/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-piaui-tjpi/",
+      "systems": [
+        {
+          "label": "1º Grau",
+          "url": "https://pje.tjpi.jus.br/1g",
+          "source": "https://www.tjpi.jus.br/portaltjpi/"
+        },
+        {
+          "label": "2º Grau",
+          "url": "https://pje.tjpi.jus.br/2g",
+          "source": "https://www.tjpi.jus.br/portaltjpi/"
+        },
+        {
+          "label": "1ª Instância",
+          "url": "https://pje.tjpi.jus.br/1g/ConsultaPublica/listView.seam",
+          "source": "https://www.tjpi.jus.br/portaltjpi/"
+        },
+        {
+          "label": "2ª Instância",
+          "url": "https://pje.tjpi.jus.br/2g/ConsultaPublica/listView.seam",
+          "source": "https://www.tjpi.jus.br/portaltjpi/"
+        },
+        {
+          "label": "Turmas Recursais",
+          "url": "https://pje.tjpi.jus.br/2g/login.seam",
+          "source": "https://www.tjpi.jus.br/portaltjpi/"
+        },
+        {
+          "label": "Portal do PJE",
+          "url": "https://www.tjpi.jus.br/portaltjpi/portalpje/",
+          "source": "https://www.tjpi.jus.br/portaltjpi/"
+        },
+        {
+          "label": "PJeCor",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://www.tjpi.jus.br/portaltjpi/"
+        },
+        {
+          "label": "Tutoriais do PJe",
+          "url": "https://www.tjpi.jus.br/portaltjpi/corregedoria/tutoriais-do-pje/",
+          "source": "https://www.tjpi.jus.br/portaltjpi/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjpr",
+      "acronym": "TJPR",
+      "name": "Tribunal de Justiça do Paraná",
+      "category": "Estadual",
+      "uf": "PR",
+      "url": "https://www.tjpr.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-parana-tjpr/",
+      "systems": [
+        {
+          "label": "Precedentes Qualificados",
+          "url": "https://consulta.tjpr.jus.br/projudi_consulta/processo/consultaPublicaPrecedentes.do?actionType=iniciar",
+          "source": "https://www.tjpr.jus.br/"
+        },
+        {
+          "label": "PJE",
+          "url": "https://www.tjpr.jus.br/servicos-pje-2-grau",
+          "source": "https://www.tjpr.jus.br/"
+        },
+        {
+          "label": "PROJUDI",
+          "url": "https://projudi.tjpr.jus.br/projudi",
+          "source": "https://www.tjpr.jus.br/"
+        },
+        {
+          "label": "Eproc",
+          "url": "https://www.tjpr.jus.br/eproc",
+          "source": "https://www.tjpr.jus.br/"
+        },
+        {
+          "label": "Projudi",
+          "url": "https://projudi.tjpr.jus.br/",
+          "source": "https://www.tjpr.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjrj",
+      "acronym": "TJRJ",
+      "name": "Tribunal de Justiça do Rio de Janeiro",
+      "category": "Estadual",
+      "uf": "RJ",
+      "url": "https://www.tjrj.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-rio-de-janeiro-tjrj/",
+      "systems": [],
+      "portalHttp": 0
+    },
+    {
+      "id": "tjrn",
+      "acronym": "TJRN",
+      "name": "Tribunal de Justiça do Rio Grande do Norte",
+      "category": "Estadual",
+      "uf": "RN",
+      "url": "https://www.tjrn.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-rio-grande-do-norte-tjrn/",
+      "systems": [
+        {
+          "label": "Consultar",
+          "url": "https://pje1gconsulta.tjrn.jus.br/consultapublica/ConsultaPublica/listView.seam",
+          "source": "https://www.tjrn.jus.br/"
+        },
+        {
+          "label": "Acessar sistema",
+          "url": "https://pje1g.tjrn.jus.br/pje",
+          "source": "https://www.tjrn.jus.br/"
+        },
+        {
+          "label": "Consultar",
+          "url": "https://pje2gconsulta.tjrn.jus.br/consultapublica/ConsultaPublica/listView.seam",
+          "source": "https://www.tjrn.jus.br/"
+        },
+        {
+          "label": "Acessar sistema",
+          "url": "https://pje2g.tjrn.jus.br/pje",
+          "source": "https://www.tjrn.jus.br/"
+        },
+        {
+          "label": "Diário Judicial",
+          "url": "https://comunica.pje.jus.br/",
+          "source": "https://www.tjrn.jus.br/"
+        },
+        {
+          "label": "Autenticidade de Documentos",
+          "url": "https://pje1g.tjrn.jus.br/pje/Processo/ConsultaDocumento/listView.seam",
+          "source": "https://www.tjrn.jus.br/"
+        },
+        {
+          "label": "Autenticidade de Documentos",
+          "url": "https://pje2g.tjrn.jus.br/pje/Processo/ConsultaDocumento/listView.seam",
+          "source": "https://www.tjrn.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjro",
+      "acronym": "TJRO",
+      "name": "Tribunal de Justiça de Rondônia",
+      "category": "Estadual",
+      "uf": "RO",
+      "url": "https://www.tjro.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-rondonia-tjro/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjrr",
+      "acronym": "TJRR",
+      "name": "Tribunal de Justiça de Roraima",
+      "category": "Estadual",
+      "uf": "RR",
+      "url": "https://www.tjrr.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-roraima-tjrr/",
+      "systems": [
+        {
+          "label": "Acesso Rápido",
+          "url": "https://www.tjrr.jus.br/index.php/consulta-processual-projudi",
+          "source": "https://www.tjrr.jus.br/"
+        },
+        {
+          "label": "Carta Precatória PROJUDI/RR",
+          "url": "https://www.tjrr.jus.br/index.php/cartasprecatorias-projudirr",
+          "source": "https://www.tjrr.jus.br/"
+        },
+        {
+          "label": "Projudi",
+          "url": "https://www.tjrr.jus.br/index.php/consulta-processual-projudi-2",
+          "source": "https://www.tjrr.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://comunica.pje.jus.br/",
+          "source": "https://www.tjrr.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjrs",
+      "acronym": "TJRS",
+      "name": "Tribunal de Justiça do Rio Grande do Sul",
+      "category": "Estadual",
+      "uf": "RS",
+      "url": "https://www.tjrs.jus.br/aviso_manutencao/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-rio-grande-do-sul-tjrs/",
+      "systems": [
+        {
+          "label": "1&ordm; grau",
+          "url": "https://eproc1g.tjrs.jus.br/eproc/externo_controlador.php?acao=principal",
+          "source": "https://www.tjrs.jus.br/aviso_manutencao/"
+        },
+        {
+          "label": "2&ordm; grau",
+          "url": "https://eproc2g.tjrs.jus.br/eproc/",
+          "source": "https://www.tjrs.jus.br/aviso_manutencao/"
+        },
+        {
+          "label": "Acessar",
+          "url": "https://seeu.pje.jus.br/",
+          "source": "https://www.tjrs.jus.br/aviso_manutencao/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjsc",
+      "acronym": "TJSC",
+      "name": "Tribunal de Justiça de Santa Catarina",
+      "category": "Estadual",
+      "uf": "SC",
+      "url": "https://www.tjsc.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-santa-catarina-tjsc/",
+      "systems": [
+        {
+          "label": "eproc - Processo Judicial",
+          "url": "https://www.tjsc.jus.br/eproc",
+          "source": "https://www.tjsc.jus.br/"
+        },
+        {
+          "label": "eproc",
+          "url": "https://www.tjsc.jus.br/web/imprensa/-/tjsc-lanca-assistente-institucional-que-integra-a-inteligencia-artificial-ao-eproc-?redirect=%2F",
+          "source": "https://www.tjsc.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjse",
+      "acronym": "TJSE",
+      "name": "Tribunal de Justiça de Sergipe",
+      "category": "Estadual",
+      "uf": "SE",
+      "url": "https://www.tjse.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-sergipe-tjse/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjsp",
+      "acronym": "TJSP",
+      "name": "Tribunal de Justiça de São Paulo",
+      "category": "Estadual",
+      "uf": "SP",
+      "url": "https://www.tjsp.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-sao-paulo-tjsp/",
+      "systems": [
+        {
+          "label": "eproc",
+          "url": "https://www.tjsp.jus.br/eproc",
+          "source": "https://www.tjsp.jus.br/"
+        },
+        {
+          "label": "Sistema Push",
+          "url": "https://esaj.tjsp.jus.br/sajcas/login",
+          "source": "https://www.tjsp.jus.br/"
+        },
+        {
+          "label": "Consulta Processual Unificada",
+          "url": "https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=tjsp@consulta_unificada_publica/consultar",
+          "source": "https://www.tjsp.jus.br/"
+        },
+        {
+          "label": "SAJ",
+          "url": "https://esaj.tjsp.jus.br/esaj/portal.do?servico=190090",
+          "source": "https://www.tjsp.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://seeu.pje.jus.br/seeu/processo/consultaPublica.do?actionType=iniciar",
+          "source": "https://www.tjsp.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjto",
+      "acronym": "TJTO",
+      "name": "Tribunal de Justiça do Tocantins",
+      "category": "Estadual",
+      "uf": "TO",
+      "url": "https://www.tjto.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-tocantins-tjto/",
+      "systems": [
+        {
+          "label": "EPROC",
+          "url": "https://www.tjto.jus.br/eproc",
+          "source": "https://www.tjto.jus.br/"
+        },
+        {
+          "label": "Busca Processual",
+          "url": "https://www.tjto.jus.br/index.php/eproc",
+          "source": "https://www.tjto.jus.br/"
+        },
+        {
+          "label": "2ª Turma Recursal",
+          "url": "https://eproc1.tjto.jus.br/eprocV2_prod_1grau/externo_controlador.php?acao=consulta_publica/sessao_julgamento/index",
+          "source": "https://www.tjto.jus.br/"
+        },
+        {
+          "label": "Turma de Uniformização",
+          "url": "https://eproc2.tjto.jus.br/eprocV2_prod_2grau/externo_controlador.php?acao=consulta_publica/sessao_julgamento/index",
+          "source": "https://www.tjto.jus.br/"
+        },
+        {
+          "label": "Peritos Cadastrados",
+          "url": "https://eproc1.tjto.jus.br/eprocV2_prod_1grau/externo_controlador.php?acao=tjto@md_tjto_perito_externo/lista_publica_perito",
+          "source": "https://www.tjto.jus.br/"
+        },
+        {
+          "label": "Depósito Judicial",
+          "url": "https://eproc1.tjto.jus.br/eprocV2_prod_1grau/externo_controlador.php?acao=deposito_judicial_caixa_inicio_externo",
+          "source": "https://www.tjto.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trf1",
+      "acronym": "TRF1",
+      "name": "Tribunal Regional Federal da 1ª Região",
+      "category": "Federal",
+      "uf": "AC/AP/AM/BA/DF/GO/MA/MT/PA/PI/RO/RR/TO",
+      "url": "https://portal.trf1.jus.br/portaltrf1/pagina-inicial.htm",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-federal-da-1a-regiao-trf1/",
+      "systems": [
+        {
+          "label": "PJe · acessos oficiais",
+          "url": "https://www.trf1.jus.br/trf1/pje/acessos-ao-sistema",
+          "source": "https://www.trf1.jus.br/trf1/pje/acessos-ao-sistema"
+        }
+      ],
+      "portalHttp": 403
+    },
+    {
+      "id": "trf2",
+      "acronym": "TRF2",
+      "name": "Tribunal Regional Federal da 2ª Região",
+      "category": "Federal",
+      "uf": "RJ/ES",
+      "url": "https://www.trf2.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-federal-da-2a-regiao-trf2/",
+      "systems": [
+        {
+          "label": "eproc · 2º grau",
+          "url": "https://eproc.trf2.jus.br/eproc/",
+          "source": "https://www.trf2.jus.br/sites/default/publico/2025-05/ajuizamento-recursos-competencia-delegada-atualizado.pdf"
+        }
+      ],
+      "portalHttp": 503
+    },
+    {
+      "id": "trf3",
+      "acronym": "TRF3",
+      "name": "Tribunal Regional Federal da 3ª Região",
+      "category": "Federal",
+      "uf": "SP/MS",
+      "url": "https://www.trf3.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-federal-da-3a-regiao-trf3/",
+      "systems": [
+        {
+          "label": "&bull; Sistema PJe de 1º Grau",
+          "url": "https://pje1g.trf3.jus.br/pje/ConsultaPublica/listView.seam",
+          "source": "https://www.trf3.jus.br/"
+        },
+        {
+          "label": "JEF",
+          "url": "https://www.trf3.jus.br/pje/jef",
+          "source": "https://www.trf3.jus.br/"
+        },
+        {
+          "label": "PJe - Processo Judicial Eletrônico",
+          "url": "https://www.trf3.jus.br/pje",
+          "source": "https://www.trf3.jus.br/"
+        },
+        {
+          "label": "Diário de Justiça Eletrônico Nacional",
+          "url": "https://comunica.pje.jus.br/",
+          "source": "https://www.trf3.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trf4",
+      "acronym": "TRF4",
+      "name": "Tribunal Regional Federal da 4ª Região",
+      "category": "Federal",
+      "uf": "PR/RS/SC",
+      "url": "https://www.trf4.jus.br/trf4/controlador.php?acao=principal",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-federal-da-4a-regiao-trf4/",
+      "systems": [
+        {
+          "label": "Jurisprud�ncia",
+          "url": "https://eproc-jur.trf4.jus.br/eproc2trf4/externo_controlador.php?acao=jurisprudencia@jurisprudencia/pesquisar",
+          "source": "https://www.trf4.jus.br/trf4/controlador.php?acao=principal"
+        },
+        {
+          "label": "PJe",
+          "url": "https://seeu.pje.jus.br/seeu/",
+          "source": "https://www.trf4.jus.br/trf4/controlador.php?acao=principal"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trf5",
+      "acronym": "TRF5",
+      "name": "Tribunal Regional Federal da 5ª Região",
+      "category": "Federal",
+      "uf": "AL/CE/PB/PE/RN/SE",
+      "url": "https://www.trf5.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-federal-da-5a-regiao-trf5/",
+      "systems": [
+        {
+          "label": "O que é PJe",
+          "url": "https://www.trf5.jus.br/index.php/pje",
+          "source": "https://www.trf5.jus.br/"
+        },
+        {
+          "label": "Acesso ao PJe",
+          "url": "https://www.trf5.jus.br/index.php/pje?action=acesso-pje",
+          "source": "https://www.trf5.jus.br/"
+        },
+        {
+          "label": "Consulta Pública",
+          "url": "https://pjett.trf5.jus.br/pjeconsulta/ConsultaPublica/listView.seam",
+          "source": "https://www.trf5.jus.br/"
+        },
+        {
+          "label": "Processo Judicial Eletrônico",
+          "url": "https://pje.trf5.jus.br/pje/ConsultaPublica/listView.seam",
+          "source": "https://www.trf5.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trf6",
+      "acronym": "TRF6",
+      "name": "Tribunal Regional Federal da 6ª Região",
+      "category": "Federal",
+      "uf": "MG",
+      "url": "https://portal.trf6.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-federal-da-6a-regiao-trf6/",
+      "systems": [
+        {
+          "label": "eproc",
+          "url": "https://portal.trf6.jus.br/consulta-eproc/",
+          "source": "https://portal.trf6.jus.br/"
+        },
+        {
+          "label": "Jurisprudência",
+          "url": "https://eproc-jur.trf6.jus.br/",
+          "source": "https://portal.trf6.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "stm",
+      "acronym": "STM",
+      "name": "Superior Tribunal Militar",
+      "category": "Militar",
+      "uf": "Nacional",
+      "url": "https://www.stm.jus.br/",
+      "source": "https://www.stm.jus.br/",
+      "systems": [
+        {
+          "label": "e-Proc STM",
+          "url": "https://eproc2g.stm.jus.br/eproc_2g_prod/",
+          "source": "https://www.stm.jus.br/"
+        },
+        {
+          "label": "e-Proc Primeira Instância",
+          "url": "https://eproc1g.stm.jus.br/eproc_1g_prod/",
+          "source": "https://www.stm.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjma",
+      "acronym": "TJMA",
+      "name": "Tribunal de Justiça do Maranhão",
+      "category": "Estadual",
+      "uf": "MA",
+      "url": "https://www.tjma.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-do-maranhao-tjma/",
+      "systems": [
+        {
+          "label": "Contrafé eletrônica de 1º Grau",
+          "url": "https://pje.tjma.jus.br/pje/Processo/ConsultaDocumento/listView.seam",
+          "source": "https://www.tjma.jus.br/"
+        },
+        {
+          "label": "Processo Judicial Eletrônico - PJE",
+          "url": "https://www.tjma.jus.br/hotsite/pje",
+          "source": "https://www.tjma.jus.br/"
+        },
+        {
+          "label": "DIÁRIO DA JUSTIÇA NACIONAL Comunicações Processuais",
+          "url": "https://comunica.pje.jus.br/",
+          "source": "https://www.tjma.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjmg",
+      "acronym": "TJMG",
+      "name": "Tribunal de Justiça de Minas Gerais",
+      "category": "Estadual",
+      "uf": "MG",
+      "url": "https://www.tjmg.jus.br/portal-tjmg/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-minas-gerais-tjmg/",
+      "systems": [
+        {
+          "label": "eproc",
+          "url": "https://www.tjmg.jus.br/portal-tjmg/processos/eproc/eproc.htm",
+          "source": "https://www.tjmg.jus.br/portal-tjmg/"
+        },
+        {
+          "label": "PJe - 1ª Instância",
+          "url": "https://www.tjmg.jus.br/pje/",
+          "source": "https://www.tjmg.jus.br/portal-tjmg/"
+        },
+        {
+          "label": "Projudi - Juizados BH",
+          "url": "https://www.tjmg.jus.br/portal-tjmg/processos/projudi-processo-eletronico-de-juizados-especiais/",
+          "source": "https://www.tjmg.jus.br/portal-tjmg/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjmmg",
+      "acronym": "TJMMG",
+      "name": "Tribunal de Justiça Militar de Minas Gerais",
+      "category": "Militar",
+      "uf": "MG",
+      "url": "https://tjmmg.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-militar-de-minas-gerais-tjmmg/",
+      "systems": [
+        {
+          "label": "Eproc",
+          "url": "https://tjmmg.jus.br/index.php/eproc-orientacoes/",
+          "source": "https://tjmmg.jus.br/"
+        },
+        {
+          "label": "Eproc",
+          "url": "https://tjmmg.jus.br/eproc-orientacoes/",
+          "source": "https://tjmmg.jus.br/"
+        },
+        {
+          "label": "Sessão Virtual (eproc)",
+          "url": "https://eproc.tjmmg.jus.br/eproc2g/externo_controlador.php?acao=tjm_mg@consulta_publica/sessao_julgamento_virtual_tjmmg/index",
+          "source": "https://tjmmg.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjmrs",
+      "acronym": "TJMRS",
+      "name": "Tribunal de Justiça Militar do Rio Grande do Sul",
+      "category": "Militar",
+      "uf": "RS",
+      "url": "https://www.tjmrs.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-militar-do-rio-grande-do-sul-tjmrs/",
+      "systems": [
+        {
+          "label": "Eproc - 1º Grau (acessar)",
+          "url": "https://eproc1g.tjmrs.jus.br/eproc/",
+          "source": "https://www.tjmrs.jus.br/"
+        },
+        {
+          "label": "Eproc - 2º Grau (acessar)",
+          "url": "https://eproc2g.tjmrs.jus.br/eproc/",
+          "source": "https://www.tjmrs.jus.br/"
+        },
+        {
+          "label": "Eproc",
+          "url": "https://www.tjmrs.jus.br/eproc",
+          "source": "https://www.tjmrs.jus.br/"
+        },
+        {
+          "label": "Apresentação",
+          "url": "https://www.tjmrs.jus.br/eproc/apresentacao",
+          "source": "https://www.tjmrs.jus.br/"
+        },
+        {
+          "label": "Informativos",
+          "url": "https://www.tjmrs.jus.br/eproc/informativos",
+          "source": "https://www.tjmrs.jus.br/"
+        },
+        {
+          "label": "Timeline",
+          "url": "https://www.tjmrs.jus.br/eproc/timeline",
+          "source": "https://www.tjmrs.jus.br/"
+        },
+        {
+          "label": "Certidões",
+          "url": "https://www.tjmrs.jus.br/eproc/certidoes",
+          "source": "https://www.tjmrs.jus.br/"
+        },
+        {
+          "label": "Tutoriais",
+          "url": "https://www.tjmrs.jus.br/eproc/tutoriais",
+          "source": "https://www.tjmrs.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjms",
+      "acronym": "TJMS",
+      "name": "Tribunal de Justiça de Mato Grosso do Sul",
+      "category": "Estadual",
+      "uf": "MS",
+      "url": "https://www.tjms.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-mato-grosso-do-sul-tjms/",
+      "systems": [
+        {
+          "label": "Processos 1° Grau",
+          "url": "https://esaj.tjms.jus.br/cpopg5",
+          "source": "https://www.tjms.jus.br/"
+        },
+        {
+          "label": "Processos 2° Grau",
+          "url": "https://esaj.tjms.jus.br/cposg5",
+          "source": "https://www.tjms.jus.br/"
+        },
+        {
+          "label": "DIÁRIO DA JUSTIÇA",
+          "url": "https://esaj.tjms.jus.br/cdje/index.do;jsessionid=A9C7123990B64999F93D6BC32094F43F.cdje2",
+          "source": "https://www.tjms.jus.br/"
+        },
+        {
+          "label": "Disponibilidade do Portal e-SAJ",
+          "url": "https://www.tjms.jus.br/monitoramentoEsaj",
+          "source": "https://www.tjms.jus.br/"
+        },
+        {
+          "label": "Sistema PUSH",
+          "url": "https://esaj.tjms.jus.br/esaj/portal.do?servico=750000",
+          "source": "https://www.tjms.jus.br/"
+        },
+        {
+          "label": "Consulta Jurisprudência",
+          "url": "https://esaj.tjms.jus.br/cjsg/consultaCompleta.do",
+          "source": "https://www.tjms.jus.br/"
+        },
+        {
+          "label": "PORTAL DE SERVIÇOS",
+          "url": "https://esaj.tjms.jus.br/",
+          "source": "https://www.tjms.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjmsp",
+      "acronym": "TJMSP",
+      "name": "Tribunal de Justiça Militar de São Paulo",
+      "category": "Militar",
+      "uf": "SP",
+      "url": "https://www.tjmsp.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-militar-de-sao-paulo-tjmsp/",
+      "systems": [
+        {
+          "label": "Diário de Justiça Eletrônico Nacional (DJEN)",
+          "url": "https://comunica.pje.jus.br/",
+          "source": "https://www.tjmsp.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.tjmsp.jus.br/governanca-institucional/gestao-judiciaria/processo-judicial-eletronico-pje/",
+          "source": "https://www.tjmsp.jus.br/"
+        },
+        {
+          "label": "Processo Judicial Eletrônico Corregedoria-Geral (PJeCor)",
+          "url": "https://corregedoria.pje.jus.br/ConsultaPublica/listView.seam",
+          "source": "https://www.tjmsp.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://sso.cloud.pje.jus.br/auth/realms/pje/protocol/openid-connect/auth?client_id=jusbr&scope=openid&redirect_uri=https://www.jus.br&response_type=code&state=6add2e78d31d3a822445b097fd3f734a",
+          "source": "https://www.tjmsp.jus.br/"
+        },
+        {
+          "label": "Suporte PJe SEEU",
+          "url": "https://www.tjmsp.jus.br/governanca-institucional/gestao-judiciaria/suporte-pje-seeu-estaticas/",
+          "source": "https://www.tjmsp.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://seeu.pje.jus.br/seeu/",
+          "source": "https://www.tjmsp.jus.br/"
+        },
+        {
+          "label": "Processo Judicial Eletrônico (PJe)",
+          "url": "https://www.tjmsp.jus.br/processo-judicial-eletronico-pje/",
+          "source": "https://www.tjmsp.jus.br/"
+        },
+        {
+          "label": "Suporte PJe/SEEU",
+          "url": "https://www.tjmsp.jus.br/suporte-pje-seeu-estaticas/",
+          "source": "https://www.tjmsp.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tjmt",
+      "acronym": "TJMT",
+      "name": "Tribunal de Justiça de Mato Grosso",
+      "category": "Estadual",
+      "uf": "MT",
+      "url": "https://www.tjmt.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-de-justica-de-mato-grosso-tjmt/",
+      "systems": [
+        {
+          "label": "Projudi",
+          "url": "https://projudi.tjmt.jus.br/projudi/",
+          "source": "https://www.tjmt.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "stf",
+      "acronym": "STF",
+      "name": "Supremo Tribunal Federal",
+      "category": "Superiores",
+      "uf": "Nacional",
+      "url": "https://portal.stf.jus.br/",
+      "source": "https://portal.stf.jus.br/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "stj",
+      "acronym": "STJ",
+      "name": "Superior Tribunal de Justiça",
+      "category": "Superiores",
+      "uf": "Nacional",
+      "url": "https://www.stj.jus.br/",
+      "source": "https://www.stj.jus.br/",
+      "systems": [],
+      "portalHttp": 200
+    },
+    {
+      "id": "tse",
+      "acronym": "TSE",
+      "name": "Tribunal Superior Eleitoral",
+      "category": "Superiores",
+      "uf": "Nacional",
+      "url": "https://www.tse.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-superior-eleitoral-tse/",
+      "systems": [
+        {
+          "label": "Acesso ao Processo Judicial Eletrônico (PJE)",
+          "url": "https://www.tse.jus.br/servicos-judiciais/processos/pje",
+          "source": "https://www.tse.jus.br/"
+        },
+        {
+          "label": "Consulta Pública PJE",
+          "url": "https://consultaunificadapje.tse.jus.br/",
+          "source": "https://www.tse.jus.br/"
+        },
+        {
+          "label": "PJe · 3º grau",
+          "url": "https://pje.tse.jus.br/pje/login.seam",
+          "source": "https://www.tse.jus.br/servicos-judiciais/processos/processo-judicial-eletronico/pje"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "tst",
+      "acronym": "TST",
+      "name": "Tribunal Superior do Trabalho",
+      "category": "Superiores",
+      "uf": "Nacional",
+      "url": "https://www.tst.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-superior-do-trabalho-tst/",
+      "systems": [
+        {
+          "label": "PJe",
+          "url": "https://pje.tst.jus.br/consultaprocessual/consulta-cidadao/",
+          "source": "https://www.tst.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.tst.jus.br/web/pje",
+          "source": "https://www.tst.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt1",
+      "acronym": "TRT1",
+      "name": "Tribunal Regional do Trabalho da 1ª Região",
+      "category": "Trabalhista",
+      "uf": "RJ",
+      "url": "https://trt1.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-1a-regiao-trt1/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt1.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt1.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt1.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt1.jus.br/primeirograu/login.seam"
+        }
+      ],
+      "portalHttp": 403
+    },
+    {
+      "id": "trt2",
+      "acronym": "TRT2",
+      "name": "Tribunal Regional do Trabalho da 2ª Região",
+      "category": "Trabalhista",
+      "uf": "SP",
+      "url": "https://ww2.trt2.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-2a-regiao-trt2/",
+      "systems": [
+        {
+          "label": "Consulta Cidadão",
+          "url": "https://pje.trt2.jus.br/consultaprocessual/consulta-cidadao",
+          "source": "https://ww2.trt2.jus.br/"
+        },
+        {
+          "label": "Processo Judicial Eletrônico - PJe",
+          "url": "https://ww2.trt2.jus.br/servicos/acesso-online/processo-judicial-eletronico-pje",
+          "source": "https://ww2.trt2.jus.br/"
+        },
+        {
+          "label": "Processos Eletrônicos (PJe)",
+          "url": "https://pje.trt2.jus.br/jurisprudencia",
+          "source": "https://ww2.trt2.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt3",
+      "acronym": "TRT3",
+      "name": "Tribunal Regional do Trabalho da 3ª Região",
+      "category": "Trabalhista",
+      "uf": "MG",
+      "url": "https://portal.trt3.jus.br/internet",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-3a-regiao-trt3/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt3.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt3.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt3.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt3.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJeCor",
+          "url": "https://portal.trt3.jus.br/internet/institucional/corregedoria/pje-cor",
+          "source": "https://portal.trt3.jus.br/internet"
+        },
+        {
+          "label": "PJe",
+          "url": "https://portal.trt3.jus.br/internet/servicos/pje",
+          "source": "https://portal.trt3.jus.br/internet"
+        },
+        {
+          "label": "Avisos — Processo Judicial Eletrônico (PJe)",
+          "url": "https://portal.trt3.jus.br/internet/servicos/pje/principal",
+          "source": "https://portal.trt3.jus.br/internet"
+        },
+        {
+          "label": "Acesso ao Sistema PJe",
+          "url": "https://portal.trt3.jus.br/internet/servicos/pje/acesso-ao-sistema-pje",
+          "source": "https://portal.trt3.jus.br/internet"
+        },
+        {
+          "label": "Consulta Cidadão",
+          "url": "https://pje.trt3.jus.br/consultaprocessual/consulta-cidadao",
+          "source": "https://portal.trt3.jus.br/internet"
+        },
+        {
+          "label": "Comitê Gestor Regional do PJe",
+          "url": "https://portal.trt3.jus.br/internet/informe-se/comites-gestores-regionais-sistemas-nacionais/comite-gestor-regional-do-pje",
+          "source": "https://portal.trt3.jus.br/internet"
+        },
+        {
+          "label": "Manuais e Orientações",
+          "url": "https://portal.trt3.jus.br/internet/servicos/pje/manuais-e-orientacoes",
+          "source": "https://portal.trt3.jus.br/internet"
+        },
+        {
+          "label": "PJe em casa",
+          "url": "https://portal.trt3.jus.br/internet/servicos/pje/pje-em-casa-1",
+          "source": "https://portal.trt3.jus.br/internet"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt4",
+      "acronym": "TRT4",
+      "name": "Tribunal Regional do Trabalho da 4ª Região",
+      "category": "Trabalhista",
+      "uf": "RS",
+      "url": "https://www.trt4.jus.br/portais/trt4",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-4a-regiao-trt4/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt4.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt4.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt4.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt4.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe Cor",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://www.trt4.jus.br/portais/trt4"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt4.jus.br/portais/trt4/pje",
+          "source": "https://www.trt4.jus.br/portais/trt4"
+        },
+        {
+          "label": "SUPORTE PJe",
+          "url": "https://www.trt4.jus.br/portais/trt4/suporte-pje",
+          "source": "https://www.trt4.jus.br/portais/trt4"
+        },
+        {
+          "label": "Consulta cidadão (abre em nova aba)",
+          "url": "https://pje.trt4.jus.br/consultaprocessual/consulta-cidadao/",
+          "source": "https://www.trt4.jus.br/portais/trt4"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt5",
+      "acronym": "TRT5",
+      "name": "Tribunal Regional do Trabalho da 5ª Região",
+      "category": "Trabalhista",
+      "uf": "BA",
+      "url": "https://www.trt5.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-5a-regiao-trt5/",
+      "systems": [],
+      "portalHttp": 403
+    },
+    {
+      "id": "trt6",
+      "acronym": "TRT6",
+      "name": "Tribunal Regional do Trabalho da 6ª Região",
+      "category": "Trabalhista",
+      "uf": "PE",
+      "url": "https://www.trt6.jus.br/portal/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-6a-regiao-trt6/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt6.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt6.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt6.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt6.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "Consulta Cidadão",
+          "url": "https://pje.trt6.jus.br/consultaprocessual/consulta-cidadao",
+          "source": "https://www.trt6.jus.br/portal/"
+        },
+        {
+          "label": "PJe-Calc Cidadão",
+          "url": "https://www.trt6.jus.br/portal/pjecalc",
+          "source": "https://www.trt6.jus.br/portal/"
+        },
+        {
+          "label": "Sistema de Pesquisa de Jurisprudência",
+          "url": "https://pje.trt6.jus.br/jurisprudencia/",
+          "source": "https://www.trt6.jus.br/portal/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt6.jus.br/portal/pje",
+          "source": "https://www.trt6.jus.br/portal/"
+        },
+        {
+          "label": "PJECOR",
+          "url": "https://corregedoria.pje.jus.br/",
+          "source": "https://www.trt6.jus.br/portal/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt7",
+      "acronym": "TRT7",
+      "name": "Tribunal Regional do Trabalho da 7ª Região",
+      "category": "Trabalhista",
+      "uf": "CE",
+      "url": "https://www.trt7.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-7a-regiao-trt7/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt7.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt7.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt7.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt7.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt7.jus.br/index.php/selo-pje",
+          "source": "https://www.trt7.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt7.jus.br/pje",
+          "source": "https://www.trt7.jus.br/"
+        },
+        {
+          "label": "Pesquisa de Jurisprudência - TRT7 - Processos Eletrônicos",
+          "url": "https://pje.trt7.jus.br/jurisprudencia/",
+          "source": "https://www.trt7.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt8",
+      "acronym": "TRT8",
+      "name": "Tribunal Regional do Trabalho da 8ª Região",
+      "category": "Trabalhista",
+      "uf": "PA/AP",
+      "url": "https://www.trt8.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-8a-regiao-trt8/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt8.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt8.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt8.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt8.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "Consultar Jurisprudência do TRT8",
+          "url": "https://pje.trt8.jus.br/jurisprudencia/",
+          "source": "https://www.trt8.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt8.jus.br/pje",
+          "source": "https://www.trt8.jus.br/"
+        },
+        {
+          "label": "Pje-Calc Cidadão",
+          "url": "https://www.trt8.jus.br/pjecalc-cidadao",
+          "source": "https://www.trt8.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt9",
+      "acronym": "TRT9",
+      "name": "Tribunal Regional do Trabalho da 9ª Região",
+      "category": "Trabalhista",
+      "uf": "PR",
+      "url": "https://www.trt9.jus.br/portal/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-9a-regiao-trt9/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt9.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt9.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt9.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt9.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt9.jus.br/portal/pagina.xhtml?secao=39&pagina=Pje",
+          "source": "https://www.trt9.jus.br/portal/"
+        },
+        {
+          "label": "PjeCor",
+          "url": "https://www.trt9.jus.br/portal/pagina.xhtml?secao=13&pagina=PJE_COR",
+          "source": "https://www.trt9.jus.br/portal/"
+        },
+        {
+          "label": "PJe-Calc Cidadão",
+          "url": "https://www.trt9.jus.br/portal/pagina.xhtml?secao=39&pagina=PJE_CALC",
+          "source": "https://www.trt9.jus.br/portal/"
+        },
+        {
+          "label": "Requisições de Pequeno Valor",
+          "url": "https://pje.trt9.jus.br/gprec-frontend/rpv",
+          "source": "https://www.trt9.jus.br/portal/"
+        },
+        {
+          "label": "Certidão de Feitos Trabalhistas da Justiça do Trabalho",
+          "url": "https://www.trt9.jus.br/portal/pagina.xhtml?secao=14&pagina=CERTIDAO_PJE",
+          "source": "https://www.trt9.jus.br/portal/"
+        },
+        {
+          "label": "Sistema de Gestão de Precedentes",
+          "url": "https://pje.trt9.jus.br/precedentesWeb",
+          "source": "https://www.trt9.jus.br/portal/"
+        },
+        {
+          "label": "Consulta Processual",
+          "url": "https://pje.trt9.jus.br/consultaprocessual/home",
+          "source": "https://www.trt9.jus.br/portal/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt10",
+      "acronym": "TRT10",
+      "name": "Tribunal Regional do Trabalho da 10ª Região",
+      "category": "Trabalhista",
+      "uf": "DF/TO",
+      "url": "https://www.trt10.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-10a-regiao-trt10/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt10.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt10.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt10.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt10.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt10.jus.br/servicos/?pagina=pje/index.php",
+          "source": "https://www.trt10.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt11",
+      "acronym": "TRT11",
+      "name": "Tribunal Regional do Trabalho da 11ª Região",
+      "category": "Trabalhista",
+      "uf": "AM/RR",
+      "url": "https://portal.trt11.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-11a-regiao-trt11/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt11.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt11.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt11.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt11.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "Comitê Gestor Regional do PJe",
+          "url": "https://portal.trt11.jus.br/index.php/home/comites/comite-gestor-regional-do-pje",
+          "source": "https://portal.trt11.jus.br/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://portal.trt11.jus.br/index.php/sociedades/pje",
+          "source": "https://portal.trt11.jus.br/"
+        },
+        {
+          "label": "Consulte o seu Processo Trabalhista",
+          "url": "https://pje.trt11.jus.br/consultaprocessual/",
+          "source": "https://portal.trt11.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt12",
+      "acronym": "TRT12",
+      "name": "Tribunal Regional do Trabalho da 12ª Região",
+      "category": "Trabalhista",
+      "uf": "SC",
+      "url": "https://portal.trt12.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-12a-regiao-trt12/",
+      "systems": [
+        {
+          "label": "Atendimento Pje",
+          "url": "https://portal.trt12.jus.br/pje",
+          "source": "https://portal.trt12.jus.br/"
+        },
+        {
+          "label": ".cls-1{fill:#0067a0;} PJe Corregedoria",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://portal.trt12.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt13",
+      "acronym": "TRT13",
+      "name": "Tribunal Regional do Trabalho da 13ª Região",
+      "category": "Trabalhista",
+      "uf": "PB",
+      "url": "https://www.trt13.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-13a-regiao-trt13/",
+      "systems": [],
+      "portalHttp": 403
+    },
+    {
+      "id": "trt14",
+      "acronym": "TRT14",
+      "name": "Tribunal Regional do Trabalho da 14ª Região",
+      "category": "Trabalhista",
+      "uf": "RO/AC",
+      "url": "https://portal.trt14.jus.br/portal/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-14a-regiao-trt14/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt14.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt14.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt14.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt14.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe",
+          "url": "https://portal.trt14.jus.br/portal/pje",
+          "source": "https://portal.trt14.jus.br/portal/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt15",
+      "acronym": "TRT15",
+      "name": "Tribunal Regional do Trabalho da 15ª Região",
+      "category": "Trabalhista",
+      "uf": "SP",
+      "url": "https://trt15.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-15a-regiao-trt15/",
+      "systems": [
+        {
+          "label": "PJe",
+          "url": "https://trt15.jus.br/pje",
+          "source": "https://trt15.jus.br/"
+        },
+        {
+          "label": "Hastas Públicas",
+          "url": "https://pje.trt15.jus.br/exe-pje/consulta-publica/leilao-judicial",
+          "source": "https://trt15.jus.br/"
+        },
+        {
+          "label": "IRDR / Teses Jurídicas",
+          "url": "https://pje.trt15.jus.br/precedentesWeb/pages/public/TemaLista.seam?tipo=IRDR",
+          "source": "https://trt15.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt16",
+      "acronym": "TRT16",
+      "name": "Tribunal Regional do Trabalho da 16ª Região",
+      "category": "Trabalhista",
+      "uf": "MA",
+      "url": "https://www.trt16.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-16a-regiao-trt16/",
+      "systems": [
+        {
+          "label": "PJe",
+          "url": "https://www.trt16.jus.br/pje",
+          "source": "https://www.trt16.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt17",
+      "acronym": "TRT17",
+      "name": "Tribunal Regional do Trabalho da 17ª Região",
+      "category": "Trabalhista",
+      "uf": "ES",
+      "url": "https://www.trt17.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-17a-regiao-trt17/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt17.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt17.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt17.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt17.jus.br/segundograu/login.seam"
+        }
+      ],
+      "portalHttp": 403
+    },
+    {
+      "id": "trt18",
+      "acronym": "TRT18",
+      "name": "Tribunal Regional do Trabalho da 18ª Região",
+      "category": "Trabalhista",
+      "uf": "GO",
+      "url": "https://www.trt18.jus.br/portal/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-18a-regiao-trt18/",
+      "systems": [
+        {
+          "label": "PJe 1º Grau",
+          "url": "https://pje.trt18.jus.br/primeirograu/login.seam",
+          "source": "https://www.trt18.jus.br/portal/"
+        },
+        {
+          "label": "PJe 2º Grau",
+          "url": "https://pje.trt18.jus.br/segundograu/login.seam",
+          "source": "https://www.trt18.jus.br/portal/"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt18.jus.br/portal/servicos/pje/",
+          "source": "https://www.trt18.jus.br/portal/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt19",
+      "acronym": "TRT19",
+      "name": "Tribunal Regional do Trabalho da 19ª Região",
+      "category": "Trabalhista",
+      "uf": "AL",
+      "url": "https://site.trt19.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-19a-regiao-trt19/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt19.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt19.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt19.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt19.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "Judiciais (PJE)",
+          "url": "https://site.trt19.jus.br/pjepaginaInformacoes",
+          "source": "https://site.trt19.jus.br/"
+        },
+        {
+          "label": "DJEN - Diário da Justiça Eletrônica Nacional",
+          "url": "https://comunica.pje.jus.br/",
+          "source": "https://site.trt19.jus.br/"
+        },
+        {
+          "label": "Certidão Eletrônica de Ações Trabalhistas",
+          "url": "https://pje.trt19.jus.br/certidoes/inicio",
+          "source": "https://site.trt19.jus.br/"
+        },
+        {
+          "label": "PJE-calc Cidadão",
+          "url": "https://site.trt19.jus.br/pje_calc_cidadao",
+          "source": "https://site.trt19.jus.br/"
+        },
+        {
+          "label": "PjeCOR",
+          "url": "https://corregedoria.pje.jus.br/login.seam",
+          "source": "https://site.trt19.jus.br/"
+        },
+        {
+          "label": "Sistema de Jurisprudência",
+          "url": "https://pje.trt19.jus.br/jurisprudencia/",
+          "source": "https://site.trt19.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt20",
+      "acronym": "TRT20",
+      "name": "Tribunal Regional do Trabalho da 20ª Região",
+      "category": "Trabalhista",
+      "uf": "SE",
+      "url": "https://www.trt20.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-20a-regiao-trt20/",
+      "systems": [
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt20.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt20.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt20.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt20.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt20.jus.br/pje",
+          "source": "https://www.trt20.jus.br/"
+        },
+        {
+          "label": "PJECOR",
+          "url": "https://corregedoria.pje.jus.br/",
+          "source": "https://www.trt20.jus.br/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt21",
+      "acronym": "TRT21",
+      "name": "Tribunal Regional do Trabalho da 21ª Região",
+      "category": "Trabalhista",
+      "uf": "RN",
+      "url": "https://www.trt21.jus.br/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-21a-regiao-trt21/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt21.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt21.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt21.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt21.jus.br/segundograu/login.seam"
+        }
+      ],
+      "portalHttp": 403
+    },
+    {
+      "id": "trt22",
+      "acronym": "TRT22",
+      "name": "Tribunal Regional do Trabalho da 22ª Região",
+      "category": "Trabalhista",
+      "uf": "PI",
+      "url": "https://www.trt22.jus.br/portal/home.jsp",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-22a-regiao-trt22/",
+      "systems": [
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt22.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt22.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt22.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt22.jus.br/segundograu/login.seam"
+        }
+      ],
+      "portalHttp": 403
+    },
+    {
+      "id": "trt23",
+      "acronym": "TRT23",
+      "name": "Tribunal Regional do Trabalho da 23ª Região",
+      "category": "Trabalhista",
+      "uf": "MT",
+      "url": "https://portal.trt23.jus.br/portal/",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-23a-regiao-trt23/",
+      "systems": [
+        {
+          "label": "Pesquisa de Jurisprudência",
+          "url": "https://pje.trt23.jus.br/jurisprudencia/",
+          "source": "https://portal.trt23.jus.br/portal/"
+        }
+      ],
+      "portalHttp": 200
+    },
+    {
+      "id": "trt24",
+      "acronym": "TRT24",
+      "name": "Tribunal Regional do Trabalho da 24ª Região",
+      "category": "Trabalhista",
+      "uf": "MS",
+      "url": "https://www.trt24.jus.br/web/guest/home",
+      "source": "https://www.cnj.jus.br/poder-judiciario/tribunais/tribunal-regional-do-trabalho-da-24a-regiao-trt24/",
+      "systems": [
+        {
+          "label": "Jurisprudência de 1º e 2º graus",
+          "url": "https://pje.trt24.jus.br/jurisprudencia/",
+          "source": "https://www.trt24.jus.br/web/guest/home"
+        },
+        {
+          "label": "PJe · 1º grau",
+          "url": "https://pje.trt24.jus.br/primeirograu/login.seam",
+          "source": "https://pje.trt24.jus.br/primeirograu/login.seam"
+        },
+        {
+          "label": "PJe · 2º grau",
+          "url": "https://pje.trt24.jus.br/segundograu/login.seam",
+          "source": "https://pje.trt24.jus.br/segundograu/login.seam"
+        },
+        {
+          "label": "PJe",
+          "url": "https://www.trt24.jus.br/web/guest/pje",
+          "source": "https://www.trt24.jus.br/web/guest/home"
+        }
+      ],
+      "portalHttp": 200
+    }
+  ]
+}

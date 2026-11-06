@@ -1,0 +1,62 @@
+appId: br.advocacia.gestao
+productName: Advocacia Gestao
+copyright: Copyright © Lucianum
+asar: true
+directories:
+  output: installers/artifacts
+  buildResources: desktop/assets
+files:
+  - app/**/*
+  - backend/**/*
+  - desktop/**/*
+  - updater/**/*
+  - migrations/**/*
+  - dist/frontend/**/*
+  - package.json
+  - LICENSE
+  - docs/PRIVACIDADE.md
+  - '!**/*.map'
+extraResources:
+  - from: updater/guardian.ps1
+    to: guardian.ps1
+  - from: updater/verify-signature.ps1
+    to: verify-signature.ps1
+  - from: updater/create-recovery-shortcut.ps1
+    to: create-recovery-shortcut.ps1
+  - from: docs/RECUPERACAO.md
+    to: RECUPERACAO.md
+asarUnpack:
+  - node_modules/@whiskeysockets/baileys/**/*
+win:
+  target: nsis
+  icon: desktop/assets/icon.ico
+  artifactName: advocacia-gestao-setup-${version}-${arch}.${ext}
+  verifyUpdateCodeSignature: true
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Magnum Office
+  deleteAppDataOnUninstall: false
+  runAfterFinish: false
+  include: installers/custom.nsh
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Office
+  icon: desktop/assets/icon.png
+  artifactName: advocacia-gestao-${version}-${arch}.${ext}
+  maintainer: Advocacia Gestão
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.business
+  icon: desktop/assets/icon.png
+  hardenedRuntime: true
+  artifactName: advocacia-gestao-${version}-${arch}.${ext}
+  notarize: true
+publish: null

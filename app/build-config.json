@@ -1,0 +1,9 @@
+{
+  "repository": "lucianumm/magnum-office",
+  "trustedUpdateKeys": [
+    "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA8C58kNMpMKkMn0URlf1iHQmhnzP2YGDEcxj7DOyS6+o=\n-----END PUBLIC KEY-----\n"
+  ],
+  "publisherName": "",
+  "windowsVerification": "signed-manifest",
+  "releaseBuild": true
+}

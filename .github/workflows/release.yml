@@ -1,0 +1,66 @@
+name: Gerar release Windows
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag existente da versão (ex.: v0.6.0)"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: node scripts/validate-migrations.mjs
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run test:desktop
+      - run: npm run test:features
+      - run: npm run test:email
+      - run: npm run test:workspace
+      - run: npm run test:release-features
+      - run: npm run test:privacy-email-backup
+      - run: npm run test:corrections
+      - name: Incorporar chave pública
+        run: node scripts/configure-release.mjs
+        env:
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+          WINDOWS_PUBLISHER_NAME: ${{ secrets.WINDOWS_PUBLISHER_NAME }}
+      - name: Gerar instalador Windows
+        run: npx electron-builder --win nsis --x64 --publish never
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - name: Verificar aplicativo empacotado
+        run: |
+          node scripts/smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+          node scripts/privacy-email-backup-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+          node scripts/release-features-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+          node scripts/corrections-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+          node scripts/guardian-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+      - name: Assinar manifesto de atualização
+        run: node scripts/release-manifest.mjs
+        env:
+          GITHUB_REF_NAME: ${{ inputs.tag }}
+          UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+      - name: Criar release para revisão do mantenedor
+        shell: pwsh
+        run: |
+          $releaseFlags = @('--draft', '--verify-tag')
+          if ($env:RELEASE_TAG.Contains('-')) { $releaseFlags += '--prerelease' }
+          gh release create "$env:RELEASE_TAG" installers/artifacts/*.exe installers/artifacts/release-*.json installers/artifacts/release-*.json.sig installers/artifacts/checksums.txt @releaseFlags --title "Magnum Office $env:RELEASE_TAG" --notes-file CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
