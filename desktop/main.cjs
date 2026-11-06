@@ -46,10 +46,12 @@ let markRendererReady;
 const rendererReady = new Promise(resolve => { markRendererReady = resolve; });
 const devURL = !app.isPackaged && process.env.ADVOCACIA_DEV_URL === 'http://127.0.0.1:5173' ? process.env.ADVOCACIA_DEV_URL : null;
 function icon() { return nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')); }
-function show() { if (win) { win.show(); win.focus(); } }
+function show() { if(!app.isReady()){void app.whenReady().then(show);return;}if(!settings||!store)return;if(!win||win.isDestroyed()){void createWindow().catch(error=>dialog.showErrorBox('Não foi possível reabrir a janela',error.message));return;}win.show();win.focus(); }
+function keepInBackground(){ensureTray();if(win&&!win.isDestroyed())win.hide();store?.audit('window.background');}
+function ensureTray(){if(tray&&!tray.isDestroyed())return;tray=new Tray(icon());tray.on('click',show);tray.on('double-click',show);applyBranding();}
 function displayName() { return settings?.get().appName || 'Advocacia — Gestão'; }
 function applyBranding() {
-  win?.setTitle(displayName()); tray?.setToolTip(displayName());
+  if(win&&!win.isDestroyed())win.setTitle(displayName());if(tray&&!tray.isDestroyed())tray.setToolTip(displayName());
   tray?.setContextMenu(Menu.buildFromTemplate([{ label: `Abrir ${displayName()}`, click: show }, { type: 'separator' }, { label: 'Sair do sistema', click: () => { quitting = true; app.quit(); } }]));
 }
 
@@ -179,6 +181,12 @@ function bindHandlers() {
     return shell.openExternal(link);
   });
   register('checkUpdate', () => updater.check());
+  register('forceUpdate', async () => {
+    const response = await dialog.showMessageBox(win, { type: 'question', title: 'Atualização manual', message: 'Buscar e baixar a versão mais recente agora?', detail: 'Funciona com a atualização automática desativada e permite tentar novamente uma versão bloqueada após falha. A assinatura e a integridade continuam obrigatórias. Você confirma a instalação depois do download.', buttons: ['Cancelar', 'Buscar e baixar'], defaultId: 1, cancelId: 0, noLink: true });
+    if (response.response !== 1) return updater.get();
+    const result = await updater.check({ retryBlocked: true });
+    return result.status === 'available' ? updater.download() : result;
+  });
   register('downloadUpdate', async () => {
     const response = await dialog.showMessageBox(win, { type: 'question', title: 'Baixar atualização', message: `Baixar a versão ${updater.get().available?.version || ''}?`, detail: 'O download será validado antes da instalação. Seus dados serão copiados antes de atualizar.', buttons: ['Cancelar', 'Baixar atualização'], defaultId: 1, cancelId: 0, noLink: true });
     if (response.response === 1) return updater.download(); return updater.get();
@@ -205,7 +213,7 @@ function bindHandlers() {
   register('cancelMessageSeries',id=>operations.run('Cancelar recorrência',()=>messaging.cancelSeries(id)));
   register('editMessage', data => operations.run('Edição de disparo', () => messaging.edit(data.id, data.message)));
   register('changeMessage', data => operations.run('Alteração de mensagem', () => messaging.change(data.id, data.action)));
-  register('window', action => { if (action === 'minimize') win.minimize(); if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize(); if (action === 'close') win.close(); });
+  register('window', action => { if (action === 'minimize') win.minimize(); if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize(); if (action === 'close') {if(settings.get().background)keepInBackground();else win.close();} });
 }
 async function createWindow() {
   win = new BrowserWindow({ width: 1460, height: 980, minWidth: 1040, minHeight: 700, title: displayName(), icon: icon(), backgroundColor: '#f6f7f9', frame: false, show: false, webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: true } });
@@ -214,13 +222,10 @@ async function createWindow() {
   win.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
   win.webContents.session.setPermissionCheckHandler(() => false);
   win.once('ready-to-show', show);
-  win.on('close', event => { if (!quitting && !app.quitForUpdate && settings.get().background) { event.preventDefault(); win.hide(); } });
+  win.on('close', event => { if (!quitting && !app.quitForUpdate && settings.get().background) { event.preventDefault(); keepInBackground(); } });
   Menu.setApplicationMenu(null);
   if (devURL) await win.loadURL(devURL); else await win.loadURL('advocacia://app/index.html');
-  tray = new Tray(icon()); tray.setToolTip('Advocacia — Gestão');
-  tray.setContextMenu(Menu.buildFromTemplate([{ label: 'Abrir Advocacia — Gestão', click: show }, { type: 'separator' }, { label: 'Sair do sistema', click: () => { quitting = true; app.quit(); } }]));
-  tray.on('click', show);tray.on('double-click', show);
-  applyBranding();
+  ensureTray();applyBranding();
 }
 async function boot() {
   const waitPid = Number(getArg('--wait-pid='));
@@ -281,7 +286,8 @@ async function boot() {
   const pendingFile = path.join(dataRoot, 'pending-update.json');
   if (fs.existsSync(pendingFile)) {
     const pending = JSON.parse(fs.readFileSync(pendingFile, 'utf8'));
-    if (pending.version === version && store.integrity()) {
+    if(require('semver').valid(pending.version)&&require('semver').gt(version,pending.version)){await fsp.rm(pendingFile);store.audit('update.superseded',{fromVersion:pending.version,version});}
+    else if (pending.version === version && store.integrity()) {
       await fsp.writeFile(path.join(dataRoot, 'health.json'), JSON.stringify({ version, backupId: pending.backupId, pid: process.pid, at: new Date().toISOString() }));
       settings.internal({ lastUpdate: new Date().toISOString() });
       store.audit('update.success', { fromVersion: pending.fromVersion, version });
@@ -295,6 +301,7 @@ async function boot() {
     for (const task of soon) if (!notified.has(task.id + task.due)) { notified.add(task.id + task.due); const n = new Notification({ title: 'Compromisso próximo', body: 'Há um prazo ou compromisso próximo. Abra a agenda do escritório.', icon: icon() }); n.on('click', show); n.show(); }
   }, 60000);
 }
+app.on('window-all-closed',()=>{if(!quitting&&!app.quitForUpdate&&settings?.get().background){ensureTray();return;}app.quit();});
 app.on('second-instance', show);
 app.on('activate', show);
 app.on('before-quit', event => {

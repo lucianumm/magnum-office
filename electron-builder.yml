@@ -17,6 +17,8 @@ files:
   - docs/PRIVACIDADE.md
   - '!**/*.map'
 extraResources:
+  - from: updater/guardian.cjs
+    to: guardian.cjs
   - from: updater/guardian.ps1
     to: guardian.ps1
   - from: updater/verify-signature.ps1

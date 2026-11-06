@@ -65,7 +65,7 @@ Datas aceitas: `DD/MM/AAAA`, `AAAA-MM-DD` e células de data do Excel. Use hora 
 
 **Documentos e modelos → Modelos jurídicos** aceita redação com formatação, criação/renomeação de grupos e importação DOCX, TXT ou HTML de até 5 MB. A conversão preserva formatação básica; não reproduz integralmente a diagramação de um documento Word. O arquivo original permanece intacto. O conteúdo dos modelos é criptografado e integra os backups e a exportação geral de dados.
 
-**Mensagens → Campanha de e-mail → Colar vários e-mails** identifica endereços em texto misturado, remove repetidos e permite revisar ou remover cada destinatário, incluindo horário individual. O total combinado com clientes selecionados é de até 100 destinatários distintos. Endereços incompletos não são corrigidos por suposição. O recebimento desativado no cadastro é verificado ao cadastrar e antes de enviar.
+**Mensagens → Campanha de e-mail → Colar vários e-mails** identifica endereços em texto misturado, remove repetidos e permite revisar ou remover cada destinatário, com um único horário de início para toda a lista. O total combinado com clientes selecionados é de até 100 destinatários distintos. Endereços incompletos não são corrigidos por suposição. O recebimento desativado no cadastro é verificado ao cadastrar e antes de enviar.
 
 Referência do transporte implementado: [SDK MCP oficial — servidor](https://ts.sdk.modelcontextprotocol.io/server).
 

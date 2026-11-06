@@ -1,14 +1,18 @@
 param([Parameter(Mandatory=$true)][string]$RequestFile)
 $ErrorActionPreference = 'Stop'
-$taskUpdate = Get-Content -LiteralPath $RequestFile -Raw | ConvertFrom-Json
+$taskUpdate = Get-Content -LiteralPath $RequestFile -Raw -Encoding UTF8 | ConvertFrom-Json
 $root = [IO.Path]::GetFullPath($taskUpdate.root)
 $logFile = Join-Path $root 'logs\recovery.jsonl'
 function Write-RecoveryEvent([string]$eventName) {
   @{ at = [DateTime]::UtcNow.ToString('o'); event = $eventName; version = $taskUpdate.version } | ConvertTo-Json -Compress | Add-Content -LiteralPath $logFile
 }
 try {
+  Write-RecoveryEvent 'update.guardian.started'
+  if ($taskUpdate.readyFile -and $taskUpdate.guardianId) {
+    @{ id = $taskUpdate.guardianId; pid = $PID } | ConvertTo-Json -Compress | Set-Content -LiteralPath $taskUpdate.readyFile -Encoding UTF8
+  }
   Wait-Process -Id $taskUpdate.parentPid -Timeout 120 -ErrorAction SilentlyContinue
-  if (Get-Process -Id $taskUpdate.parentPid -ErrorAction SilentlyContinue) { throw 'Application did not exit' }
+  if ((Get-Process -Id $taskUpdate.parentPid -ErrorAction SilentlyContinue) -or ($taskUpdate.cancelFile -and (Test-Path -LiteralPath $taskUpdate.cancelFile))) { Write-RecoveryEvent 'update.guardian.aborted'; exit 1 }
   $installerProcess = Start-Process -FilePath $taskUpdate.installer -ArgumentList '/S' -PassThru -WindowStyle Hidden
   if (-not $installerProcess.WaitForExit(300000) -or $installerProcess.ExitCode -ne 0) { throw 'Installation failed' }
   $newProcess = Start-Process -FilePath $taskUpdate.previousExe -WindowStyle Hidden -PassThru
@@ -17,7 +21,7 @@ try {
     Start-Sleep -Seconds 2
     $healthFile = Join-Path $root 'health.json'
     if (Test-Path -LiteralPath $healthFile) {
-      try { $health = Get-Content -LiteralPath $healthFile -Raw | ConvertFrom-Json; if ($health.version -eq $taskUpdate.version -and $health.backupId -eq $taskUpdate.backupId) { $healthy = $true; break } } catch {}
+      try { $health = Get-Content -LiteralPath $healthFile -Raw -Encoding UTF8 | ConvertFrom-Json; if ($health.version -eq $taskUpdate.version -and $health.backupId -eq $taskUpdate.backupId) { $healthy = $true; break } } catch {}
     }
   }
   if (-not $healthy) { throw 'New version failed health check' }

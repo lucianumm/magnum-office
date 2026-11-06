@@ -3,7 +3,7 @@ import { _electron as electron } from '@playwright/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { spawn, execFile } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { DatabaseSync } from 'node:sqlite';
 const executable = process.argv[2] ? path.resolve(process.argv[2]) : null;
@@ -33,10 +33,12 @@ try {
   const request = { root, version: '0.6.0', fromVersion: '0.5.0', backupId: snapshot.id, parentPid: app.process().pid, installer: invalidInstaller, previousExe: executable, recoveryExe: runtimeExe };
   const requestFile = path.join(root, 'update-request.json'); await fs.writeFile(requestFile, JSON.stringify(request));
   await fs.writeFile(path.join(root, 'pending-update.json'), JSON.stringify(request));
-  const guardianScript = path.join(root, 'backups', snapshot.id, 'runtime', 'resources', 'guardian.ps1');
-  guardian = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', guardianScript, '-RequestFile', requestFile], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const output = []; guardian.stdout.on('data', b => output.push(b.toString())); guardian.stderr.on('data', b => output.push(b.toString()));
-  await app.close(); app = null;
+  await app.evaluate(async({app},request)=>{const path=process.getBuiltinModule('node:path');const require=process.getBuiltinModule('node:module').createRequire(path.join(app.getAppPath(),'package.json'));await require('./updater/recovery.cjs').startGuardian(request.root,request,request.installer);},request);
+  const acknowledged=JSON.parse(await fs.readFile(requestFile,'utf8'));assert.ok(acknowledged.guardianId);
+  const output = [];
+  const stopped = new Promise(resolve => app.process().once('exit', resolve));
+  await app.evaluate(({app}) => { setTimeout(() => app.quit(), 50); });
+  await stopped; app = null;
   const deadline = Date.now() + 55000; let notice; let bootConfirmed = false;
   while (Date.now() < deadline) {
     try {

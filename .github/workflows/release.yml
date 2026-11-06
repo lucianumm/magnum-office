@@ -33,6 +33,8 @@ jobs:
       - run: npm run test:privacy-email-backup
       - run: npm run test:corrections
       - run: npm run test:birthdays
+      - run: npm run test:email-layout
+      - run: npm run test:manual-update
       - name: Incorporar chave pública
         run: node scripts/configure-release.mjs
         env:
@@ -50,6 +52,8 @@ jobs:
           node scripts/release-features-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
           node scripts/corrections-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
           node scripts/birthdays-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+          node scripts/email-layout-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+          node scripts/manual-update-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
           node scripts/guardian-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
       - name: Assinar manifesto de atualização
         run: node scripts/release-manifest.mjs

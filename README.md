@@ -4,7 +4,7 @@
 
 **Dados e processamento no seu computador.** Sistema desktop gratuito e independente para organizar um escritório de advocacia. Clientes, processos, agenda, documentos, modelos e comunicação ficam no computador do usuário.
 
-**Windows x64 · Versão oficial 1.1.0**
+**Windows x64 · Versão oficial 1.2.0**
 [Baixar instalador](https://github.com/lucianumm/magnum-office/releases/latest) · [Changelog](CHANGELOG.md) · [Instalação](docs/INSTALACAO.md) · [API/MCP](docs/API-MCP.md)
 
 > Baixe o aplicativo e suas atualizações somente pela release do repositório oficial.
@@ -23,7 +23,7 @@ O aplicativo é instalado no computador. Cadastros, processos, agenda, anotaçõ
 - **Documentos e modelos:** biblioteca única com arquivos criptografados, grupos de modelos jurídicos, mensagens de WhatsApp e e-mails, com importação e edição interna. Não há limite de quantidade de modelos imposto pelo aplicativo; o armazenamento depende do espaço do computador.
 - **WhatsApp:** conexão Baileys individual por instalação, QR Code, reconexão, modelos de mensagem e agendamento simplificado com histórico de resultados.
 - **Design de e-mail:** prévia para computador e celular, cabeçalho, bordas, cores, imagem, botão e assinatura personalizáveis. O layout padrão já vem pronto e pode ser salvo por modelo ou para os próximos e-mails.
-- **E-mail:** Resend com domínio próprio, confirmação da configuração Resend/Cloudflare, editor com formatação e anexos. Campanhas para até 100 destinatários distintos, com seleção e horários individuais.
+- **E-mail:** Resend com domínio próprio, confirmação da configuração Resend/Cloudflare, editor com formatação e anexos. Campanhas para até 100 destinatários distintos, com lista compacta e um único horário de início para todos.
 - **Colar e-mails:** identificação em textos misturados, normalização de domínios, remoção de repetidos e revisão de destinatários antes do envio.
 - **Importação:** contatos e agenda em CSV, TSV e Excel XLSX, com escolha de planilha, associação de colunas, prévia, validação, duplicados e backup antes da gravação.
 - **Backups semanais:** cópia local automática, aviso diário com a data real do último backup e opção de envio protegido por senha para um único responsável pelo escritório. Cópias portáteis podem ser importadas em outra instalação.
@@ -86,6 +86,12 @@ Os envios agendados e lembretes exigem computador ligado, conexão disponível e
 
 As ferramentas de PDF usam CPU e memória e podem deixar o computador lento. As saídas são PDF/A-2b com páginas renderizadas como imagens, até 180 dpi, perfil sRGB e metadados de arquivamento. Originais são preservados; texto pesquisável, links, formulários e assinaturas digitais não são preservados nas cópias. Uma página maior que o limite escolhido é exportada inteira com aviso.
 
+## E-mail para uma lista de destinatários
+
+Em **Mensagens → Campanha de e-mail** ou **Nova mensagem → E-mail**, cole endereços ou textos misturados e clique em **Identificar e organizar e-mails**. A lista mostra até 100 destinatários distintos em uma área compacta; remova endereços pelo X ou adicione clientes do cadastro. O campo de colagem recolhe após a identificação e pode ser reaberto em Adicionar mais e-mails.
+
+Escolha envio imediato ou uma única data e horário para a lista. A entrega pode ocorrer gradualmente conforme os limites do Resend; cada destinatário recebe um e-mail individual, sem acesso aos demais endereços. Formatação, anexos, modelos e prévia permanecem disponíveis. Para atualizar, baixe a última versão em Releases ou use Configurações → Atualizações.
+
 ## Mensagem de aniversário
 
 Em **Clientes → Novo cliente** ou **Editar**, informe a data de nascimento e ative **Enviar mensagem de aniversário automaticamente**. Selecione um modelo e o horário. O envio usa o WhatsApp do cadastro e fica na agenda e na fila de mensagens.
@@ -104,7 +110,7 @@ Em **Configurações → Escritório**, a opção **Ao fechar (X), continuar fun
 
 ## Atualizações e dados
 
-O repositório de atualização é fixo: [lucianumm/magnum-office](https://github.com/lucianumm/magnum-office). Manifestos Ed25519 e SHA-256 validam a origem e a integridade dos instaladores. O pacote atual não possui certificado Authenticode de editor Windows. Veja [atualizações](docs/ATUALIZACOES.md), [recuperação](docs/RECUPERACAO.md) e [publicação](docs/PUBLICACAO.md).
+O repositório de atualização é fixo: [lucianumm/magnum-office](https://github.com/lucianumm/magnum-office). Manifestos Ed25519 e SHA-256 validam a origem e a integridade dos instaladores. O pacote atual não possui certificado Authenticode de editor Windows. Para atualizar manualmente, abra **Configurações → Atualizações → Forçar atualização agora**. Confirme a busca e o download, depois clique em **Instalar atualização**. Funciona mesmo com a atualização automática desativada. Para versões antigas ou para reinstalar, baixe o instalador mais recente, encerre pela bandeja e instale na mesma pasta; os cadastros são preservados. O comando de instalação rápida acima também pode ser usado para atualizar. Veja [atualizações](docs/ATUALIZACOES.md), [recuperação](docs/RECUPERACAO.md) e [publicação](docs/PUBLICACAO.md).
 
 **Perder os dados originais e todas as cópias pode ser irreversível. Uma cópia portátil protegida não pode ser recuperada sem a senha.** O envio semanal por e-mail tem limite de 18 MB para o arquivo protegido e depende dos limites e da disponibilidade do Resend. Se o arquivo for maior ou houver falha de envio, o backup local permanece disponível.
 
@@ -127,6 +133,7 @@ npm run test:release-features
 npm run test:privacy-email-backup
 npm run test:corrections
 npm run test:birthdays
+npm run test:email-layout
 npm run dev
 ```
 

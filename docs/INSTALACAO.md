@@ -38,3 +38,8 @@ A rotina semanal cria um backup local na próxima execução disponível. Em Con
 O aviso diário exibe a data real do último backup. Ele não significa que uma nova cópia foi feita todos os dias. O sistema deve permanecer aberto ou na bandeja, com o computador ligado; para envios, a internet também deve estar disponível.
 
 Para migrar ou recuperar registros em outro computador, use Exportar backup protegido e Restaurar arquivo de backup. Integrações precisarão ser reconfiguradas. Sem a senha, a cópia portátil não pode ser recuperada. Se dados originais e todas as cópias forem perdidos, não há recuperação garantida.
+
+
+## Se a versão antiga continuar abrindo
+
+Encerre o programa por Sair do sistema no ícone da bandeja, baixe o instalador atual em Releases e instale na pasta utilizada pelo atalho do desktop. Os dados ficam fora da pasta instalada. Não abra executáveis de pastas de recuperação para uso diário. A partir de 1.2.0, o atualizador só encerra a instância após confirmar que o assistente de instalação iniciou; se a confirmação falhar, o programa continua aberto e orienta instalação manual.

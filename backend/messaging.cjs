@@ -125,7 +125,7 @@ class Messaging {
   cancelSeries(id){uuid(id);const row=this.store.db.prepare('SELECT payload FROM queue WHERE id=?').get(id);if(!row)throw new Error('Disparo não encontrado.');const {seriesId}=this.store.vault.unseal(row.payload);if(!seriesId)throw new Error('Este disparo não pertence a uma recorrência.');const rows=this.store.db.prepare("SELECT id,payload FROM queue WHERE status IN ('pending','failed','needs_review','uncertain')").all().filter(r=>this.store.vault.unseal(r.payload).seriesId===seriesId);this.store.db.exec('BEGIN IMMEDIATE');try{for(const r of rows)this.change(r.id,'cancel');this.store.db.exec('COMMIT');return {count:rows.length};}catch(e){this.store.db.exec('ROLLBACK');throw e;}}
   campaign(input) {
     if(!Array.isArray(input.recipients)||input.recipients.length<1||input.recipients.length>100)throw new Error('Selecione entre 1 e 100 clientes.');
-    const seen=new Set();
+    const seen=new Set();const sharedStart=new Date().toISOString();
     const messages=input.recipients.filter(r=>r.receive!==false).map(r=>{
       const clients=this.store.list('clients');
       const raw=r.clientId?this.store.get('clients',uuid(r.clientId)):null;
@@ -134,12 +134,12 @@ class Messaging {
       const c=raw||clients.find(c=>c.email?.toLowerCase()===addressInput.toLowerCase())||{email:addressInput,id:''};
       if(c.emailPreference==='Não receber')throw new Error('Há cliente que optou por não receber e-mails.');
       const address=c.email.toLowerCase(); if(seen.has(address))throw new Error('Há destinatários com o mesmo e-mail. Selecione apenas um deles.');seen.add(address);
-      const m={...input,channel:'email',recipient:c.email,clientId:c.id,scheduledFor:r.scheduledFor||input.scheduledFor||null};
-      this.validate(m);return m;
+      const m={...input,channel:'email',recipient:c.email,clientId:c.id,scheduledFor:input.sharedSchedule?input.scheduledFor||null:r.scheduledFor||input.scheduledFor||null};
+      const {personalizeMessage}=require('../app/message-variables.mjs');m.body=personalizeMessage(m.body,c,this.settings.get());m.html=personalizeMessage(m.html,c,this.settings.get(),true);m.subject=personalizeMessage(m.subject,c,this.settings.get());this.validate(m);return m;
     });
     if(!messages.length)throw new Error('Marque pelo menos um cliente para receber.');
     this.store.db.exec('BEGIN IMMEDIATE');
-    try {const ids=messages.map(m=>this.enqueue(m));this.store.db.exec('COMMIT');return {ids,count:ids.length};}catch(e){this.store.db.exec('ROLLBACK');throw e;}
+    try {const ids=messages.map(m=>this.enqueue(m));if(input.sharedSchedule)for(const id of ids)this.store.db.prepare('UPDATE queue SET available_at=? WHERE id=?').run(input.scheduledFor||sharedStart,id);this.store.db.exec('COMMIT');return {ids,count:ids.length};}catch(e){this.store.db.exec('ROLLBACK');throw e;}
   }
   list() { return this.store.db.prepare('SELECT * FROM queue ORDER BY created_at DESC LIMIT 1000').all().map(row => ({ id: row.id, channel: row.channel, status: row.status, attempts: row.attempts, createdAt: row.created_at, availableAt: row.available_at, scheduledFor: row.scheduled_for, sentAt: row.sent_at, lastError: row.last_error, ...this.store.vault.unseal(row.payload) })); }
   edit(id, input) {

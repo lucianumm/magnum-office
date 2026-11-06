@@ -11,7 +11,7 @@ const build = require('../app/build-config.json');
 const execFileAsync = promisify(execFile);
 
 async function fetchBytes(url, max) {
-  const response = await fetch(url, { headers: { 'User-Agent': `AdvocaciaGestao/${version}`, Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(30000) });
+  const response = await fetch(url, { cache: 'no-store', headers: { 'User-Agent': `AdvocaciaGestao/${version}`, Accept: 'application/vnd.github+json', 'Cache-Control': 'no-cache' }, signal: AbortSignal.timeout(30000) });
   if (!response.ok) throw new Error(response.status === 404 ? 'Repositório ou arquivo de versão não encontrado. Use um repositório público com Releases.' : `O GitHub não respondeu à consulta (${response.status}). Tente novamente depois.`);
   const parts = []; let size = 0;
   for await (const chunk of response.body) { size += chunk.length; if (size > max) throw new Error('Resposta maior que o limite permitido.'); parts.push(chunk); }
@@ -26,7 +26,7 @@ class Updater {
   }
   get() { return { ...this.state }; }
   update(data) { Object.assign(this.state, data); this.onChange(this.get()); }
-  async check() {
+  async check({ retryBlocked = false } = {}) {
     if (this.busy) throw new Error('O atualizador já está em execução.');
     this.busy = true; this.selection = null;
     this.update({ status: 'checking', error: null, available: null, progress: 0 });
@@ -37,7 +37,7 @@ class Updater {
       if (!Array.isArray(releases)) throw new Error('Resposta de versões inválida.');
       const candidates = releases.filter(r => {
         const v = r.tag_name?.replace(/^v/, '');
-        if (r.draft || !semver.valid(v) || !semver.gt(v, version) || config.blockedVersions.includes(v)) return false;
+        if (r.draft || !semver.valid(v) || !semver.gt(v, version) || (!retryBlocked && config.blockedVersions.includes(v))) return false;
         const pre = semver.prerelease(v);
         if (config.channel === 'stable') return !pre && !r.prerelease;
         if (config.channel === 'beta') return pre?.[0] === 'beta';

@@ -49,6 +49,32 @@ test('updater discovers a signed release and only promotes a hash-verified downl
   assert.ok(fs.existsSync(path.join(f.root, 'updates', f.file.name)));
   assert.equal(f.store.auditList().find(e => e.event === 'update.downloaded').metadata.sha256, f.file.sha256);
 });
+
+test('manual retry works with automatic updates disabled and preserves the automatic block list', async t => {
+  const f = await setup(t);
+  const nextVersion = require('semver').inc(require('../app/version.cjs'), 'minor');
+  f.settings.save({ automatic: false });
+  f.settings.internal({ blockedVersions: [nextVersion], lastCheck: new Date().toISOString() });
+  assert.equal((await f.updater.check()).status, 'current');
+  assert.equal((await f.updater.check({ retryBlocked: true })).available.version, nextVersion);
+  assert.equal((await f.updater.download()).status, 'downloaded');
+  // A new manual attempt fetches and replaces the installer rather than trusting
+  // a previous cached download. Automatic retries remain blocked.
+  fs.writeFileSync(path.join(f.root, 'updates', f.file.name), 'old partial content');
+  await f.updater.check({ retryBlocked: true });
+  assert.equal((await f.updater.download()).status, 'downloaded');
+  assert.equal(f.settings.get().automatic, false);
+  assert.deepEqual(f.settings.get().blockedVersions, [nextVersion]);
+  assert.equal((await f.updater.check()).status, 'current');
+});
+
+test('forcing a manual retry still rejects a tampered signed manifest', async t => {
+  const f = await setup(t, { tamperedManifest: true });
+  f.settings.internal({ blockedVersions: [require('semver').inc(require('../app/version.cjs'), 'minor')] });
+  await assert.rejects(f.updater.check({ retryBlocked: true }), /Assinatura/);
+  assert.equal(f.updater.get().status, 'error');
+  assert.equal(f.nativeChecks(), 0);
+});
 test('corrupted installer is deleted and never sent to native signature verification', async t => {
   const f = await setup(t, { corruptedDownload: true }); await f.updater.check();
   await assert.rejects(f.updater.download(), /Integridade/);

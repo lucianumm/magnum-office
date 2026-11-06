@@ -13,7 +13,7 @@ export function Empty({ icon: Icon, title, description, action }) { return <div 
 export function PageHeading({ eyebrow, title, description, children }) { return <div className="page-heading"><div>{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1>{title}</h1>{description && <p>{description}</p>}</div><div className="heading-actions">{children}</div></div>; }
 export function Panel({ title, icon: Icon, aside, children, className = '' }) { return <section className={'panel ' + className}>{title && <div className="panel-heading"><h2>{Icon && <Icon size={18} />}{title}</h2>{aside}</div>}{children}</section>; }
 export function SearchBox({ value, onChange, placeholder = 'Buscar...', label = 'Buscar registros' }) { return <div className="search-box"><Search size={17} /><input aria-label={label} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} />{value && <button aria-label="Limpar busca" onClick={() => onChange('')}><X size={14} /></button>}</div>; }
-export function Modal({ title, subtitle, children, onClose, wide = false }) {
+export function Modal({ title, subtitle, children, onClose, wide = false, className = '' }) {
   const titleId = useId(); const ref = useRef(null);const closeRef=useRef(onClose);closeRef.current=onClose;
   useEffect(() => {
     const previous = document.activeElement;
@@ -27,7 +27,7 @@ export function Modal({ title, subtitle, children, onClose, wide = false }) {
     dialog.addEventListener('keydown', key);
     return () => { dialog.removeEventListener('keydown', key); previous?.focus(); };
   }, []);
-  return <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}><section ref={ref} className={'modal ' + (wide ? 'wide' : '')} role="dialog" aria-modal="true" aria-labelledby={titleId}><div className="modal-heading"><div><h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" aria-label="Fechar" onClick={onClose}><X size={20} /></button></div>{children}</section></div>;
+  return <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose(); }}><section ref={ref} className={'modal ' + (wide ? 'wide ' : '') + className} role="dialog" aria-modal="true" aria-labelledby={titleId}><div className="modal-heading"><div><h2 id={titleId}>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button className="icon-button" aria-label="Fechar" onClick={onClose}><X size={20} /></button></div>{children}</section></div>;
 }
 export function Calendar({ month, setMonth, selected, onSelect, tasks = [], compact = false }) {
   const year = month.getFullYear(), m = month.getMonth();
