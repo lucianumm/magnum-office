@@ -1,0 +1,89 @@
+name: Gerar release Windows
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag existente da versão (ex.: v1.3.0)"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Conferir chaves de publicação
+        run: node scripts/check-release-keys.mjs
+        env:
+          UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+      - run: npm ci
+      - run: npm run check
+      - run: node scripts/validate-migrations.mjs
+      - run: npm audit --omit=dev --audit-level=high
+      - run: node scripts/run-smokes.mjs
+      - name: Baixar a última versão publicada para testar a atualização
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force work/published | Out-Null
+          $tag = gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName'
+          gh release download $tag --pattern '*-setup-*.exe' --dir work/published
+          "E2E_BASE_VERSION=$($tag.TrimStart('v'))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "E2E_BASE_INSTALLER=$((Get-ChildItem work/published/*.exe)[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Atualização real em Windows limpo
+        run: npm run test:update-e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultado-atualizacao
+          path: |
+            work/update-e2e/result.json
+            work/update-e2e/run-*/dados/logs/recovery.jsonl
+      - name: Incorporar chave pública
+        run: node scripts/configure-release.mjs
+        env:
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+          WINDOWS_PUBLISHER_NAME: ${{ secrets.WINDOWS_PUBLISHER_NAME }}
+      - name: Gerar instalador Windows
+        run: |
+          npx vite build
+          npx electron-builder --win nsis --x64 --publish never
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - name: Verificar aplicativo empacotado
+        run: |
+          node scripts/run-smokes.mjs all "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+          node scripts/guardian-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+      - name: Assinar manifesto de atualização
+        run: node scripts/release-manifest.mjs
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+      - name: Conferir com as chaves das instalações existentes
+        run: node scripts/release-verify.mjs installers/artifacts
+      - name: Criar release para revisão do mantenedor
+        shell: pwsh
+        run: |
+          $releaseFlags = @('--draft', '--verify-tag')
+          if ($env:RELEASE_TAG.Contains('-')) { $releaseFlags += '--prerelease' }
+          $version = $env:RELEASE_TAG.TrimStart('v')
+          $notes = (Get-Content CHANGELOG.md -Raw) -split '(?m)^## ' | Where-Object { $_.StartsWith("$version ") } | Select-Object -First 1
+          ($notes -replace '^[^\n]*\n', '').Trim() | Out-File release-notes.md -Encoding utf8
+          gh release create "$env:RELEASE_TAG" installers/artifacts/*.exe installers/artifacts/release-*.json installers/artifacts/release-*.json.sig installers/artifacts/checksums.txt @releaseFlags --title "Magnum Office $env:RELEASE_TAG" --notes-file release-notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
