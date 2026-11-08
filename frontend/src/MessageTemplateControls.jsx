@@ -1,0 +1,81 @@
+import { useState } from 'react';
+import { Button } from './components.jsx';
+export default function MessageTemplateControls({ data, channel, content, subject = '', onApply, reload }) {
+  const [title, setTitle] = useState(''),
+    [status, setStatus] = useState(''),
+    [busy, setBusy] = useState(false);
+  const templates = data.library.templates.filter(t => t.kind === channel);
+  async function save() {
+    setBusy(true);
+    try {
+      let group = data.library.groups.find(
+        g => g.name === (channel === 'email' ? 'Modelos de e-mail' : 'Modelos de WhatsApp'),
+      );
+      if (!group)
+        group = await window.advocacia.saveTemplateGroup({
+          name: channel === 'email' ? 'Modelos de e-mail' : 'Modelos de WhatsApp',
+        });
+      await window.advocacia.saveTemplate({
+        kind: channel,
+        title,
+        groupId: group.id,
+        body: content.body,
+        html: content.html || '',
+        emailDesign: content.emailDesign || data.settings.emailDesign,
+        subject,
+      });
+      await reload();
+      setTitle('');
+      setStatus('Modelo salvo. Edite ou exclua em Documentos e modelos.');
+    } catch (e) {
+      setStatus(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="message-template-controls full">
+      <label className="field">
+        <span>Meus modelos de {channel === 'email' ? 'e-mail' : 'WhatsApp'}</span>
+        <select
+          aria-label="Aplicar modelo de mensagem"
+          value=""
+          onChange={e => {
+            const t = templates.find(t => t.id === e.target.value);
+            if (t) {
+              onApply(t);
+              setStatus('Modelo aplicado. Revise a mensagem antes de enviar.');
+            }
+          }}
+        >
+          <option value="">Escolha um modelo salvo...</option>
+          {templates.map(t => (
+            <option key={t.id} value={t.id}>
+              {t.title}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="save-message-template">
+        <input
+          aria-label="Nome para salvar modelo de mensagem"
+          placeholder="Nome para salvar esta mensagem como modelo"
+          maxLength={200}
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+        />
+        <Button
+          type="button"
+          tone="secondary"
+          busy={busy}
+          disabled={!title.trim() || !content.body.trim()}
+          onClick={save}
+        >
+          Salvar como modelo
+        </Button>
+      </div>
+      {status && <small role="status">{status}</small>}
+      <small>Modelos guardam texto, formatação e assunto. Anexos são escolhidos em cada envio.</small>
+    </div>
+  );
+}

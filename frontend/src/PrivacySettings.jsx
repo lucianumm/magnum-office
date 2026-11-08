@@ -1,0 +1,83 @@
+import { ShieldCheck, FileText, Database, Download } from 'lucide-react';
+import { Panel, Button, dateTime } from './components.jsx';
+export default function PrivacySettings({ data, act, setLegal }) {
+  return (
+    <div className="settings-stack">
+      <Panel title="Seus dados e a LGPD" icon={ShieldCheck}>
+        <div className="settings-body">
+          <p>
+            Os cadastros, processos, notas, modelos e documentos ficam no computador do usuário. O autor do projeto não
+            recebe automaticamente esses registros. WhatsApp, Resend, e-mail de backup e agentes podem transmitir dados
+            quando você habilita ou utiliza essas funções.
+          </p>
+          <div className="privacy-facts">
+            <article>
+              <Database size={20} />
+              <h3>Armazenamento local</h3>
+              <p>
+                Cadastros e documentos criptografados. Proteja também a conta Windows e os locais onde guarda
+                exportações e backups.
+              </p>
+            </article>
+            <article>
+              <ShieldCheck size={20} />
+              <h3>Responsabilidade do escritório</h3>
+              <p>
+                Defina finalidade, base legal, acesso e prazo de retenção. A opção “Não receber e-mails” é uma
+                preferência de comunicação, sem substituir a base legal adequada.
+              </p>
+            </article>
+            <article>
+              <Download size={20} />
+              <h3>Direitos dos titulares</h3>
+              <p>
+                Use os cadastros para corrigir informações e a exportação para portabilidade. A exclusão precisa
+                considerar vínculos, cópias anteriores e obrigações de conservação.
+              </p>
+            </article>
+          </div>
+          <p className="help-text">
+            O sistema oferece recursos de apoio à proteção de dados, mas sua utilização, por si só, não certifica
+            conformidade com a LGPD. Revise fornecedores e compartilhamentos antes de ativar integrações.
+          </p>
+          <div className="heading-actions">
+            <Button tone="secondary" onClick={() => act(() => window.advocacia.exportData(), 'Exportação concluída.')}>
+              Exportar dados do escritório
+            </Button>
+            <Button
+              tone="secondary"
+              icon={FileText}
+              onClick={async () =>
+                setLegal({ title: 'Privacidade e LGPD', text: await window.advocacia.legalText('privacy') })
+              }
+            >
+              Ler política de privacidade
+            </Button>
+            <Button
+              tone="ghost"
+              onClick={async () =>
+                setLegal({ title: 'Licença de uso', text: await window.advocacia.legalText('license') })
+              }
+            >
+              Ler licença
+            </Button>
+          </div>
+        </div>
+      </Panel>
+      <Panel title="Registro do aceite">
+        <div className="settings-body">
+          <p>
+            Versão dos termos: <strong>{data.settings.termsAcceptedVersion || 'Pendente'}</strong>
+            <br />
+            Aceito em: {dateTime(data.settings.termsAcceptedAt)}
+          </p>
+          <ol className="terms-list">
+            {data.terms.items.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ol>
+        </div>
+      </Panel>
+    </div>
+  );
+}

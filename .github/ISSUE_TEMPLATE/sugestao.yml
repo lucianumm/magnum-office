@@ -1,0 +1,38 @@
+name: Sugerir uma melhoria
+description: Uma ferramenta nova ou um jeito melhor de fazer algo no escritório.
+title: '[Sugestão] '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: necessidade
+    attributes:
+      label: Qual necessidade do escritório isso resolve?
+      description: Conte a situação do dia a dia. Por exemplo, "toda semana preciso conferir os prazos de três tribunais e…".
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Como você imagina a solução?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área do sistema
+      options:
+        - Processos e clientes
+        - Prazos e agenda
+        - Documentos e modelos
+        - Financeiro e débitos
+        - Intimações e andamentos
+        - Mensagens (WhatsApp e e-mail)
+        - Backup, atualização e segurança
+        - Outra
+    validations:
+      required: true
+  - type: textarea
+    id: fundamento
+    attributes:
+      label: Fundamento legal ou referência (opcional)
+      description: Artigo de lei, resolução do CNJ, provimento ou documentação oficial relacionada.

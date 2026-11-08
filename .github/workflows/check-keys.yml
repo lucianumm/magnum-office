@@ -1,0 +1,31 @@
+name: Conferir chaves de publicação
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  keys:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node scripts/check-release-keys.mjs
+        env:
+          UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+      - name: Assinar um arquivo de teste
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          New-Item -ItemType Directory -Force work/dry | Out-Null
+          Set-Content work/dry/advocacia-gestao-setup-$version-x64.exe 'fixture'
+          $env:GITHUB_REF_NAME = "v$version"
+          node scripts/release-manifest.mjs work/dry
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+        env:
+          UPDATE_PRIVATE_KEY: ${{ secrets.UPDATE_PRIVATE_KEY }}
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}

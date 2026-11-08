@@ -1,0 +1,38 @@
+name: Testar atualização em Windows limpo
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Baixar a última versão publicada
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force work/published | Out-Null
+          $tag = gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName'
+          gh release download $tag --pattern '*-setup-*.exe' --dir work/published
+          "E2E_BASE_VERSION=$($tag.TrimStart('v'))" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "E2E_BASE_INSTALLER=$((Get-ChildItem work/published/*.exe)[0].FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Atualização real
+        run: npm run test:update-e2e
+        env:
+          E2E_TRACE: '1'
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: resultado-atualizacao
+          path: |
+            work/update-e2e/result.json
+            work/update-e2e/trace.log
+            work/update-e2e/run-*/dados/logs/recovery.jsonl

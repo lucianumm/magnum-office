@@ -1,0 +1,198 @@
+import { useState } from 'react';
+import { Landmark, Star, ExternalLink, Search, MapPin } from 'lucide-react';
+import { PageHeading, SearchBox, Button, Empty, Badge } from './components.jsx';
+const normalize = s =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+export default function Courts({ data, act }) {
+  const [query, setQuery] = useState(''),
+    [category, setCategory] = useState('Todos'),
+    [uf, setUF] = useState(''),
+    [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const categories = [
+    'Todos',
+    'Estadual',
+    'Trabalhista',
+    'Federal',
+    'Eleitoral',
+    'Superiores',
+    'Militar',
+    'Conselhos e serviços',
+  ];
+  const list = !uf
+    ? []
+    : data.courts.courts.filter(
+        c =>
+          (category === 'Todos' || c.category === category) &&
+          c.uf.split('/').includes(uf) &&
+          (!favoritesOnly || data.settings.favoriteCourts.includes(c.id)) &&
+          normalize([c.acronym, c.name, c.uf, c.category, ...c.systems.map(s => s.label)].join(' ')).includes(
+            normalize(query),
+          ),
+      );
+  async function favorite(id) {
+    setSaving(true);
+    await act(() =>
+      window.advocacia.saveSettings({
+        favoriteCourts: data.settings.favoriteCourts.includes(id)
+          ? data.settings.favoriteCourts.filter(v => v !== id)
+          : [...data.settings.favoriteCourts, id],
+      }),
+    );
+    setSaving(false);
+  }
+  return (
+    <>
+      <PageHeading title="Tribunais" count={data.courts.courts.length}>
+        <Button tone={favoritesOnly ? 'primary' : 'secondary'} icon={Star} onClick={() => setFavoritesOnly(v => !v)}>
+          {favoritesOnly ? 'Mostrando favoritos' : 'Meus favoritos'}
+        </Button>
+      </PageHeading>
+      <div className="courts-filters">
+        <SearchBox
+          value={query}
+          onChange={setQuery}
+          placeholder="Busque TJGO, PJe, eproc, Goiás..."
+          label="Buscar tribunal ou sistema"
+        />
+        <label className="field">
+          <span>Justiça</span>
+          <select value={category} onChange={e => setCategory(e.target.value)}>
+            {categories.map(c => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Estado</span>
+          <select aria-label="Estado dos tribunais" value={uf} onChange={e => setUF(e.target.value)}>
+            <option value="">Selecione o estado...</option>
+            <option value="Nacional">Nacionais</option>
+            {[
+              'AC',
+              'AL',
+              'AM',
+              'AP',
+              'BA',
+              'CE',
+              'DF',
+              'ES',
+              'GO',
+              'MA',
+              'MG',
+              'MS',
+              'MT',
+              'PA',
+              'PB',
+              'PE',
+              'PI',
+              'PR',
+              'RJ',
+              'RN',
+              'RO',
+              'RR',
+              'RS',
+              'SC',
+              'SE',
+              'SP',
+              'TO',
+            ].map(u => (
+              <option key={u}>{u}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="court-summary">
+        <span>{list.length === 1 ? '1 resultado' : `${list.length} resultados`}</span>
+        <span>Fonte: CNJ e portais oficiais · Referência {data.courts.updatedAt.split('-').reverse().join('/')}</span>
+      </div>
+      {list.length ? (
+        <div className="courts-grid">
+          {list.map(c => (
+            <article className="court-card" key={c.id}>
+              <div className="court-card-top">
+                <span className="court-symbol">
+                  <Landmark size={23} />
+                </span>
+                <div>
+                  <strong>{c.acronym}</strong>
+                  <span>
+                    <MapPin size={11} />
+                    {c.uf}
+                  </span>
+                </div>
+                <button
+                  className={'icon-button ' + (data.settings.favoriteCourts.includes(c.id) ? 'favorited' : '')}
+                  disabled={saving}
+                  aria-label={`${data.settings.favoriteCourts.includes(c.id) ? 'Remover' : 'Adicionar'} ${c.acronym} ${data.settings.favoriteCourts.includes(c.id) ? 'dos' : 'aos'} favoritos`}
+                  onClick={() => favorite(c.id)}
+                >
+                  <Star size={17} fill={data.settings.favoriteCourts.includes(c.id) ? 'currentColor' : 'none'} />
+                </button>
+              </div>
+              <h2>{c.name}</h2>
+              <Badge tone="neutral">{c.category}</Badge>
+              <div className="court-accesses">
+                <Button
+                  tone="secondary"
+                  icon={ExternalLink}
+                  onClick={() => act(() => window.advocacia.courtLink({ id: c.id }))}
+                >
+                  Portal oficial
+                </Button>
+                {c.systems.map((s, i) => (
+                  <button
+                    className="court-system"
+                    key={s.url}
+                    title={s.url}
+                    onClick={() => act(() => window.advocacia.courtLink({ id: c.id, system: i }))}
+                  >
+                    <span>{s.label}</span>
+                    <ExternalLink size={12} />
+                  </button>
+                ))}
+              </div>
+              <small className="court-host">{new URL(c.url).hostname}</small>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <Empty
+          icon={Search}
+          title={uf ? 'Nenhum acesso encontrado' : 'Escolha um estado para começar'}
+          description={
+            uf
+              ? 'Altere a busca, o estado ou o filtro de favoritos.'
+              : 'Selecione seu estado para ver os tribunais e sistemas correspondentes. Para órgãos nacionais, escolha Nacionais.'
+          }
+          action={
+            <Button
+              tone="secondary"
+              onClick={() => {
+                setQuery('');
+                setUF('');
+                setCategory('Todos');
+                setFavoritesOnly(false);
+              }}
+            >
+              Limpar filtros
+            </Button>
+          }
+        />
+      )}
+      <div className="help-inline">
+        <Landmark size={18} />
+        <span>
+          Os acessos abrem no navegador padrão. Cada tribunal pode usar mais de um sistema ou exigir certificado
+          digital. Para rotas de acesso que mudarem, consulte o portal oficial do tribunal.
+        </span>
+        <button className="text-link" onClick={() => act(() => window.advocacia.openLink('courtsSource'))}>
+          Consultar CNJ
+        </button>
+      </div>
+    </>
+  );
+}

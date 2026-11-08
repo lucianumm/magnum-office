@@ -1,0 +1,36 @@
+name: Verificar projeto
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: node scripts/validate-migrations.mjs
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run test:desktop
+      - run: npm run test:features
+      - run: npm run test:email
+      - run: npm run test:workspace
+      - run: npm run test:release-features
+      - run: npm run test:privacy-email-backup
+      - run: npm run test:corrections
+      - run: npm run test:birthdays
+      - run: npm run test:email-layout
+      - run: npm run test:manual-update
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: verificacao-desktop
+          path: work/desktop-smoke/*.png

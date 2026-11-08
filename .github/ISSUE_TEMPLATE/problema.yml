@@ -1,0 +1,64 @@
+name: Relatar um problema
+description: Algo não funciona como deveria no Magnum Office.
+title: '[Problema] '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por ajudar a melhorar o Magnum Office.
+        **Não inclua dados reais**: nomes de clientes, números de processos sigilosos, documentos, prints com dados pessoais, chaves de API ou senhas. Use dados fictícios.
+        Falhas de segurança não vão aqui: siga a [política de segurança](https://github.com/lucianumm/magnum-office/security/policy).
+  - type: input
+    id: versao
+    attributes:
+      label: Versão do Magnum Office
+      description: Em Configurações → Atualizações.
+      placeholder: '1.9.1'
+    validations:
+      required: true
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Sistema
+      options:
+        - Windows 11
+        - Windows 10
+        - Outro
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Abra Processos
+        2. Clique em Novo processo
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: O que deveria acontecer
+    validations:
+      required: true
+  - type: textarea
+    id: aconteceu
+    attributes:
+      label: O que aconteceu
+      description: Copie a mensagem de erro exatamente como apareceu. Prints só com dados fictícios.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostico
+    attributes:
+      label: Diagnóstico técnico (opcional)
+      description: Em Configurações → Sobre o sistema → Exportar diagnóstico. O arquivo não traz cadastros nem chaves, mas confira antes de anexar.
+  - type: checkboxes
+    id: dados
+    attributes:
+      label: Privacidade
+      options:
+        - label: Conferi que este relato não contém dados reais de clientes, processos, chaves ou senhas.
+          required: true

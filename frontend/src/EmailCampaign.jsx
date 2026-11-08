@@ -1,0 +1,164 @@
+import MessageTemplateControls from './MessageTemplateControls.jsx';
+import { useState } from 'react';
+import { Mail, CalendarClock } from 'lucide-react';
+import { Modal, Button, Toggle } from './components.jsx';
+import { localDateTime } from './MessageComposer.jsx';
+import EmailEditor from './EmailEditor.jsx';
+import EmailRecipients from './EmailRecipients.jsx';
+export default function EmailCampaign({ data, initial = {}, onClose, reload, notify }) {
+  const [recipients, setRecipients] = useState([]),
+    [subject, setSubject] = useState(''),
+    [content, setContent] = useState({ body: '', html: '', emailDesign: data.settings.emailDesign }),
+    [attachments, setAttachments] = useState([]),
+    [scheduled, setScheduled] = useState(Boolean(initial.scheduleDate)),
+    [when, setWhen] = useState(initial.scheduleDate || localDateTime(Date.now() + 3600000)),
+    [consent, setConsent] = useState(false),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState('');
+  const [editorInitial, setEditorInitial] = useState({ body: '', html: '' });
+  function iso(value) {
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime()) || localDateTime(d) !== value)
+      throw new Error('Confira a data e o horário de envio.');
+    return d.toISOString();
+  }
+  async function submit(e) {
+    e.preventDefault();
+    setError('');
+    if (!consent) {
+      setError('Revise a lista e autorize os envios.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await window.advocacia.emailCampaign({
+        sharedSchedule: true,
+        subject,
+        body: content.body,
+        html: content.html,
+        emailDesign: content.emailDesign,
+        attachmentIds: attachments.map(a => a.id),
+        scheduledFor: scheduled ? iso(when) : null,
+        recipients: recipients.map(r => ({ ...r, receive: true })),
+      });
+      await reload();
+      notify(result.count + ' e-mails cadastrados com o mesmo horário de início.');
+      onClose();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal
+      wide
+      className="email-compose-modal"
+      title="Campanha de e-mail · até 100 clientes"
+      subtitle="Uma lista de destinatários, uma mensagem e um único horário para todos."
+      onClose={onClose}
+    >
+      <form onSubmit={submit}>
+        <div className="form-grid">
+          <EmailRecipients
+            data={data}
+            value={recipients}
+            onChange={r => {
+              setRecipients(r);
+              setConsent(false);
+            }}
+          />
+          <section className="email-send-time full">
+            <h3>Quando enviar para a lista?</h3>
+            <Toggle
+              checked={scheduled}
+              onChange={v => {
+                setScheduled(v);
+                setConsent(false);
+              }}
+              title="Agendar campanha automaticamente"
+              description="Desativado: iniciar assim que possível. Ativado: escolher uma data e horário para todos."
+            />
+            {scheduled && (
+              <label className="field">
+                <span>Data e horário para todos</span>
+                <input
+                  aria-label="Horário geral da campanha"
+                  required
+                  type="datetime-local"
+                  value={when}
+                  onChange={e => {
+                    setWhen(e.target.value);
+                    setConsent(false);
+                  }}
+                  min={localDateTime(Date.now() + 60000)}
+                />
+              </label>
+            )}
+            <p className="help-text">
+              {scheduled ? 'Todos entram na fila no horário escolhido.' : 'Todos entram na fila ao confirmar.'} O
+              processamento respeita os limites do Resend; a entrega pode ocorrer gradualmente. Mantenha o sistema
+              aberto ou na bandeja.
+            </p>
+          </section>
+          <label className="field full">
+            <span>Assunto</span>
+            <input
+              aria-label="Assunto da campanha"
+              required
+              maxLength={300}
+              value={subject}
+              onChange={e => {
+                setSubject(e.target.value);
+                setConsent(false);
+              }}
+            />
+          </label>
+          <EmailEditor
+            design={content.emailDesign || data.settings.emailDesign}
+            initialHTML={editorInitial.html}
+            initialText={editorInitial.body}
+            onChange={setContent}
+            attachments={attachments}
+            onAttachments={setAttachments}
+          />
+          <MessageTemplateControls
+            data={data}
+            channel="email"
+            content={content}
+            subject={subject}
+            reload={reload}
+            onApply={t => {
+              setContent({ body: t.body, html: t.html, emailDesign: t.emailDesign || data.settings.emailDesign });
+              setEditorInitial({ body: t.body, html: t.html });
+              setSubject(t.subject || '');
+              setConsent(false);
+            }}
+          />
+          <div className="full">
+            <Toggle
+              checked={consent}
+              onChange={setConsent}
+              title="Revisei os destinatários e autorizo esta campanha"
+              description="Confira a mensagem e a lista antes de confirmar."
+            />
+          </div>
+        </div>
+        {error && (
+          <div className="form-error" role="alert">
+            {error}
+          </div>
+        )}
+        <div className="form-footer email-send-footer">
+          <span>
+            <strong>{recipients.length} destinatário(s)</strong>
+            {scheduled ? ' · Horário único para todos' : ' · Envio imediato'}
+          </span>
+          <Button type="submit" busy={busy} disabled={!recipients.length} icon={scheduled ? CalendarClock : Mail}>
+            Cadastrar {recipients.length} e-mail(s)
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
