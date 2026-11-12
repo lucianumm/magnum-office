@@ -52,7 +52,14 @@ async function extract({ bytes, ext }) {
 }
 
 // NUL characters from some PDFs are removed before the text is stored.
-const clean = text => String(text || '').split(String.fromCharCode(0)).join('');
+const clean = text =>
+  String(text || '')
+    .split(String.fromCharCode(0))
+    .join('');
 extract(workerData)
   .then(text => parentPort.postMessage({ text: clean(text).slice(0, MAX_CHARS) }))
-  .catch(error => parentPort.postMessage({ error: /password|encrypted/i.test(error.message) ? 'PDF protegido por senha.' : error.message }));
+  .catch(error =>
+    parentPort.postMessage({
+      error: /password|encrypted/i.test(error.message) ? 'PDF protegido por senha.' : error.message,
+    }),
+  );

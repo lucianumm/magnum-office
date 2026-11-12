@@ -8,8 +8,13 @@ class Vault {
     this.key = key;
   }
   static async open(root, safeStorage) {
-    if (!safeStorage.isEncryptionAvailable() || (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text')) {
-      throw new Error('O cofre do sistema operacional está indisponível. Ative o chaveiro de credenciais antes de abrir o sistema.');
+    if (
+      !safeStorage.isEncryptionAvailable() ||
+      (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text')
+    ) {
+      throw new Error(
+        'O cofre do sistema operacional está indisponível. Ative o chaveiro de credenciais antes de abrir o sistema.',
+      );
     }
     const file = path.join(root, 'vault.bin');
     if (!fs.existsSync(file)) {
@@ -32,7 +37,8 @@ class Vault {
   }
   unseal(data, raw = false) {
     const bytes = Buffer.from(data);
-    if (bytes.length < 32 || bytes.subarray(0, 4).toString() !== 'AG01') throw new Error('Arquivo criptografado inválido.');
+    if (bytes.length < 32 || bytes.subarray(0, 4).toString() !== 'AG01')
+      throw new Error('Arquivo criptografado inválido.');
     const decipher = createDecipheriv('aes-256-gcm', this.key, bytes.subarray(4, 16));
     decipher.setAuthTag(bytes.subarray(16, 32));
     const result = Buffer.concat([decipher.update(bytes.subarray(32)), decipher.final()]);

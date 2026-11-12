@@ -92,7 +92,10 @@ test('Office calendar adds local holidays and reduced hours, and can reopen a da
   // A deadline ending on a day with system unavailability moves to the next day (art. 224, § 1º).
   assert.equal(end({ start: '2026-03-02', days: 15, custom }), '2026-03-24');
   const r = calculateDeadline({ start: '2026-03-02', days: 15 });
-  assert.ok(r.warnings.some(w => w.includes('Nenhum feriado')), 'warns when no local holiday is registered');
+  assert.ok(
+    r.warnings.some(w => w.includes('Nenhum feriado')),
+    'warns when no local holiday is registered',
+  );
   assert.equal(calculateDeadline({ start: '2026-03-02', days: 15, custom }).warnings.length, 1);
 });
 
@@ -105,5 +108,9 @@ test('Validation, internal deadline and suggestions from the case', () => {
   assert.deepEqual(suggestRule({ area: 'Trabalhista' }), { rule: 'clt', profile: 'padrao', courtId: '' });
   assert.deepEqual(suggestRule({ area: 'Criminal' }), { rule: 'cpp', profile: 'padrao', courtId: '' });
   assert.deepEqual(suggestRule({ area: 'Cível', instance: 'Juizado especial' }).rule, 'jec');
-  assert.deepEqual(suggestRule({ area: 'Cível' }, { segment: 4, courtId: 'trf1' }), { rule: 'cpc', profile: 'federal', courtId: 'trf1' });
+  assert.deepEqual(suggestRule({ area: 'Cível' }, { segment: 4, courtId: 'trf1' }), {
+    rule: 'cpc',
+    profile: 'federal',
+    courtId: 'trf1',
+  });
 });

@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';
 // SQLite cannot change a CHECK constraint, so a table may need to be rebuilt. That is accepted only in
 // this exact shape: every row copied into the new table, then the old table replaced by it, with the
 // same name. Store.migrate also refuses, at run time, any migration that leaves fewer rows than before.
-const rebuild = /INSERT\s+INTO\s+(\w+)\s*\([^)]*\)\s*SELECT\s+[^;]+?\s+FROM\s+(\w+)\s*;\s*DROP\s+TABLE\s+\2\s*;\s*ALTER\s+TABLE\s+\1\s+RENAME\s+TO\s+\2\s*;/gi;
+const rebuild =
+  /INSERT\s+INTO\s+(\w+)\s*\([^)]*\)\s*SELECT\s+[^;]+?\s+FROM\s+(\w+)\s*;\s*DROP\s+TABLE\s+\2\s*;\s*ALTER\s+TABLE\s+\1\s+RENAME\s+TO\s+\2\s*;/gi;
 const destructive = /\b(DROP\s+(TABLE|COLUMN)|DELETE\s+FROM|TRUNCATE)\b/i;
 
 for (const name of (await fs.readdir('migrations')).sort()) {
@@ -16,6 +17,9 @@ for (const name of (await fs.readdir('migrations')).sort()) {
     void source;
     return '';
   });
-  if (destructive.test(rest)) throw new Error(`Migração destrutiva bloqueada: ${name}. Implemente um fluxo de confirmação e recuperação antes de aprovar essa alteração.`);
+  if (destructive.test(rest))
+    throw new Error(
+      `Migração destrutiva bloqueada: ${name}. Implemente um fluxo de confirmação e recuperação antes de aprovar essa alteração.`,
+    );
 }
 process.stdout.write('Migrações verificadas: nenhuma remoção de dados.\n');

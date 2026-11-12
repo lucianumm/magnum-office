@@ -72,7 +72,12 @@ function docx(blocks, { title = '', author = '' } = {}) {
       const runs = b.runs
         .filter(r => r.text)
         .map(r => {
-          const props = [r.bold && '<w:b/>', r.italic && '<w:i/>', r.underline && '<w:u w:val="single"/>', b.heading && '<w:sz w:val="28"/>']
+          const props = [
+            r.bold && '<w:b/>',
+            r.italic && '<w:i/>',
+            r.underline && '<w:u w:val="single"/>',
+            b.heading && '<w:sz w:val="28"/>',
+          ]
             .filter(Boolean)
             .join('');
           return `<w:r>${props ? `<w:rPr>${props}</w:rPr>` : ''}<w:t xml:space="preserve">${xml(r.text)}</w:t></w:r>`;
@@ -201,7 +206,8 @@ async function pdf(blocks, { title = '', author = '' } = {}) {
       words.forEach((w, i) => {
         if (i > 0) x += w.gap + (w.gap ? extra : 0);
         page.drawText(w.text, { x, y, size, font: w.font });
-        if (w.underline) page.drawLine({ start: { x, y: y - 1.5 }, end: { x: x + w.width, y: y - 1.5 }, thickness: 0.6 });
+        if (w.underline)
+          page.drawLine({ start: { x, y: y - 1.5 }, end: { x: x + w.width, y: y - 1.5 }, thickness: 0.6 });
         x += w.width;
       });
     });

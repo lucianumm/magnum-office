@@ -4,9 +4,28 @@ const { calculateSeverance, centsBRL } = require('../app/labor.mjs');
 const { uuid, text } = require('./validation.cjs');
 
 const br = date => date.split('-').reverse().join('/');
-const p = (value, opts = {}) => ({ align: opts.align || 'left', heading: !!opts.heading, runs: [{ text: value, bold: !!opts.bold }] });
-const labelled = (label, value) => ({ align: 'left', heading: false, runs: [{ text: `${label}: `, bold: true }, { text: value }] });
-const fields = ['kind', 'notice', 'admission', 'termination', 'salary', 'extras', 'salaryDays', 'vestedPeriods', 'doubledPeriods', 'fgtsBalance'];
+const p = (value, opts = {}) => ({
+  align: opts.align || 'left',
+  heading: !!opts.heading,
+  runs: [{ text: value, bold: !!opts.bold }],
+});
+const labelled = (label, value) => ({
+  align: 'left',
+  heading: false,
+  runs: [{ text: `${label}: `, bold: true }, { text: value }],
+});
+const fields = [
+  'kind',
+  'notice',
+  'admission',
+  'termination',
+  'salary',
+  'extras',
+  'salaryDays',
+  'vestedPeriods',
+  'doubledPeriods',
+  'fgtsBalance',
+];
 
 function laborReport(input = {}) {
   const clean = Object.fromEntries(fields.map(key => [key, text(String(input[key] ?? ''), 40)]));
@@ -20,12 +39,20 @@ function laborReport(input = {}) {
     labelled('Remuneração considerada', centsBRL(r.remuneration)),
     p(''),
     p('Verbas', { bold: true }),
-    ...r.items.map(i => p(`${i.label}${i.reference ? ` (${i.reference})` : ''}: ${i.debit ? '− ' : ''}${centsBRL(i.value)}`)),
+    ...r.items.map(i =>
+      p(`${i.label}${i.reference ? ` (${i.reference})` : ''}: ${i.debit ? '− ' : ''}${centsBRL(i.value)}`),
+    ),
     labelled('Total das verbas', centsBRL(r.totals.net)),
     p(''),
     p('FGTS', { bold: true }),
     p(`Depósito do mês da rescisão (8%): ${centsBRL(r.fgts.deposit)}`),
-    ...(r.fgts.finePercent ? [p(`Multa de ${r.fgts.finePercent}% sobre saldo de ${centsBRL(r.fgts.accountBalance)}${r.fgts.estimated ? ' (estimado)' : ''} mais o depósito: ${centsBRL(r.fgts.fine)}`)] : []),
+    ...(r.fgts.finePercent
+      ? [
+          p(
+            `Multa de ${r.fgts.finePercent}% sobre saldo de ${centsBRL(r.fgts.accountBalance)}${r.fgts.estimated ? ' (estimado)' : ''} mais o depósito: ${centsBRL(r.fgts.fine)}`,
+          ),
+        ]
+      : []),
     p(''),
     labelled('TOTAL GERAL ESTIMADO', centsBRL(r.totals.total)),
     p(''),

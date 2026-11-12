@@ -1,6 +1,81 @@
-const {cleanHTML}=require('./email-content.cjs');
-const defaults={enabled:true,brand:'',tagline:'',headerColor:'#191d23',accentColor:'#b89b63',pageColor:'#f2f4f7',bodyColor:'#ffffff',textColor:'#28333c',borderColor:'#dce2e7',radius:12,borderWidth:1,width:640,footer:'Mensagem enviada pelo escritório. Em caso de dúvida, entre em contato.',buttonLabel:'',buttonURL:'',imageData:'',useOfficeLogo:true};
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function normalize(input={}){if(!input||typeof input!=='object'||Array.isArray(input))throw new Error('Design de e-mail inválido.');const d={...defaults};for(const key of ['brand','tagline','footer','buttonLabel','buttonURL','imageData'])if(key in input){const max=key==='imageData'?90000:key==='footer'?600:key==='buttonURL'?1000:160;if(typeof input[key]!=='string'||input[key].length>max||input[key].includes('\0'))throw new Error('Campo do design inválido.');d[key]=input[key].trim();}for(const key of ['headerColor','accentColor','pageColor','bodyColor','textColor','borderColor'])if(key in input){if(!/^#[a-f0-9]{6}$/i.test(input[key]))throw new Error('Cor inválida.');d[key]=input[key];}for(const [key,min,max]of [['radius',0,30],['borderWidth',0,6],['width',480,760]])if(key in input){if(!Number.isInteger(input[key])||input[key]<min||input[key]>max)throw new Error('Medida inválida.');d[key]=input[key];}for(const key of ['enabled','useOfficeLogo'])if(key in input){if(typeof input[key]!=='boolean')throw new Error('Opção de design inválida.');d[key]=input[key];}if(d.buttonURL&&!/^(https?:\/\/|mailto:)/i.test(d.buttonURL))throw new Error('Use https://, http:// ou mailto: no botão.');if(d.imageData&&!/^data:image\/(png|jpeg);base64,[a-z0-9+/]+=*$/i.test(d.imageData))throw new Error('Use uma imagem PNG ou JPG importada.');return d;}
-function render({html='',body='',design},settings={},preview=false){const d=normalize(design||settings.emailDesign||{},settings);d.brand=d.brand||settings.officeName||settings.appName||'Meu escritório';d.tagline=d.tagline||settings.appDescription||'Atendimento com organização e cuidado';const content=cleanHTML(html)||'<p>'+esc(body).replace(/\n/g,'<br>')+'</p>';const attachments=[];const image=(data,id)=>{if(!data)return '';if(preview)return data;const match=data.match(/^data:image\/(png|jpeg);base64,([a-z0-9+/]+=*)$/i);if(!match)return '';attachments.push({filename:id+(match[1]==='png'?'.png':'.jpg'),content:match[2],content_id:id});return 'cid:'+id;};const logo=d.useOfficeLogo?image(settings.brandLogo,'office-logo'):'';const banner=image(d.imageData,'email-banner');if(!d.enabled)return {html:content,attachments:[],design:d};const output=`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';img-src data: cid:"></head><body style="margin:0;padding:28px 12px;background:${d.pageColor};color:${d.textColor};font-family:Arial,Helvetica,sans-serif"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><table role="presentation" width="${d.width}" cellpadding="0" cellspacing="0" style="width:100%;max-width:${d.width}px;background:${d.bodyColor};border:${d.borderWidth}px solid ${d.borderColor};border-radius:${d.radius}px;overflow:hidden"><tr><td align="center" style="padding:30px 26px;background:${d.headerColor};border-bottom:4px solid ${d.accentColor};border-radius:${Math.max(0,d.radius-1)}px ${Math.max(0,d.radius-1)}px 0 0">${logo?`<img src="${logo}" width="54" alt="Logo do escritório" style="display:block;margin:0 auto 14px;max-width:54px;border:0">`:''}<div style="font-family:Georgia,serif;font-size:25px;font-weight:bold;color:#ffffff;letter-spacing:.3px">${esc(d.brand)}</div><div style="margin-top:9px;font-size:10px;line-height:1.6;letter-spacing:1.8px;text-transform:uppercase;color:#d5d9de">${esc(d.tagline)}</div></td></tr><tr><td style="padding:32px 30px;font-size:15px;line-height:1.8;color:${d.textColor}">${content}${banner?`<p style="margin:26px 0 0"><img src="${banner}" width="${d.width-62}" alt="Imagem da mensagem" style="display:block;width:100%;height:auto;border-radius:8px;border:0"></p>`:''}${d.buttonURL&&d.buttonLabel?`<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 4px"><tr><td bgcolor="${d.accentColor}" style="border-radius:6px"><a href="${esc(d.buttonURL)}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:bold">${esc(d.buttonLabel)}</a></td></tr></table>`:''}</td></tr><tr><td style="padding:23px 30px;border-top:1px solid ${d.borderColor};font-size:12px;line-height:1.7;color:#697681">${esc(d.footer).replace(/\n/g,'<br>')}</td></tr></table><div style="padding:18px 12px;font-size:10px;line-height:1.7;color:#8a949e">${esc(d.brand)} · Comunicação do escritório</div></td></tr></table></body></html>`;return {html:output,attachments,design:d};}
-module.exports={defaults,normalize,render};
+const { cleanHTML } = require('./email-content.cjs');
+const defaults = {
+  enabled: true,
+  brand: '',
+  tagline: '',
+  headerColor: '#191d23',
+  accentColor: '#b89b63',
+  pageColor: '#f2f4f7',
+  bodyColor: '#ffffff',
+  textColor: '#28333c',
+  borderColor: '#dce2e7',
+  radius: 12,
+  borderWidth: 1,
+  width: 640,
+  footer: 'Mensagem enviada pelo escritório. Em caso de dúvida, entre em contato.',
+  buttonLabel: '',
+  buttonURL: '',
+  imageData: '',
+  useOfficeLogo: true,
+};
+const esc = s =>
+  String(s ?? '').replace(
+    /[&<>"']/g,
+    c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
+function normalize(input = {}) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Design de e-mail inválido.');
+  const d = { ...defaults };
+  for (const key of ['brand', 'tagline', 'footer', 'buttonLabel', 'buttonURL', 'imageData'])
+    if (key in input) {
+      const max = key === 'imageData' ? 90000 : key === 'footer' ? 600 : key === 'buttonURL' ? 1000 : 160;
+      if (typeof input[key] !== 'string' || input[key].length > max || input[key].includes('\0'))
+        throw new Error('Campo do design inválido.');
+      d[key] = input[key].trim();
+    }
+  for (const key of ['headerColor', 'accentColor', 'pageColor', 'bodyColor', 'textColor', 'borderColor'])
+    if (key in input) {
+      if (!/^#[a-f0-9]{6}$/i.test(input[key])) throw new Error('Cor inválida.');
+      d[key] = input[key];
+    }
+  for (const [key, min, max] of [
+    ['radius', 0, 30],
+    ['borderWidth', 0, 6],
+    ['width', 480, 760],
+  ])
+    if (key in input) {
+      if (!Number.isInteger(input[key]) || input[key] < min || input[key] > max) throw new Error('Medida inválida.');
+      d[key] = input[key];
+    }
+  for (const key of ['enabled', 'useOfficeLogo'])
+    if (key in input) {
+      if (typeof input[key] !== 'boolean') throw new Error('Opção de design inválida.');
+      d[key] = input[key];
+    }
+  if (d.buttonURL && !/^(https?:\/\/|mailto:)/i.test(d.buttonURL))
+    throw new Error('Use https://, http:// ou mailto: no botão.');
+  if (d.imageData && !/^data:image\/(png|jpeg);base64,[a-z0-9+/]+=*$/i.test(d.imageData))
+    throw new Error('Use uma imagem PNG ou JPG importada.');
+  return d;
+}
+function render({ html = '', body = '', design }, settings = {}, preview = false) {
+  const d = normalize(design || settings.emailDesign || {}, settings);
+  d.brand = d.brand || settings.officeName || settings.appName || 'Meu escritório';
+  d.tagline = d.tagline || settings.appDescription || 'Atendimento com organização e cuidado';
+  const content = cleanHTML(html) || '<p>' + esc(body).replace(/\n/g, '<br>') + '</p>';
+  const attachments = [];
+  const image = (data, id) => {
+    if (!data) return '';
+    if (preview) return data;
+    const match = data.match(/^data:image\/(png|jpeg);base64,([a-z0-9+/]+=*)$/i);
+    if (!match) return '';
+    attachments.push({ filename: id + (match[1] === 'png' ? '.png' : '.jpg'), content: match[2], content_id: id });
+    return 'cid:' + id;
+  };
+  const logo = d.useOfficeLogo ? image(settings.brandLogo, 'office-logo') : '';
+  const banner = image(d.imageData, 'email-banner');
+  if (!d.enabled) return { html: content, attachments: [], design: d };
+  const output = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none';style-src 'unsafe-inline';img-src data: cid:"></head><body style="margin:0;padding:28px 12px;background:${d.pageColor};color:${d.textColor};font-family:Arial,Helvetica,sans-serif"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center"><table role="presentation" width="${d.width}" cellpadding="0" cellspacing="0" style="width:100%;max-width:${d.width}px;background:${d.bodyColor};border:${d.borderWidth}px solid ${d.borderColor};border-radius:${d.radius}px;overflow:hidden"><tr><td align="center" style="padding:30px 26px;background:${d.headerColor};border-bottom:4px solid ${d.accentColor};border-radius:${Math.max(0, d.radius - 1)}px ${Math.max(0, d.radius - 1)}px 0 0">${logo ? `<img src="${logo}" width="54" alt="Logo do escritório" style="display:block;margin:0 auto 14px;max-width:54px;border:0">` : ''}<div style="font-family:Georgia,serif;font-size:25px;font-weight:bold;color:#ffffff;letter-spacing:.3px">${esc(d.brand)}</div><div style="margin-top:9px;font-size:10px;line-height:1.6;letter-spacing:1.8px;text-transform:uppercase;color:#d5d9de">${esc(d.tagline)}</div></td></tr><tr><td style="padding:32px 30px;font-size:15px;line-height:1.8;color:${d.textColor}">${content}${banner ? `<p style="margin:26px 0 0"><img src="${banner}" width="${d.width - 62}" alt="Imagem da mensagem" style="display:block;width:100%;height:auto;border-radius:8px;border:0"></p>` : ''}${d.buttonURL && d.buttonLabel ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:26px 0 4px"><tr><td bgcolor="${d.accentColor}" style="border-radius:6px"><a href="${esc(d.buttonURL)}" style="display:inline-block;padding:13px 22px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:bold">${esc(d.buttonLabel)}</a></td></tr></table>` : ''}</td></tr><tr><td style="padding:23px 30px;border-top:1px solid ${d.borderColor};font-size:12px;line-height:1.7;color:#697681">${esc(d.footer).replace(/\n/g, '<br>')}</td></tr></table><div style="padding:18px 12px;font-size:10px;line-height:1.7;color:#8a949e">${esc(d.brand)} · Comunicação do escritório</div></td></tr></table></body></html>`;
+  return { html: output, attachments, design: d };
+}
+module.exports = { defaults, normalize, render };

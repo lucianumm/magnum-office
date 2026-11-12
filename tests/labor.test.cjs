@@ -6,7 +6,15 @@ const lines = r => Object.fromEntries(r.items.map(i => [i.key, [i.reference, i.v
 
 // Each case below was worked out by hand from the CLT rules written in app/labor.mjs.
 test('dismissal without cause: notice of 39 days projects the 13th and vacation; FGTS fine on the balance', () => {
-  const r = calculateSeverance({ kind: 'sem-justa-causa', notice: 'indenizado', admission: '2022-03-10', termination: '2025-08-20', salary: '3.000,00', vestedPeriods: '1', fgtsBalance: '9.000,00' });
+  const r = calculateSeverance({
+    kind: 'sem-justa-causa',
+    notice: 'indenizado',
+    admission: '2022-03-10',
+    termination: '2025-08-20',
+    salary: '3.000,00',
+    vestedPeriods: '1',
+    fgtsBalance: '9.000,00',
+  });
   assert.equal(r.years, 3);
   assert.equal(r.noticeDays, 39);
   assert.equal(r.projected, '2025-09-28');
@@ -20,13 +28,26 @@ test('dismissal without cause: notice of 39 days projects the 13th and vacation;
     'terco-proporcionais': ['', 58333],
   });
   assert.equal(r.totals.gross, 1448333);
-  assert.deepEqual(r.fgts, { deposit: 65200, finePercent: 40, accountBalance: 900000, estimated: false, fine: 386080, total: 451280 });
+  assert.deepEqual(r.fgts, {
+    deposit: 65200,
+    finePercent: 40,
+    accountBalance: 900000,
+    estimated: false,
+    fine: 386080,
+    total: 451280,
+  });
   assert.equal(r.totals.total, 1899613);
   assert.equal(centsBRL(r.totals.total), 'R$ 18.996,13');
 });
 
 test('resignation without serving notice: 30 days are deducted and there is no FGTS fine', () => {
-  const r = calculateSeverance({ kind: 'pedido', notice: 'descontado', admission: '2024-01-15', termination: '2024-06-10', salary: '2400' });
+  const r = calculateSeverance({
+    kind: 'pedido',
+    notice: 'descontado',
+    admission: '2024-01-15',
+    termination: '2024-06-10',
+    salary: '2400',
+  });
   assert.deepEqual(lines(r), {
     saldo: ['10 dia(s)', 80000],
     'desconto-aviso': ['30 dia(s)', 240000],
@@ -40,14 +61,30 @@ test('resignation without serving notice: 30 days are deducted and there is no F
 });
 
 test('just cause keeps only the salary balance and vested vacation', () => {
-  const r = calculateSeverance({ kind: 'justa-causa', admission: '2021-05-01', termination: '2023-02-15', salary: '1.500,00', vestedPeriods: 1 });
-  assert.deepEqual(lines(r), { saldo: ['15 dia(s)', 75000], 'ferias-vencidas': ['1 período(s)', 150000], 'terco-vencidas': ['', 50000] });
+  const r = calculateSeverance({
+    kind: 'justa-causa',
+    admission: '2021-05-01',
+    termination: '2023-02-15',
+    salary: '1.500,00',
+    vestedPeriods: 1,
+  });
+  assert.deepEqual(lines(r), {
+    saldo: ['15 dia(s)', 75000],
+    'ferias-vencidas': ['1 período(s)', 150000],
+    'terco-vencidas': ['', 50000],
+  });
   assert.equal(r.totals.net, 275000);
   assert.equal(r.fgts.deposit, 6000);
 });
 
 test('agreement (art. 484-A): half the notice, 20% fine, 13th of the next year only from 15 days', () => {
-  const r = calculateSeverance({ kind: 'acordo', notice: 'indenizado', admission: '2019-12-01', termination: '2024-12-10', salary: '5.000,00' });
+  const r = calculateSeverance({
+    kind: 'acordo',
+    notice: 'indenizado',
+    admission: '2019-12-01',
+    termination: '2024-12-10',
+    salary: '5.000,00',
+  });
   assert.equal(r.noticeDays, 45);
   assert.equal(r.projected, '2025-01-01');
   const l = lines(r);
@@ -61,26 +98,60 @@ test('agreement (art. 484-A): half the notice, 20% fine, 13th of the next year o
 });
 
 test('worked notice pays only the proportional days beyond 30; projection can complete a vacation period', () => {
-  const worked = calculateSeverance({ kind: 'sem-justa-causa', notice: 'trabalhado', admission: '2015-01-05', termination: '2025-01-03', salary: '3000' });
+  const worked = calculateSeverance({
+    kind: 'sem-justa-causa',
+    notice: 'trabalhado',
+    admission: '2015-01-05',
+    termination: '2025-01-03',
+    salary: '3000',
+  });
   assert.equal(worked.noticeDays, 57);
   assert.deepEqual(lines(worked).aviso, ['27 dia(s)', 270000]);
-  const crossing = calculateSeverance({ kind: 'sem-justa-causa', notice: 'indenizado', admission: '2024-02-10', termination: '2025-01-20', salary: '3000' });
+  const crossing = calculateSeverance({
+    kind: 'sem-justa-causa',
+    notice: 'indenizado',
+    admission: '2024-02-10',
+    termination: '2025-01-20',
+    salary: '3000',
+  });
   assert.equal(crossing.projected, '2025-02-19');
   assert.deepEqual(lines(crossing)['ferias-projecao'], ['1 período(s)', 300000]);
   assert.deepEqual(lines(crossing)['ferias-proporcionais'], undefined, 'the new period has only 10 days');
 });
 
 test('invalid input is explained', () => {
-  assert.throws(() => calculateSeverance({ admission: '2025-01-10', termination: '2024-01-10', salary: '1000' }), /antes da admissão/);
-  assert.throws(() => calculateSeverance({ admission: '2024-01-10', termination: '2025-01-10', salary: '' }), /salário/);
-  assert.throws(() => calculateSeverance({ admission: '2024-02-30', termination: '2025-01-10', salary: '1000' }), /datas/);
-  assert.throws(() => calculateSeverance({ admission: '2024-01-10', termination: '2025-01-10', salary: '1000', fgtsBalance: 'abc' }), /FGTS/);
+  assert.throws(
+    () => calculateSeverance({ admission: '2025-01-10', termination: '2024-01-10', salary: '1000' }),
+    /antes da admissão/,
+  );
+  assert.throws(
+    () => calculateSeverance({ admission: '2024-01-10', termination: '2025-01-10', salary: '' }),
+    /salário/,
+  );
+  assert.throws(
+    () => calculateSeverance({ admission: '2024-02-30', termination: '2025-01-10', salary: '1000' }),
+    /datas/,
+  );
+  assert.throws(
+    () =>
+      calculateSeverance({ admission: '2024-01-10', termination: '2025-01-10', salary: '1000', fgtsBalance: 'abc' }),
+    /FGTS/,
+  );
 });
 
 test('the PDF report is recalculated from the inputs and becomes a valid PDF', async () => {
   const { laborReport } = require('../backend/labor-report.cjs');
   const { pdf } = require('../backend/document-files.cjs');
-  const { blocks, caseId, title } = laborReport({ kind: 'sem-justa-causa', notice: 'indenizado', admission: '2022-03-10', termination: '2025-08-20', salary: '3.000,00', vestedPeriods: '1', fgtsBalance: '9.000,00', total: 'ignorado' });
+  const { blocks, caseId, title } = laborReport({
+    kind: 'sem-justa-causa',
+    notice: 'indenizado',
+    admission: '2022-03-10',
+    termination: '2025-08-20',
+    salary: '3.000,00',
+    vestedPeriods: '1',
+    fgtsBalance: '9.000,00',
+    total: 'ignorado',
+  });
   const text = blocks.map(b => b.runs.map(r => r.text).join('')).join('\n');
   assert.equal(caseId, '');
   assert.equal(title, 'Cálculo de rescisão 20-08-2025');

@@ -1,6 +1,114 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const {randomBytes}=require('node:crypto');
-const {Store}=require('../backend/store.cjs');const {Vault}=require('../backend/vault.cjs');const {Settings}=require('../backend/settings.cjs');const {Messaging}=require('../backend/messaging.cjs');const {Operations}=require('../backend/operations.cjs');const {expandSchedule}=require('../backend/recurrence.cjs');const {entity}=require('../backend/validation.cjs');
-async function setup(t){const base=path.resolve('work/recurrence-tests');fs.mkdirSync(base,{recursive:true});const root=fs.mkdtempSync(path.join(base,'run-'));const store=new Store(root,new Vault(randomBytes(32)));await store.migrate();const settings=new Settings(root);settings.save({queuePaused:true});const m=new Messaging(store,settings,new Operations());t.after(()=>{m.stop();store.close();if(!root.startsWith(base+path.sep))throw Error('Invalid cleanup');fs.rmSync(root,{recursive:true,force:true});});return {store,settings,m,root};}
-test('client WhatsApp is mandatory through validation, database saves and imports; legacy data remain readable',async t=>{const {store,settings}=await setup(t);assert.equal(settings.get().background,true);assert.throws(()=>store.save('clients',{name:'Sem WhatsApp'}),/WhatsApp/);assert.throws(()=>entity('clients',{name:'Inválido',phone:'texto 1234'}),/WhatsApp/);assert.equal(store.save('clients',{name:'Nacional',phone:'(64) 99999-0000'}).phone,'5564999990000');assert.equal(store.save('clients',{name:'Internacional',phone:'+1 (202) 555-0100'}).phone,'12025550100');const old=entity('clients',{name:'Contato antigo'},{allowLegacyContact:true});const id=require('node:crypto').randomUUID();store.put('clients',id,old);assert.equal(store.get('clients',id).phone,'');assert.throws(()=>store.save('clients',{...store.get('clients',id),name:'Editado'}),/WhatsApp/);const {Imports}=require('../backend/imports.cjs');const imports=new Imports(store);const file=path.join(store.root,'sem-whatsapp.csv');fs.writeFileSync(file,'Nome;E-mail\nSem telefone;sem@example.test');const read=await imports.read(file);assert.match(imports.preview({id:read.id,kind:'clients'}).rows[0].error,/WhatsApp/);});
-test('monthly recurrence clamps short months without drifting and weekly recurrence preserves local time across DST',()=>{const dates=expandSchedule('2028-01-31T12:30:00.000Z',{frequency:'monthly',count:4,interval:1,timeZone:'America/Sao_Paulo'});assert.deepEqual(dates.map(d=>d.slice(0,10)),['2028-01-31','2028-02-29','2028-03-31','2028-04-30']);const weekly=expandSchedule('2027-03-07T14:30:00.000Z',{frequency:'weekly',count:3,interval:1,timeZone:'America/New_York'});assert.deepEqual(weekly,['2027-03-07T14:30:00.000Z','2027-03-14T13:30:00.000Z','2027-03-21T13:30:00.000Z']);assert.throws(()=>expandSchedule(weekly[0],{frequency:'dates',timeZone:'UTC',dates:[weekly[0]]}),/repetidos/);assert.throws(()=>expandSchedule(weekly[0],{frequency:'monthly',timeZone:'UTC',count:10000}),/ocorrências/);assert.throws(()=>expandSchedule(weekly[0],{frequency:'weekly',timeZone:'wrong',count:2}),/Fuso/);});
-test('recurring queue is atomic, persists each date and supports individual edit and cancellation of remaining series',async t=>{const {m,store,settings}=await setup(t);const first=new Date(Date.now()+86400000).toISOString();const message={channel:'whatsapp',recipient:'5564999991111',body:'Recorrente',scheduledFor:first};assert.throws(()=>m.series(message,{frequency:'dates',timeZone:'UTC',dates:['2020-01-01T09:00:00.000Z']}),/futuro/);assert.equal(m.list().length,0);const result=m.series(message,{frequency:'weekly',timeZone:'America/Sao_Paulo',interval:1,count:4});assert.equal(result.count,4);m.stop();const reopened=new Messaging(store,settings,new Operations());t.after(()=>reopened.stop());assert.equal(reopened.list().length,4);assert.equal(new Set(reopened.list().map(m=>m.seriesId)).size,1);const original=reopened.list().find(r=>r.seriesIndex===2);reopened.edit(original.id,{...original,body:'Alteração individual'});assert.equal(reopened.list().find(r=>r.id===original.id).seriesId,result.seriesId);store.db.prepare("UPDATE queue SET status='sent' WHERE id=?").run(result.ids[0]);store.db.prepare("UPDATE queue SET status='sending' WHERE id=?").run(result.ids[1]);assert.equal(reopened.cancelSeries(result.ids[2]).count,2);assert.equal(reopened.list().filter(r=>r.status==='cancelled').length,2);assert.equal(reopened.list().filter(r=>r.status==='sent').length,1);assert.equal(reopened.list().filter(r=>r.status==='sending').length,1);const review=reopened.series({...message,body:'Proposta'}, {frequency:'monthly',timeZone:'UTC',count:2},true);assert.equal(review.requiresLocalApproval,true);assert.ok(reopened.list().filter(r=>r.seriesId===review.seriesId).every(r=>r.status==='needs_review'));});
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { randomBytes } = require('node:crypto');
+const { Store } = require('../backend/store.cjs');
+const { Vault } = require('../backend/vault.cjs');
+const { Settings } = require('../backend/settings.cjs');
+const { Messaging } = require('../backend/messaging.cjs');
+const { Operations } = require('../backend/operations.cjs');
+const { expandSchedule } = require('../backend/recurrence.cjs');
+const { entity } = require('../backend/validation.cjs');
+async function setup(t) {
+  const base = path.resolve('work/recurrence-tests');
+  fs.mkdirSync(base, { recursive: true });
+  const root = fs.mkdtempSync(path.join(base, 'run-'));
+  const store = new Store(root, new Vault(randomBytes(32)));
+  await store.migrate();
+  const settings = new Settings(root);
+  settings.save({ queuePaused: true });
+  const m = new Messaging(store, settings, new Operations());
+  t.after(() => {
+    m.stop();
+    store.close();
+    if (!root.startsWith(base + path.sep)) throw Error('Invalid cleanup');
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+  return { store, settings, m, root };
+}
+test('client WhatsApp is mandatory through validation, database saves and imports; legacy data remain readable', async t => {
+  const { store, settings } = await setup(t);
+  assert.equal(settings.get().background, true);
+  assert.throws(() => store.save('clients', { name: 'Sem WhatsApp' }), /WhatsApp/);
+  assert.throws(() => entity('clients', { name: 'Inválido', phone: 'texto 1234' }), /WhatsApp/);
+  assert.equal(store.save('clients', { name: 'Nacional', phone: '(64) 99999-0000' }).phone, '5564999990000');
+  assert.equal(store.save('clients', { name: 'Internacional', phone: '+1 (202) 555-0100' }).phone, '12025550100');
+  const old = entity('clients', { name: 'Contato antigo' }, { allowLegacyContact: true });
+  const id = require('node:crypto').randomUUID();
+  store.put('clients', id, old);
+  assert.equal(store.get('clients', id).phone, '');
+  assert.throws(() => store.save('clients', { ...store.get('clients', id), name: 'Editado' }), /WhatsApp/);
+  const { Imports } = require('../backend/imports.cjs');
+  const imports = new Imports(store);
+  const file = path.join(store.root, 'sem-whatsapp.csv');
+  fs.writeFileSync(file, 'Nome;E-mail\nSem telefone;sem@example.test');
+  const read = await imports.read(file);
+  assert.match(imports.preview({ id: read.id, kind: 'clients' }).rows[0].error, /WhatsApp/);
+});
+test('monthly recurrence clamps short months without drifting and weekly recurrence preserves local time across DST', () => {
+  const dates = expandSchedule('2028-01-31T12:30:00.000Z', {
+    frequency: 'monthly',
+    count: 4,
+    interval: 1,
+    timeZone: 'America/Sao_Paulo',
+  });
+  assert.deepEqual(
+    dates.map(d => d.slice(0, 10)),
+    ['2028-01-31', '2028-02-29', '2028-03-31', '2028-04-30'],
+  );
+  const weekly = expandSchedule('2027-03-07T14:30:00.000Z', {
+    frequency: 'weekly',
+    count: 3,
+    interval: 1,
+    timeZone: 'America/New_York',
+  });
+  assert.deepEqual(weekly, ['2027-03-07T14:30:00.000Z', '2027-03-14T13:30:00.000Z', '2027-03-21T13:30:00.000Z']);
+  assert.throws(
+    () => expandSchedule(weekly[0], { frequency: 'dates', timeZone: 'UTC', dates: [weekly[0]] }),
+    /repetidos/,
+  );
+  assert.throws(
+    () => expandSchedule(weekly[0], { frequency: 'monthly', timeZone: 'UTC', count: 10000 }),
+    /ocorrências/,
+  );
+  assert.throws(() => expandSchedule(weekly[0], { frequency: 'weekly', timeZone: 'wrong', count: 2 }), /Fuso/);
+});
+test('recurring queue is atomic, persists each date and supports individual edit and cancellation of remaining series', async t => {
+  const { m, store, settings } = await setup(t);
+  const first = new Date(Date.now() + 86400000).toISOString();
+  const message = { channel: 'whatsapp', recipient: '5564999991111', body: 'Recorrente', scheduledFor: first };
+  assert.throws(
+    () => m.series(message, { frequency: 'dates', timeZone: 'UTC', dates: ['2020-01-01T09:00:00.000Z'] }),
+    /futuro/,
+  );
+  assert.equal(m.list().length, 0);
+  const result = m.series(message, { frequency: 'weekly', timeZone: 'America/Sao_Paulo', interval: 1, count: 4 });
+  assert.equal(result.count, 4);
+  m.stop();
+  const reopened = new Messaging(store, settings, new Operations());
+  t.after(() => reopened.stop());
+  assert.equal(reopened.list().length, 4);
+  assert.equal(new Set(reopened.list().map(m => m.seriesId)).size, 1);
+  const original = reopened.list().find(r => r.seriesIndex === 2);
+  reopened.edit(original.id, { ...original, body: 'Alteração individual' });
+  assert.equal(reopened.list().find(r => r.id === original.id).seriesId, result.seriesId);
+  store.db.prepare("UPDATE queue SET status='sent' WHERE id=?").run(result.ids[0]);
+  store.db.prepare("UPDATE queue SET status='sending' WHERE id=?").run(result.ids[1]);
+  assert.equal(reopened.cancelSeries(result.ids[2]).count, 2);
+  assert.equal(reopened.list().filter(r => r.status === 'cancelled').length, 2);
+  assert.equal(reopened.list().filter(r => r.status === 'sent').length, 1);
+  assert.equal(reopened.list().filter(r => r.status === 'sending').length, 1);
+  const review = reopened.series(
+    { ...message, body: 'Proposta' },
+    { frequency: 'monthly', timeZone: 'UTC', count: 2 },
+    true,
+  );
+  assert.equal(review.requiresLocalApproval, true);
+  assert.ok(
+    reopened
+      .list()
+      .filter(r => r.seriesId === review.seriesId)
+      .every(r => r.status === 'needs_review'),
+  );
+});

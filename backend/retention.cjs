@@ -17,18 +17,30 @@ function planPreUpdate(backups, currentVersion, now = Date.now()) {
   const strip = [];
   list.slice(0, KEEP_PRE_UPDATE).forEach((backup, index) => {
     if (!backup.runtime) return;
-    if (index > 0) { strip.push(backup.id); return; }
-    const confirmed = semver.valid(backup.targetVersion) && semver.valid(currentVersion) && semver.lte(backup.targetVersion, currentVersion);
+    if (index > 0) {
+      strip.push(backup.id);
+      return;
+    }
+    const confirmed =
+      semver.valid(backup.targetVersion) &&
+      semver.valid(currentVersion) &&
+      semver.lte(backup.targetVersion, currentVersion);
     if (confirmed && now - Date.parse(backup.createdAt) > RUNTIME_GRACE) strip.push(backup.id);
   });
   return { remove, strip };
 }
 function planInstallers(names, currentVersion) {
-  const versions = names.map(name => ({ name, value: name.replace(/\.exe$/i, '') })).filter(item => semver.valid(item.value));
-  const older = versions.filter(item => semver.lte(item.value, currentVersion)).sort((a, b) => semver.rcompare(a.value, b.value));
+  const versions = names
+    .map(name => ({ name, value: name.replace(/\.exe$/i, '') }))
+    .filter(item => semver.valid(item.value));
+  const older = versions
+    .filter(item => semver.lte(item.value, currentVersion))
+    .sort((a, b) => semver.rcompare(a.value, b.value));
   return older.slice(2).map(item => item.name);
 }
-async function names(dir) { return fsp.readdir(dir).catch(() => []); }
+async function names(dir) {
+  return fsp.readdir(dir).catch(() => []);
+}
 async function cleanUpdates(root, keep) {
   const dir = path.join(root, 'updates');
   for (const name of await names(dir)) {
@@ -37,18 +49,25 @@ async function cleanUpdates(root, keep) {
   }
 }
 async function applyRetention({ root, backups, keepUpdate = null, currentVersion = version }) {
-  if (fs.existsSync(path.join(root, 'pending-update.json')) || fs.existsSync(path.join(root, 'update-lock.json'))) return { skipped: true };
+  if (fs.existsSync(path.join(root, 'pending-update.json')) || fs.existsSync(path.join(root, 'update-lock.json')))
+    return { skipped: true };
   const plan = planPreUpdate(backups.listDetails(), currentVersion);
   for (const id of plan.strip) await backups.stripRuntime(id).catch(() => {});
   for (const id of plan.remove) await backups.remove(id).catch(() => {});
   await cleanUpdates(root, keepUpdate);
   const backupDir = path.join(root, 'backups');
-  const migrations = (await names(backupDir)).filter(name => /^pre-migration-\d+\.sqlite$/.test(name)).sort((a, b) => Number(b.match(/\d+/)[0]) - Number(a.match(/\d+/)[0]));
-  for (const name of migrations.slice(KEEP_PRE_MIGRATION)) await fsp.rm(path.join(backupDir, name), { force: true }).catch(() => {});
+  const migrations = (await names(backupDir))
+    .filter(name => /^pre-migration-\d+\.sqlite$/.test(name))
+    .sort((a, b) => Number(b.match(/\d+/)[0]) - Number(a.match(/\d+/)[0]));
+  for (const name of migrations.slice(KEEP_PRE_MIGRATION))
+    await fsp.rm(path.join(backupDir, name), { force: true }).catch(() => {});
   const installerDir = path.join(root, 'installers');
-  for (const name of planInstallers(await names(installerDir), currentVersion)) await fsp.rm(path.join(installerDir, name), { force: true }).catch(() => {});
-  for (const name of ['update-request.json', 'update-progress.json']) await fsp.rm(path.join(root, name), { force: true }).catch(() => {});
-  for (const name of await names(root)) if (/^guardian-(ready|cancel)-/.test(name)) await fsp.rm(path.join(root, name), { force: true }).catch(() => {});
+  for (const name of planInstallers(await names(installerDir), currentVersion))
+    await fsp.rm(path.join(installerDir, name), { force: true }).catch(() => {});
+  for (const name of ['update-request.json', 'update-progress.json'])
+    await fsp.rm(path.join(root, name), { force: true }).catch(() => {});
+  for (const name of await names(root))
+    if (/^guardian-(ready|cancel)-/.test(name)) await fsp.rm(path.join(root, name), { force: true }).catch(() => {});
   return plan;
 }
 module.exports = { applyRetention, planPreUpdate, planInstallers };

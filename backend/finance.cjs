@@ -16,7 +16,14 @@ class Finance {
     // The form sends the amount as typed ("3.000,00").
     const total = parseMoney(base.amount);
     if (total === null) throw new Error('Informe o valor total em reais, por exemplo 3.000,00.');
-    const entries = buildInstallments({ ...base, total, count, firstDue: base.dueDate, seriesId: randomUUID(), paidDate: '' });
+    const entries = buildInstallments({
+      ...base,
+      total,
+      count,
+      firstDue: base.dueDate,
+      seriesId: randomUUID(),
+      paidDate: '',
+    });
     this.store.db.exec('BEGIN IMMEDIATE');
     try {
       const saved = entries.map(e => this.store.save('finance', e));

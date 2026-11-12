@@ -21,10 +21,12 @@ class Indices {
     const data = this.read();
     return {
       updatedAt: data.updatedAt,
-      series: Object.fromEntries(Object.keys(indexSeries).map(k => {
-        const months = Object.keys(data.series[k] || {}).sort();
-        return [k, { last: months.at(-1) || null, count: months.length }];
-      })),
+      series: Object.fromEntries(
+        Object.keys(indexSeries).map(k => {
+          const months = Object.keys(data.series[k] || {}).sort();
+          return [k, { last: months.at(-1) || null, count: months.length }];
+        }),
+      ),
     };
   }
   values(keys) {
@@ -51,7 +53,8 @@ class Indices {
         if (m && Number.isFinite(value)) values[`${m[3]}-${m[2]}`] = value;
       }
     }
-    if (!Object.keys(values).length) throw new Error(`O Banco Central não devolveu dados de ${indexSeries[key].label}.`);
+    if (!Object.keys(values).length)
+      throw new Error(`O Banco Central não devolveu dados de ${indexSeries[key].label}.`);
     return values;
   }
   async update(keys = Object.keys(indexSeries)) {
