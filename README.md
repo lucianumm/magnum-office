@@ -204,7 +204,8 @@ Quer contribuir? Leia o [guia de contribuição](.github/CONTRIBUTING.md), o [c�
 
 | Versão | Data | Destaques |
 | --- | --- | --- |
-| **1.9.1** | 08/11/2026 | Configuração inicial obrigatória do escritório (advogados, identidade visual e logo) e arquivos de comunidade do projeto |
+| **1.10.0** | 12/11/2026 | Atualização corrigida, perguntas separadas nos modelos, documento sem cadastro, busca por número do processo e CNPJ e calculadora de rescisão |
+| 1.9.1 | 08/11/2026 | Configuração inicial obrigatória do escritório (advogados, identidade visual e logo) e arquivos de comunidade do projeto |
 | 1.9.0 | 07/11/2026 | Calculadora de prazos, gerador de documentos, financeiro, atualização de débitos, DataJud, intimações do DJEN, atendimentos, relatórios, busca em documentos e novas ferramentas MCP |
 | 1.3.0 | 06/11/2026 | Interface nova, página por cliente e processo, central de avisos, atualização automática com retomada e iniciar com o Windows |
 | 1.2.0 | 06/11/2026 | Atualização manual forçada e campanhas de e-mail simplificadas |
