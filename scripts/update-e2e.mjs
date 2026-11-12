@@ -51,6 +51,9 @@ await fs.mkdir(builds, { recursive: true });
 await fs.mkdir(path.join(dataRoot, 'logs'), { recursive: true });
 
 function builder(args, include = 'work/update-e2e/e2e.nsh') {
+  // Leftovers of earlier runs must not be mistaken for this build.
+  const output = args.find(arg => arg.startsWith('--config.directories.output='));
+  if (output) fss.rmSync(path.resolve(output.split('=')[1]), { recursive: true, force: true });
   const r = spawnSync(
     'npx',
     [
@@ -90,10 +93,17 @@ await fs.writeFile(
 );
 if (!(await fs.readFile(includeFile, 'utf8')).includes(dataRoot)) throw new Error('custom.nsh mudou: ajuste o teste.');
 await fs.writeFile(path.join(work, 'e2e-base.nsh'), '; Same process-closing rule as the published installers.\n');
+// Each build folder holds one installer (builder() empties it first). If an older one is still there,
+// the newest wins: picking by name once installed a 1.10.0 candidate in a 1.11.0 run.
 const installerOf = dir => {
-  const name = fss.readdirSync(dir).find(n => n.endsWith('.exe') && n.includes('setup'));
-  if (!name) throw new Error('Instalador não encontrado em ' + dir);
-  return path.join(dir, name);
+  const names = fss
+    .readdirSync(dir)
+    .filter(n => n.endsWith('.exe') && n.includes('setup') && !n.includes('uninstaller'));
+  if (!names.length) throw new Error('Instalador não encontrado em ' + dir);
+  const newest = names.sort(
+    (a, b) => fss.statSync(path.join(dir, b)).mtimeMs - fss.statSync(path.join(dir, a)).mtimeMs,
+  )[0];
+  return path.join(dir, newest);
 };
 if (!process.argv.includes('--skip-build')) {
   if (!publishedBase) {
