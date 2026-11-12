@@ -376,822 +376,168 @@ function state() {
   };
 }
 function bindHandlers() {
-  register('configureBackups', input =>
-    operations.run('Configurar backups', () => {
-      const result = weeklyBackups.configure(input);
-      setTimeout(() => void weeklyBackups.tick(), 150);
-      return result;
-    }),
-  );
-  register('backupNoticeSeen', () => weeklyBackups.noticeSeen());
-  register('retryBackupEmail', input => {
-    if (input?.reviewed !== true) throw new Error('Confira o resultado no Resend antes de tentar novamente.');
-    weeklyBackups.retry();
-    void weeklyBackups.tick();
-    return true;
-  });
-  register('exportPortableBackup', input =>
-    operations.exclusive(async () => {
-      const pass = input?.password || store.secret('backup-password');
-      const result = await dialog.showSaveDialog(win, {
-        title: 'Salvar cópia portátil protegida por senha',
-        defaultPath: 'Magnum-Office-' + new Date().toISOString().slice(0, 10) + '.magnumbackup',
-        filters: [{ name: 'Backup protegido', extensions: ['magnumbackup'] }],
-      });
-      if (result.canceled) return false;
-      const bytes = await weeklyBackups.portable.create(pass);
-      await fsp.writeFile(result.filePath, bytes, { mode: 0o600 });
-      store.audit('backup.portable.exported');
-      return true;
-    }),
-  );
-  register('restorePortableBackup', input =>
-    operations.exclusive(async () => {
-      const result = await dialog.showOpenDialog(win, {
-        title: 'Selecionar backup portátil protegido por senha',
-        properties: ['openFile'],
-        filters: [{ name: 'Backup protegido', extensions: ['magnumbackup'] }],
-      });
-      if (result.canceled) return false;
-      if ((await fsp.stat(result.filePaths[0])).size > 220 * 1024 ** 2) throw new Error('Arquivo de backup excessivo.');
-      const response = await dialog.showMessageBox(win, {
-        type: 'warning',
-        message: 'Restaurar os cadastros e documentos deste backup e reiniciar?',
-        detail:
-          'Os dados atuais serão preservados em um backup. Conexões precisarão ser reconfiguradas. Disparos não enviados voltarão para revisão e não serão enviados automaticamente.',
-        buttons: ['Cancelar', 'Restaurar e reiniciar'],
-        defaultId: 0,
-        cancelId: 0,
-        noLink: true,
-      });
-      if (response.response !== 1) return false;
-      const snapshot = await weeklyBackups.portable.stageRestore(
-        await fsp.readFile(result.filePaths[0]),
-        input?.password,
-      );
-      await backups.create('pre-portable-restore');
-      app.relaunch({
-        args: [
-          ...process.argv
-            .slice(app.isPackaged ? 1 : 2)
-            .filter(a => !a.startsWith('--recover=') && !a.startsWith('--user-data=')),
-          ...(app.isPackaged ? [] : ['.']),
-          `--recover=${snapshot.id}`,
-          `--user-data=${dataRoot}`,
-        ],
-      });
-      app.quitForUpdate = true;
-      app.quit();
-      return true;
-    }),
-  );
-  register('declineTerms', () => {
-    quitting = true;
-    app.quit();
-    return true;
-  });
-  register('acceptTerms', input => {
-    if (input?.version !== terms.version || input?.accepted !== true)
-      throw new Error('É necessário aceitar a versão atual dos termos.');
-    settings.internal({ termsAcceptedVersion: terms.version, termsAcceptedAt: new Date().toISOString() });
-    store.audit('terms.accepted', { version: terms.version });
-    messaging.autoconnect();
-    setTimeout(() => void weeklyBackups.tick(), 1000);
-    return true;
-  });
-  register('legalText', id => {
-    const files = {
-      license: path.join(__dirname, '..', 'LICENSE'),
-      privacy: path.join(__dirname, '..', 'docs', 'PRIVACIDADE.md'),
-    };
-    if (!files[id]) throw new Error('Documento inválido.');
-    return fsp.readFile(files[id], 'utf8');
-  });
-  register('previewEmail', input => require('../backend/email-design.cjs').render(input, settings.get(), true));
-  register('importEmailImage', async () => {
-    const chosen = await dialog.showOpenDialog(win, {
-      title: 'Imagem para o e-mail',
-      properties: ['openFile'],
-      filters: [{ name: 'PNG ou JPG', extensions: ['png', 'jpg', 'jpeg'] }],
-    });
-    if (chosen.canceled) return false;
-    const file = chosen.filePaths[0];
-    if ((await fsp.stat(file)).size > 5 * 1024 ** 2) throw new Error('Escolha uma imagem de até 5 MB.');
-    let img = nativeImage.createFromPath(file);
-    if (img.isEmpty()) throw new Error('Imagem inválida.');
-    img = img.resize({ width: Math.min(900, img.getSize().width) });
-    let buffer = img.toJPEG(75);
-    if (buffer.length > 60000) {
-      img = img.resize({ width: 600 });
-      buffer = img.toJPEG(55);
-    }
-    if (buffer.length > 60000) throw new Error('Use uma imagem menor ou mais simples.');
-    return 'data:image/jpeg;base64,' + buffer.toString('base64');
-  });
-  register('testNotification', () => {
-    if (!Notification.isSupported()) throw new Error('Notificações indisponíveis neste computador.');
-    const notice = new Notification({
-      title: displayName(),
-      body: 'As notificações do escritório estão ativadas.',
-      icon: icon(),
-    });
-    notice.on('click', show);
-    notice.show();
-    return true;
-  });
-  register('pdfTool', input =>
-    operations.run('Processamento local de PDF', async () => {
-      if (!['images', 'split', 'merge', 'archive'].includes(input.mode)) throw new Error('Operação inválida.');
-      if (pdfTools.get().status === 'running') throw new Error('Já há um processamento em andamento.');
-      const chosen = await dialog.showOpenDialog(win, {
-        title: input.mode === 'images' ? 'Selecionar imagens para PDF' : 'Selecionar PDF',
-        properties: ['split', 'archive'].includes(input.mode) ? ['openFile'] : ['openFile', 'multiSelections'],
-        filters: [
-          {
-            name: input.mode === 'images' ? 'Imagens' : 'PDF',
-            extensions: input.mode === 'images' ? ['png', 'jpg', 'jpeg'] : ['pdf'],
-          },
-        ],
-      });
-      if (chosen.canceled) return false;
-      const confirm = await dialog.showMessageBox(win, {
-        type: 'question',
-        message: 'Processar estes arquivos no computador?',
-        detail:
-          'Saída PDF/A-2b. As páginas são convertidas em imagens: texto pesquisável, links, formulários e assinaturas digitais não são preservados. CPU e memória do computador serão utilizados e ele pode ficar lento. Guarde os originais. Ordem de processamento:\n' +
-          chosen.filePaths.map((f, i) => i + 1 + '. ' + path.basename(f)).join('\n'),
-        buttons: ['Cancelar', 'Continuar'],
-        defaultId: 1,
-        cancelId: 0,
-        noLink: true,
-      });
-      if (confirm.response !== 1) return false;
-      let output;
-      if (input.mode === 'split') {
-        const folder = await dialog.showOpenDialog(win, {
-          title: 'Escolher pasta de destino',
-          properties: ['openDirectory', 'createDirectory'],
-        });
-        if (folder.canceled) return false;
-        output = path.join(folder.filePaths[0], 'PDF-partes-' + require('node:crypto').randomUUID());
-        await fsp.mkdir(output, { mode: 0o700 });
-      } else {
-        const file = await dialog.showSaveDialog(win, {
-          title: 'Salvar novo PDF',
-          defaultPath:
-            input.mode === 'images'
-              ? 'imagens-pdfa.pdf'
-              : input.mode === 'archive'
-                ? 'documento-pdfa.pdf'
-                : 'documentos-reunidos-pdfa.pdf',
-          filters: [{ name: 'PDF', extensions: ['pdf'] }],
-        });
-        if (file.canceled) return false;
-        output = file.filePath;
-        if (!output.toLowerCase().endsWith('.pdf')) output += '.pdf';
-      }
-      const result = await pdfTools.run({
-        mode: input.mode,
-        limitMB: input.limitMB,
-        pagesPerPart: input.pagesPerPart,
-        files: chosen.filePaths,
-        output,
-      });
-      if (result) store.audit('pdf.processed', { kind: input.mode });
-      return result;
-    }),
-  );
-  register('cancelPDF', () => pdfTools.cancel());
-  register('openPDFOutput', () => {
-    if (!pdfTools.folder) throw new Error('Nenhuma pasta de destino foi selecionada.');
-    return shell.openPath(pdfTools.folder);
-  });
-  register('extractEmails', input => extractEmails(input));
-  register('saveTemplateGroup', input => operations.run('Grupo de modelos', () => library.saveGroup(input)));
-  register('saveTemplate', input => operations.run('Modelo', () => library.save(input)));
-  register('previewDocument', input => generator.preview(input));
-  register('generateDocument', input => operations.run('Geração de documento', () => generator.generate(input)));
-  register('removeTemplate', input =>
-    operations.run('Excluir modelo', async () => {
-      const result = await dialog.showMessageBox(win, {
-        type: 'warning',
-        message: 'Excluir este modelo ou grupo?',
-        buttons: ['Cancelar', 'Excluir'],
-        defaultId: 0,
-        cancelId: 0,
-      });
-      if (result.response !== 1) return false;
-      return library.remove(input.type, input.id);
-    }),
-  );
-  register('importTemplate', () =>
-    operations.run('Importar modelo', async () => {
-      const result = await dialog.showOpenDialog(win, {
-        title: 'Importar modelo para edição',
-        properties: ['openFile'],
-        filters: [{ name: 'Modelos', extensions: ['docx', 'txt', 'html', 'htm'] }],
-      });
-      return result.canceled ? false : library.readFile(result.filePaths[0]);
-    }),
-  );
-  register('chooseImport', () =>
-    operations.run('Ler importação', async () => {
-      const result = await dialog.showOpenDialog(win, {
-        title: 'Importar contatos ou agenda',
-        properties: ['openFile'],
-        filters: [{ name: 'Planilhas e CSV', extensions: ['csv', 'tsv', 'txt', 'xlsx'] }],
-      });
-      return result.canceled ? false : imports.read(result.filePaths[0]);
-    }),
-  );
-  register('previewImport', input => operations.run('Revisar importação', () => imports.preview(input)));
-  register('commitImport', input =>
-    operations.exclusive(async () => {
-      await backups.create('pre-import');
-      return imports.commit(input);
-    }),
-  );
-  register('configureAgent', input => operations.run('Configurar integração', () => agentAPI.configure(input)));
-  register('copyAgentToken', () => {
-    const token = agentAPI.token();
-    if (!token) throw new Error('Gere o token primeiro.');
-    clipboard.writeText(token);
-    return true;
-  });
-  register('ready', () => {
-    markRendererReady();
-    return true;
-  });
-  register('state', state);
-  register('save', data =>
-    operations.run('Gravação de cadastro', () => {
-      let result = store.save(data.kind, data.entity);
-      if (data.kind === 'clients') birthdays.tick(true);
-      if (data.kind === 'tasks') {
-        const synced = reminders.sync(result);
-        result = { ...synced.task, reminderStatus: synced.status, reminderProblem: synced.reason || '' };
-      }
-      return result;
-    }),
-  );
-  register('remove', data =>
-    operations.run('Exclusão de registro', async () => {
-      const response = await dialog.showMessageBox(win, {
-        type: 'warning',
-        title: 'Excluir registro',
-        message: 'Excluir este registro permanentemente?',
-        detail: 'Os vínculos existentes serão verificados antes da exclusão.',
-        buttons: ['Cancelar', 'Excluir'],
-        defaultId: 0,
-        cancelId: 0,
-        noLink: true,
-      });
-      if (response.response !== 1) return false;
-      const before = data.kind === 'tasks' ? store.get('tasks', data.id) : null;
-      store.remove(data.kind, data.id);
-      if (before) reminders.cancel(before);
-      return true;
-    }),
-  );
-  register('createInstallments', input => operations.run('Parcelamento', () => finance.createInstallments(input)));
-  // Spreadsheets and calendars leave the encrypted vault: the user chooses where, and the screen warns.
-  register('exportFinance', () =>
-    operations.run('Exportação financeira', async () => {
-      const result = await dialog.showSaveDialog(win, {
-        title: 'Exportar lançamentos',
-        defaultPath: `financeiro-${new Date().toISOString().slice(0, 10)}.xlsx`,
-        filters: [{ name: 'Planilha Excel', extensions: ['xlsx'] }],
-      });
-      if (result.canceled || !result.filePath) return false;
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      await fsp.writeFile(result.filePath, await finance.workbook(today), { mode: 0o600 });
-      store.audit('finance.exported');
-      return true;
-    }),
-  );
-  register('exportCalendar', input =>
-    operations.run('Exportação da agenda', async () => {
-      const result = await dialog.showSaveDialog(win, {
-        title: 'Exportar agenda',
-        defaultPath: 'agenda.ics',
-        filters: [{ name: 'Calendário', extensions: ['ics'] }],
-      });
-      if (result.canceled || !result.filePath) return false;
-      const { agendaICS } = require('../app/ics.mjs');
-      const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-      const tasks = store.list('tasks').filter(t => t.status !== 'Concluída' && t.due >= since);
-      const includeNames = input?.includeNames === true;
-      const content = agendaICS(tasks, {
-        includeNames,
-        clients: new Map(store.list('clients').map(c => [c.id, c.name])),
-        cases: new Map(store.list('cases').map(c => [c.id, c.title])),
-        officeName: settings.get().officeName,
-      });
-      await fsp.writeFile(result.filePath, content, { mode: 0o600 });
-      store.audit('agenda.exported');
-      return tasks.length;
-    }),
-  );
-  register('updateIndices', input =>
-    operations.run('Índices do Banco Central', () =>
-      indices.update(
-        Array.isArray(input?.keys) ? input.keys.filter(k => typeof k === 'string').slice(0, 10) : undefined,
-      ),
-    ),
-  );
-  register('debtSeries', input =>
-    indices.values(Array.isArray(input?.keys) ? input.keys.filter(k => typeof k === 'string').slice(0, 10) : []),
-  );
-  register('saveDebtReport', input =>
-    operations.run('Memória de cálculo', async () => {
-      const { blocks, caseId, title } = require('../backend/debt-report.cjs').report(input, indices);
-      const caseItem = caseId ? store.get('cases', caseId) : null;
-      const pdfBytes = await require('../backend/document-files.cjs').pdf(blocks, {
-        title,
-        author: settings.get().officeName,
-      });
-      return documents.save(`${title}.pdf`, pdfBytes, {
-        caseId: caseItem?.id || '',
-        clientId: caseItem?.clientId || '',
-      });
-    }),
-  );
-  register('saveLaborReport', input =>
-    operations.run('Memória de cálculo', async () => {
-      const { blocks, caseId, title } = require('../backend/labor-report.cjs').laborReport(input);
-      const caseItem = caseId ? store.get('cases', caseId) : null;
-      const pdfBytes = await require('../backend/document-files.cjs').pdf(blocks, {
-        title,
-        author: settings.get().officeName,
-      });
-      return documents.save(`${title}.pdf`, pdfBytes, {
-        caseId: caseItem?.id || '',
-        clientId: caseItem?.clientId || '',
-      });
-    }),
-  );
-  register('convertIntake', input =>
-    operations.run('Converter atendimento', () =>
-      intakes.convert(input?.id, { createCase: input?.createCase !== false }),
-    ),
-  );
-  register('searchDocuments', query =>
-    typeof query === 'string' && query.length <= 200 ? docIndex.search(query) : [],
-  );
-  register('saveTextReport', input =>
-    operations.run('Relatório', async () => {
-      const caseItem = store.get('cases', require('../backend/validation.cjs').uuid(input?.caseId));
-      const text = require('../backend/validation.cjs').text(String(input?.text || ''), 20000);
-      if (!text.trim()) throw new Error('O relatório está vazio.');
-      const blocks = text.split('\n').map(line => ({ align: 'left', heading: false, runs: [{ text: line }] }));
-      const now = new Date();
-      const title = `Relatório ao cliente ${String(now.getDate()).padStart(2, '0')}-${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
-      const bytes = await require('../backend/document-files.cjs').pdf(blocks, {
-        title,
-        author: settings.get().officeName,
-      });
-      return documents.save(`${title}.pdf`, bytes, { caseId: caseItem.id, clientId: caseItem.clientId || '' });
-    }),
-  );
-  register('caseMovements', caseId => datajud.movements(caseId));
-  // Lookups for the forms: only the number typed leaves the computer, and nothing is stored.
-  register('lookupCase', number => datajud.lookup(number));
-  register('lookupCNPJ', value => cnpj.lookup(value));
-  register('refreshMovements', caseId => operations.run('Consulta ao DataJud', () => datajud.refresh(caseId)));
-  register('addMovement', input => operations.run('Andamento', () => datajud.addManual(input?.caseId, input)));
-  register('removeMovement', input =>
-    operations.run('Andamento', () => datajud.removeManual(input?.caseId, input?.id)),
-  );
-  register('seenMovements', caseId => datajud.markSeen(caseId));
-  register('checkIntimations', () => operations.run('Consulta ao DJEN', () => djen.check()));
-  register('setIntimation', input => operations.run('Intimação', () => djen.setStatus(input?.id, input?.status)));
-  register('openIntimation', id => {
-    const link = djen.link(id);
-    if (new URL(link).protocol !== 'https:' || !new URL(link).hostname.endsWith('.jus.br'))
-      throw new Error('Link inválido.');
-    return shell.openExternal(link);
-  });
-  register('checkAllMovements', () => operations.run('Consulta ao DataJud', () => datajud.checkAll()));
-  register('previewWorkflow', input => workflowRunner.preview(input).tasks);
-  register('applyWorkflow', input => operations.run('Aplicar fluxo', () => workflowRunner.apply(input)));
-  register('importDocument', links =>
-    operations.run('Importação de documentos', async () => {
-      const chosen = await dialog.showOpenDialog(win, {
-        title: 'Importar documentos para o cofre local',
-        properties: ['openFile', 'multiSelections'],
-        filters: [
-          {
-            name: 'Documentos',
-            extensions: ['pdf', 'docx', 'doc', 'odt', 'txt', 'rtf', 'xlsx', 'xls', 'csv', 'png', 'jpg', 'jpeg', 'webp'],
-          },
-        ],
-      });
-      if (chosen.canceled) return [];
-      const result = [];
-      for (const file of chosen.filePaths) result.push(await documents.import(file, links || {}));
-      return result;
-    }),
-  );
-  register('openDocument', id =>
-    operations.run('Abertura de documento', async () => {
-      const result = await shell.openPath(await documents.temporary(id));
-      if (result) throw new Error('Nenhum programa conseguiu abrir este documento. Use a opção Exportar.');
-    }),
-  );
-  register('exportDocument', id =>
-    operations.run('Exportação de documento', async () => {
-      const item = store.get('documents', id);
-      const chosen = await dialog.showSaveDialog(win, {
-        title: 'Exportar documento sem criptografia',
-        defaultPath: item.name,
-      });
-      if (chosen.canceled) return false;
-      await fsp.writeFile(chosen.filePath, documents.read(id), { mode: 0o600 });
-      store.audit('document.exported', { id });
-      return true;
-    }),
-  );
-  register('createBackup', () => operations.exclusive(() => backups.create()));
-  register('restoreBackup', async id => {
-    const response = await dialog.showMessageBox(win, {
-      type: 'warning',
-      title: 'Restaurar backup',
-      message: 'Restaurar os dados deste backup e reiniciar?',
-      detail:
-        'Os dados atuais serão preservados em uma cópia de segurança. Alterações posteriores ao backup não aparecerão na base restaurada.',
-      buttons: ['Cancelar', 'Restaurar e reiniciar'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (response.response !== 1) return false;
-    await operations.exclusive(async () => {
-      await verifyBackup(dataRoot, id, store.vault);
-      await backups.create('pre-restore');
-      app.relaunch({
-        args: [
-          ...process.argv
-            .slice(app.isPackaged ? 1 : 2)
-            .filter(
-              a => !a.startsWith('--recover=') && !a.startsWith('--user-data=') && !a.startsWith('--rollback-version='),
-            ),
-          ...(app.isPackaged ? [] : ['.']),
-          `--recover=${id}`,
-          `--user-data=${dataRoot}`,
-        ],
-      });
-      app.quitForUpdate = true;
-      app.quit();
-    });
-    return true;
-  });
-  register('rollback', async id => {
-    if (process.platform !== 'win32')
-      throw new Error(
-        'Use o aplicativo ou instalador anterior e restaure o backup. Consulte a documentação de recuperação.',
-      );
-    const manifest = await verifyBackup(dataRoot, id, store.vault);
-    if (!manifest.runtime) throw new Error('Este backup contém dados, mas não uma versão anterior do programa.');
-    const response = await dialog.showMessageBox(win, {
-      type: 'warning',
-      title: 'Voltar à versão anterior',
-      message: `Voltar à versão ${manifest.version}?`,
-      detail:
-        'O programa será reiniciado a partir da cópia preservada. Os dados atuais serão salvos antes da restauração.',
-      buttons: ['Cancelar', 'Voltar à versão anterior'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (response.response !== 1) return false;
-    await operations.exclusive(async () => {
-      await backups.create('pre-rollback');
-      const { spawn } = require('node:child_process');
-      const child = spawn(
-        path.join(backupPath(dataRoot, id), 'runtime', manifest.runtime),
-        [`--recover=${id}`, `--user-data=${dataRoot}`, `--wait-pid=${process.pid}`, `--rollback-version=${version}`],
-        { detached: true, stdio: 'ignore', windowsHide: true },
-      );
-      await new Promise((resolve, reject) => {
-        child.once('spawn', resolve);
-        child.once('error', reject);
-      });
-      child.unref();
-      app.quitForUpdate = true;
-      app.quit();
-    });
-    return true;
-  });
-  register('openBackups', () => shell.openPath(path.join(dataRoot, 'backups')));
-  register('exportData', () =>
-    operations.run('Exportação de dados', async () => {
-      const result = await dialog.showOpenDialog(win, {
-        title: 'Escolher pasta para exportação dos dados legíveis',
-        properties: ['openDirectory', 'createDirectory'],
-      });
-      if (result.canceled) return false;
-      const dest = path.join(result.filePaths[0], 'Advocacia-exportacao-' + Date.now());
-      await fsp.mkdir(dest, { mode: 0o700 });
-      await fsp.mkdir(path.join(dest, 'documentos'));
-      const entities = Object.fromEntries(
-        ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes'].map(kind => [
-          kind,
-          store.list(kind),
-        ]),
-      );
-      await fsp.writeFile(
-        path.join(dest, 'dados.json'),
-        JSON.stringify(
-          {
-            version,
-            exportedAt: new Date().toISOString(),
-            ...entities,
-            library: { groups: library.groups(), templates: library.list() },
-          },
-          null,
-          2,
-        ),
-        { mode: 0o600 },
-      );
-      for (const doc of entities.documents)
-        await fsp.writeFile(path.join(dest, 'documentos', doc.id + doc.ext), documents.read(doc.id), { mode: 0o600 });
-      store.audit('data.exported');
-      return true;
-    }),
-  );
-  register('diagnostic', () =>
-    operations.run('Exportação de diagnóstico', async () => {
-      const result = await dialog.showSaveDialog(win, {
-        title: 'Exportar diagnóstico técnico',
-        defaultPath: `advocacia-diagnostico-${version}.json`,
-        filters: [{ name: 'JSON', extensions: ['json'] }],
-      });
-      if (result.canceled) return false;
-      await fsp.writeFile(
-        result.filePath,
-        JSON.stringify(await diagnostics(store, settings, messaging, backups), null, 2),
-        { mode: 0o600 },
-      );
-      return true;
-    }),
-  );
-  register('openLogs', () => shell.openPath(path.join(dataRoot, 'logs')));
-  register('openLink', link => {
-    const repo = settings.get().repository;
-    const urls = {
-      developer: support.whatsappURL,
-      services:
-        support.whatsappURL +
-        '?text=' +
-        encodeURIComponent(
-          'Olá, Lucianum Magnum. Gostaria de conversar sobre um sistema, automações ou presença digital para minha empresa.',
-        ),
-      professionalSetup:
-        support.whatsappURL +
-        '?text=' +
-        encodeURIComponent(
-          'Olá, Lucianum. Gostaria de contratar a configuração profissional do domínio, Resend e Cloudflare para meu sistema.',
-        ),
-      resendDomains: 'https://resend.com/domains',
-      datajudKey: 'https://datajud-wiki.cnj.jus.br/api-publica/acesso',
-      cloudflare: 'https://dash.cloudflare.com/',
-      resendGuide: 'https://resend.com/docs/dashboard/domains/introduction',
-      courtsSource: courts.source,
-      repository: repo ? `https://github.com/${repo}` : null,
-      changelog: repo ? `https://github.com/${repo}/releases` : null,
-      documentation: repo ? `https://github.com/${repo}/blob/main/docs/INSTALACAO.md` : null,
-    };
-    if (!urls[link]) throw new Error('Configure o repositório do GitHub nas configurações.');
-    return shell.openExternal(urls[link]);
-  });
-  register('saveSettings', data =>
-    operations.run('Configuração', () => {
-      const result = settings.save(data);
-      applyBranding();
-      if ('openAtLogin' in data) applyStartup();
-      store.audit('settings.saved');
-      return result;
-    }),
-  );
-  register('importLogo', () =>
-    operations.run('Importação da logo', async () => {
-      const chosen = await dialog.showOpenDialog(win, {
-        title: 'Escolher a logo do escritório',
-        properties: ['openFile'],
-        filters: [{ name: 'Imagens', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
-      });
-      if (chosen.canceled) return false;
-      const file = chosen.filePaths[0];
-      if (!/\.(png|jpe?g|webp)$/i.test(file) || (await fsp.stat(file)).size > 5 * 1024 ** 2)
-        throw new Error('Escolha uma imagem PNG, JPG ou WebP de até 5 MB.');
-      let image = nativeImage.createFromPath(file);
-      if (image.isEmpty()) throw new Error('Não foi possível ler a imagem selecionada.');
-      const size = image.getSize();
-      const width = Math.min(size.width, 200),
-        height = Math.round((size.height / size.width) * width);
-      image = image.resize(height > 200 ? { height: 200 } : { width });
-      if (image.toPNG().length > 90000) image = image.resize({ width: 128 });
-      if (image.toPNG().length > 90000) throw new Error('A imagem é muito complexa. Use uma logo menor.');
-      settings.internal({ brandLogo: image.toDataURL() });
-      store.audit('branding.logo.saved');
-      return true;
-    }),
-  );
-  register('completeSetup', data =>
-    operations.run('Configuração inicial', () => {
-      const result = settings.completeSetup(data, { hasLogo: Boolean(settings.get().brandLogo) });
-      applyBranding();
-      store.audit('setup.completed');
-      return result;
-    }),
-  );
-  register('removeLogo', () =>
-    operations.run('Personalização', () => {
-      settings.internal({ brandLogo: '' });
-      store.audit('branding.logo.removed');
-      return true;
-    }),
-  );
-  register('copyPix', () => {
-    clipboard.writeText(support.pixPayload);
-    return true;
-  });
-  register('courtLink', input => {
-    const court = courts.courts.find(c => c.id === input.id);
-    if (!court) throw new Error('Tribunal não encontrado.');
-    const link =
-      input.system === undefined ? court.url : Number.isInteger(input.system) ? court.systems[input.system]?.url : null;
-    if (!link || new URL(link).protocol !== 'https:' || !new URL(link).hostname.endsWith('.jus.br'))
-      throw new Error('Acesso oficial inválido.');
-    return shell.openExternal(link);
-  });
-  register('dismissRecoveryNotice', () =>
-    fsp.rm(path.join(dataRoot, 'recovery-notice.json'), { force: true }).then(() => true),
-  );
-  register('dismissWhatsNew', () => fsp.rm(path.join(dataRoot, 'whats-new.json'), { force: true }).then(() => true));
-  register('installUpdateOnQuit', value => updater.setInstallOnQuit(value));
-  register('removeBackup', async id => {
-    const response = await dialog.showMessageBox(win, {
-      type: 'warning',
-      title: 'Excluir backup',
-      message: 'Excluir esta cópia de segurança permanentemente?',
-      detail: 'Esta ação não pode ser desfeita. Os dados atuais do sistema não são alterados.',
-      buttons: ['Cancelar', 'Excluir'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (response.response !== 1) return false;
-    return operations.run('Exclusão de backup', async () => {
-      await backups.remove(id);
-      store.audit('backup.removed', { id });
-      return true;
-    });
-  });
-  register('checkUpdate', () => updater.check());
-  register('forceUpdate', async () => {
-    const response = await dialog.showMessageBox(win, {
-      type: 'question',
-      title: 'Atualização manual',
-      message: 'Buscar e baixar a versão mais recente agora?',
-      detail:
-        'Funciona com a atualização automática desativada e permite tentar novamente uma versão bloqueada após falha. A assinatura e a integridade continuam obrigatórias. Você confirma a instalação depois do download.',
-      buttons: ['Cancelar', 'Buscar e baixar'],
-      defaultId: 1,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (response.response !== 1) return updater.get();
-    const result = await updater.check({ retryBlocked: true, reuse: false });
-    return result.status === 'available' ? updater.download() : result;
-  });
-  register('downloadUpdate', async () => {
-    const response = await dialog.showMessageBox(win, {
-      type: 'question',
-      title: 'Baixar atualização',
-      message: `Baixar a versão ${updater.get().available?.version || ''}?`,
-      detail: 'O download será validado antes da instalação. Seus dados serão copiados antes de atualizar.',
-      buttons: ['Cancelar', 'Baixar atualização'],
-      defaultId: 1,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (response.response === 1) return updater.download();
-    return updater.get();
-  });
-  register('installUpdate', async () => {
-    const response = await dialog.showMessageBox(win, {
-      type: 'warning',
-      title: 'Instalar atualização',
-      message: 'Criar backup, instalar e reiniciar o sistema?',
-      detail:
-        'As filas ficarão pausadas durante a manutenção. Operações em andamento precisam terminar antes da atualização.',
-      buttons: ['Cancelar', 'Instalar e reiniciar'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (response.response === 1) return updater.install();
-    return updater.get();
-  });
-  register('installUpdateManually', async () => {
-    const response = await dialog.showMessageBox(win, {
-      type: 'warning',
-      title: 'Instalar manualmente',
-      message: 'Fechar o sistema e abrir o instalador da nova versão?',
-      detail:
-        'Use quando a instalação automática não concluir. Uma cópia dos seus dados é feita antes. No instalador, mantenha a mesma pasta e, se o Windows pedir, permita a instalação. Ao terminar, abra o Magnum Office pelo atalho.',
-      buttons: ['Cancelar', 'Fechar e instalar'],
-      defaultId: 0,
-      cancelId: 0,
-      noLink: true,
-    });
-    if (response.response === 1) return updater.installManually();
-    return updater.get();
-  });
-  register('connectWhatsApp', () => operations.run('Conexão WhatsApp', () => messaging.connectWhatsApp()));
-  register('disconnectWhatsApp', () => operations.run('Desconexão WhatsApp', () => messaging.disconnectWhatsApp()));
-  register('configureEmail', key => operations.run('Configuração do e-mail', () => messaging.configureEmail(key)));
-  register('emailCampaign', input => operations.run('Cadastro de campanha', () => messaging.campaign(input)));
-  register('emailAttachments', () =>
-    operations.run('Importação de anexos', async () => {
-      const result = await dialog.showOpenDialog(win, {
-        title: 'Anexar arquivos ao e-mail',
-        properties: ['openFile', 'multiSelections'],
-        filters: [
-          {
-            name: 'Documentos e imagens',
-            extensions: [
-              'pdf',
-              'doc',
-              'docx',
-              'odt',
-              'txt',
-              'rtf',
-              'xls',
-              'xlsx',
-              'csv',
-              'png',
-              'jpg',
-              'jpeg',
-              'webp',
-              'zip',
-            ],
-          },
-        ],
-      });
-      if (result.canceled) return [];
-      if (result.filePaths.length > 10) throw new Error('Selecione até dez arquivos.');
-      const items = [];
-      let total = 0;
-      for (const file of result.filePaths) {
-        const stat = await fsp.stat(file);
-        total += stat.size;
-        if (
-          !stat.isFile() ||
-          total > 10 * 1024 * 1024 ||
-          !/\.(pdf|docx?|odt|txt|rtf|xlsx?|csv|png|jpe?g|webp|zip)$/i.test(file)
-        )
-          throw new Error('Selecione documentos de até 10 MB no total.');
-        items.push({ file, name: path.basename(file), size: stat.size });
-      }
-      const out = [];
-      for (const item of items) {
-        const id = require('node:crypto').randomUUID();
-        store.secret('email-attachment:' + id, {
-          name: item.name,
-          size: item.size,
-          content: (await fsp.readFile(item.file)).toString('base64'),
-        });
-        out.push({ id, name: item.name, size: item.size });
-      }
-      return out;
-    }),
-  );
-  register('enqueue', data => operations.run('Agendamento de mensagem', () => messaging.enqueue(data)));
-  register('previewRecurrence', data => {
-    const dates = require('../backend/recurrence.cjs').expandSchedule(data.first, data.recurrence);
-    if (dates.some(d => Date.parse(d) < Date.now() + 5000 || Date.parse(d) > Date.now() + 5 * 366 * 86400000))
-      throw new Error('Todas as datas devem ser futuras, dentro dos próximos cinco anos.');
-    return dates;
-  });
-  register('enqueueSeries', data =>
-    operations.run('Cadastrar disparos recorrentes', () => messaging.series(data.message, data.recurrence)),
-  );
-  register('cancelMessageSeries', id => operations.run('Cancelar recorrência', () => messaging.cancelSeries(id)));
-  register('editMessage', data => operations.run('Edição de disparo', () => messaging.edit(data.id, data.message)));
-  register('changeMessage', data =>
-    operations.run('Alteração de mensagem', () => messaging.change(data.id, data.action)),
-  );
-  register('window', action => {
-    if (action === 'minimize') win.minimize();
-    if (action === 'maximize') win.isMaximized() ? win.unmaximize() : win.maximize();
-    if (action === 'close') {
-      if (settings.get().background) keepInBackground();
-      else win.close();
-    }
-  });
+  // The IPC files under desktop/ipc read the current objects through this context.
+  const ctx = {
+    desktopDir: __dirname,
+    get Notification() {
+      return Notification;
+    },
+    get agentAPI() {
+      return agentAPI;
+    },
+    get app() {
+      return app;
+    },
+    get applyBranding() {
+      return applyBranding;
+    },
+    get applyStartup() {
+      return applyStartup;
+    },
+    get backupPath() {
+      return backupPath;
+    },
+    get backups() {
+      return backups;
+    },
+    get birthdays() {
+      return birthdays;
+    },
+    get clipboard() {
+      return clipboard;
+    },
+    get cnpj() {
+      return cnpj;
+    },
+    get courts() {
+      return courts;
+    },
+    get dataRoot() {
+      return dataRoot;
+    },
+    get datajud() {
+      return datajud;
+    },
+    get diagnostics() {
+      return diagnostics;
+    },
+    get dialog() {
+      return dialog;
+    },
+    get displayName() {
+      return displayName;
+    },
+    get djen() {
+      return djen;
+    },
+    get docIndex() {
+      return docIndex;
+    },
+    get documents() {
+      return documents;
+    },
+    get extractEmails() {
+      return extractEmails;
+    },
+    get finance() {
+      return finance;
+    },
+    get fsp() {
+      return fsp;
+    },
+    get generator() {
+      return generator;
+    },
+    get icon() {
+      return icon;
+    },
+    get imports() {
+      return imports;
+    },
+    get indices() {
+      return indices;
+    },
+    get intakes() {
+      return intakes;
+    },
+    get keepInBackground() {
+      return keepInBackground;
+    },
+    get library() {
+      return library;
+    },
+    get markRendererReady() {
+      return markRendererReady;
+    },
+    get messaging() {
+      return messaging;
+    },
+    get nativeImage() {
+      return nativeImage;
+    },
+    get operations() {
+      return operations;
+    },
+    get path() {
+      return path;
+    },
+    get pdfTools() {
+      return pdfTools;
+    },
+    get quitting() {
+      return quitting;
+    },
+    set quitting(value) {
+      quitting = value;
+    },
+    get register() {
+      return register;
+    },
+    get reminders() {
+      return reminders;
+    },
+    get settings() {
+      return settings;
+    },
+    get shell() {
+      return shell;
+    },
+    get show() {
+      return show;
+    },
+    get state() {
+      return state;
+    },
+    get store() {
+      return store;
+    },
+    get support() {
+      return support;
+    },
+    get terms() {
+      return terms;
+    },
+    get updater() {
+      return updater;
+    },
+    get verifyBackup() {
+      return verifyBackup;
+    },
+    get version() {
+      return version;
+    },
+    get weeklyBackups() {
+      return weeklyBackups;
+    },
+    get win() {
+      return win;
+    },
+    get workflowRunner() {
+      return workflowRunner;
+    },
+  };
+  for (const group of ['backups', 'terms', 'documents', 'records', 'public', 'updates', 'messaging'])
+    require(`./ipc/${group}.cjs`)(ctx);
 }
 async function createWindow() {
   win = new BrowserWindow({
