@@ -12,6 +12,8 @@ const names = [
   'birthdays-smoke',
   'email-layout-smoke',
   'manual-update-smoke',
+  'documents-smoke',
+  'tools-smoke',
 ];
 const filter = process.argv[2] && process.argv[2] !== 'all' ? process.argv[2] : '';
 const exe = process.argv[3];

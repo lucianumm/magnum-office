@@ -12,6 +12,7 @@ import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { DatabaseSync } from 'node:sqlite';
 import semver from 'semver';
+import { createRequire } from 'node:module';
 import { testOffice } from './test-helpers.mjs';
 if (process.platform !== 'win32') throw new Error('Este teste é somente para Windows.');
 // In a disposable machine the published installer is used as it is, with the real identity.
@@ -23,12 +24,21 @@ const candidate = pkg.version;
 const second = semver.inc(candidate, 'patch');
 const failing = semver.inc(second, 'patch');
 const interrupted = semver.inc(failing, 'patch');
+const brokenStart = semver.inc(interrupted, 'patch');
+// E2E_ALLUSERS=1 runs everything as an installation "for all users" (needs an elevated prompt, as in CI).
+const allUsers = process.env.E2E_ALLUSERS === '1';
+const hive = allUsers ? 'HKLM' : 'HKCU';
+// Registry key of the NSIS installer for this appId (electron-builder derives it from the appId).
+const { UUID } = createRequire(import.meta.url)('builder-util-runtime');
+const installKey = `${hive}\\Software\\${UUID.v5(APP_ID, UUID.parse('50e065bc-3134-11e6-9bab-38c9862bdaf3'))}`;
 const work = path.resolve('work', 'update-e2e');
 const builds = path.join(work, 'builds');
 const runDir = path.join(work, 'run-' + Date.now());
 const installDir = path.join(runDir, 'programa instalado');
 const dataRoot = publishedBase ? path.join(process.env.APPDATA, 'AdvocaciaGestao') : path.join(runDir, 'dados');
 const exe = path.join(installDir, 'Advocacia Gestao.exe');
+// A folder the registry points at by mistake, as when an older installation was made elsewhere.
+const strayDir = path.join(runDir, 'outra pasta');
 const results = [];
 // The test must never touch the program installed on this computer.
 const realInstallation = () => {
@@ -68,7 +78,17 @@ function builder(args, include = 'work/update-e2e/e2e.nsh') {
 // Same process-closing rule as the release, without copying the installer to the real data folder.
 const includeFile = path.join(work, 'e2e.nsh');
 const custom = await fs.readFile('installers/custom.nsh', 'utf8');
-await fs.writeFile(includeFile, custom.replace(/!macro customInstall[\s\S]*?!macroend/, ''));
+// The installer looks for pending-update.json in %APPDATA%; the test data lives in its own folder.
+await fs.writeFile(
+  includeFile,
+  custom
+    .replace(/!macro customInstall[\s\S]*?!macroend/, '')
+    .replace(
+      "Join-Path $$env:APPDATA 'AdvocaciaGestao\\pending-update.json'",
+      `'${path.join(dataRoot, 'pending-update.json').replace(/'/g, "''")}'`,
+    ),
+);
+if (!(await fs.readFile(includeFile, 'utf8')).includes(dataRoot)) throw new Error('custom.nsh mudou: ajuste o teste.');
 await fs.writeFile(path.join(work, 'e2e-base.nsh'), '; Same process-closing rule as the published installers.\n');
 const installerOf = dir => {
   const name = fss.readdirSync(dir).find(n => n.endsWith('.exe') && n.includes('setup'));
@@ -92,6 +112,12 @@ if (!process.argv.includes('--skip-build')) {
   builder(['--config.directories.output=work/update-e2e/builds/candidate']);
   say(`Gerando segunda versão ${second}`);
   builder(['--config.directories.output=work/update-e2e/builds/second', `--config.extraMetadata.version=${second}`]);
+  say(`Gerando versão ${brokenStart}, que instala mas não abre`);
+  builder([
+    '--config.directories.output=work/update-e2e/builds/broken',
+    `--config.extraMetadata.version=${brokenStart}`,
+    '--config.extraMetadata.e2eFailStart=true',
+  ]);
 }
 const stopProgram = () =>
   spawnSync('powershell.exe', [
@@ -189,7 +215,8 @@ async function waitFor(test, limit, label) {
 async function firstInstall() {
   say(`Instalando ${baseVersion} em uma pasta de teste (com espaço no caminho)`);
   await new Promise((resolve, reject) => {
-    const c = spawn(`"${publishedBase || installerOf(path.join(builds, 'base'))}" /S /D=${installDir}`, {
+    const mode = allUsers ? '/allusers ' : '';
+    const c = spawn(`"${publishedBase || installerOf(path.join(builds, 'base'))}" /S ${mode}/D=${installDir}`, {
       shell: true,
       windowsVerbatimArguments: true,
     });
@@ -197,6 +224,19 @@ async function firstInstall() {
   });
   assert.ok(fss.existsSync(exe), 'Programa não instalado na pasta pedida');
 }
+// Points the installer's registry entry at another folder. Without the fix the silent update installs
+// there, reports success and the program in use stays old.
+function strayRegistry() {
+  const r = spawnSync(
+    'reg.exe',
+    ['add', installKey, '/v', 'InstallLocation', '/t', 'REG_SZ', '/d', strayDir, '/f', '/reg:64'],
+    {
+      encoding: 'utf8',
+    },
+  );
+  if (r.status !== 0) throw new Error('Não foi possível alterar o registro de teste: ' + r.stderr);
+}
+const strayUntouched = () => !fss.existsSync(path.join(strayDir, 'Advocacia Gestao.exe'));
 const launch = async ({ noPowerShell = false } = {}) => {
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
@@ -365,22 +405,27 @@ try {
       entity: { name: 'Cliente preservado', phone: '5564999990000', status: 'Ativo', emailPreference: 'Receber' },
     }),
   );
-  await step(`${baseVersion} → ${candidate}: atualizador publicado + instalador real`, async () => {
-    await update(session.app, session.page, {
-      target: candidate,
-      installer: installerOf(path.join(builds, 'candidate')),
-    });
-    await waitForGuardian(process.env.E2E_TRACE ? 240000 : 600000);
-    assert.ok(!log().includes('update.guardian.rollback'), 'O guardião reverteu:\n' + log());
-    assert.equal(readJSON('health.json').version, candidate);
-    await new Promise(r => setTimeout(r, 2500));
-    assert.equal(fss.existsSync(path.join(dataRoot, 'pending-update.json')), false);
-    assert.ok(visibleWindows().length > 0, 'A nova versão abriu sem janela visível');
-    return {
-      janelas: visibleWindows(),
-      reaberto: log().includes('update.guardian.success') ? 'pelo guardião' : 'pelo vigia do instalador',
-    };
-  });
+  if (!publishedBase) strayRegistry();
+  await step(
+    `${baseVersion} → ${candidate}: atualizador publicado + instalador real${publishedBase ? '' : ', registro apontando para outra pasta'}`,
+    async () => {
+      await update(session.app, session.page, {
+        target: candidate,
+        installer: installerOf(path.join(builds, 'candidate')),
+      });
+      await waitForGuardian(process.env.E2E_TRACE ? 240000 : 600000);
+      assert.ok(!log().includes('update.guardian.rollback'), 'O guardião reverteu:\n' + log());
+      assert.equal(readJSON('health.json').version, candidate);
+      assert.ok(strayUntouched(), 'O instalador usou a pasta errada do registro');
+      await new Promise(r => setTimeout(r, 2500));
+      assert.equal(fss.existsSync(path.join(dataRoot, 'pending-update.json')), false);
+      assert.ok(visibleWindows().length > 0, 'A nova versão abriu sem janela visível');
+      return {
+        janelas: visibleWindows(),
+        reaberto: log().includes('update.guardian.success') ? 'pelo guardião' : 'pelo vigia do instalador',
+      };
+    },
+  );
   stopProgram();
   await new Promise(r => setTimeout(r, 2000));
   await step('Dados preservados e versão registrada', async () => {
@@ -395,44 +440,50 @@ try {
     assert.equal(state.entities.clients.length, 1);
   });
   await fs.rm(path.join(dataRoot, 'logs', 'recovery.jsonl'), { force: true });
-  await step(`${candidate} → ${second}: atualizador novo, janela de progresso e novidades`, async () => {
-    await prepare(session.page);
-    await update(session.app, session.page, {
-      target: second,
-      installer: installerOf(path.join(builds, 'second')),
-      notes: 'Novidades da versão de teste',
-      onQuit: true,
-    });
-    // Someone double-clicks the shortcut while the update is running.
-    let midInstall = 'programa já removido pelo instalador';
-    if (fss.existsSync(exe)) {
-      const env = { ...process.env };
-      delete env.ELECTRON_RUN_AS_NODE;
-      const opened = spawn(exe, [`--data-dir=${dataRoot}`], { env, detached: true, stdio: 'ignore' });
-      opened.on('error', () => {});
-      opened.unref();
-      for (let i = 0; i < 6 && midInstall.startsWith('programa'); i++) {
-        await new Promise(r => setTimeout(r, 700));
-        if (visibleWindows().includes('Atualização em andamento')) midInstall = 'aviso exibido';
+  if (!publishedBase) strayRegistry();
+  await step(
+    `${candidate} → ${second}: atualizador novo, janela de progresso, novidades e registro errado`,
+    async () => {
+      await prepare(session.page);
+      await update(session.app, session.page, {
+        target: second,
+        installer: installerOf(path.join(builds, 'second')),
+        notes: 'Novidades da versão de teste',
+        onQuit: true,
+      });
+      // Someone double-clicks the shortcut while the update is running.
+      let midInstall = 'programa já removido pelo instalador';
+      if (fss.existsSync(exe)) {
+        const env = { ...process.env };
+        delete env.ELECTRON_RUN_AS_NODE;
+        const opened = spawn(exe, [`--data-dir=${dataRoot}`], { env, detached: true, stdio: 'ignore' });
+        opened.on('error', () => {});
+        opened.unref();
+        for (let i = 0; i < 6 && midInstall.startsWith('programa'); i++) {
+          await new Promise(r => setTimeout(r, 700));
+          if (visibleWindows().includes('Atualização em andamento')) midInstall = 'aviso exibido';
+        }
       }
-    }
-    results.midInstall = midInstall;
-    await waitFor(
-      async () => {
-        if (visibleWindows().some(title => title.startsWith('Atualiza'))) results.progressSeen = true;
-        return log().includes('update.guardian.success') || log().includes('update.guardian.rollback');
-      },
-      420000,
-      'guardião',
-    );
-    assert.ok(log().includes('update.guardian.success'), 'O guardião reverteu:\n' + log());
-    assert.ok(results.progressSeen, 'Janela de progresso não apareceu');
-    await new Promise(r => setTimeout(r, 2500));
-    assert.equal(readJSON('whats-new.json')?.notes, 'Novidades da versão de teste');
-    assert.equal(fss.existsSync(path.join(dataRoot, 'update-lock.json')), false);
-    assert.ok(visibleWindows().length > 0, 'A nova versão abriu sem janela visível');
-    return { abertoDuranteInstalacao: results.midInstall };
-  });
+      results.midInstall = midInstall;
+      await waitFor(
+        async () => {
+          if (visibleWindows().some(title => title.startsWith('Atualiza'))) results.progressSeen = true;
+          return log().includes('update.guardian.success') || log().includes('update.guardian.rollback');
+        },
+        420000,
+        'guardião',
+      );
+      assert.ok(log().includes('update.guardian.success'), 'O guardião reverteu:\n' + log());
+      assert.ok(strayUntouched(), 'O instalador usou a pasta errada do registro');
+      assert.ok(log().includes(allUsers ? '"mode":"/allusers"' : '"mode":"/currentuser"'), log());
+      assert.ok(results.progressSeen, 'Janela de progresso não apareceu');
+      await new Promise(r => setTimeout(r, 2500));
+      assert.equal(readJSON('whats-new.json')?.notes, 'Novidades da versão de teste');
+      assert.equal(fss.existsSync(path.join(dataRoot, 'update-lock.json')), false);
+      assert.ok(visibleWindows().length > 0, 'A nova versão abriu sem janela visível');
+      return { abertoDuranteInstalacao: results.midInstall };
+    },
+  );
   stopProgram();
   await new Promise(r => setTimeout(r, 2000));
   await fs.rm(path.join(dataRoot, 'logs', 'recovery.jsonl'), { force: true });
@@ -477,6 +528,28 @@ try {
     assert.ok(state.recovery?.failedVersion === failing);
   });
   await session.page.evaluate(() => window.advocacia.dismissRecoveryNotice());
+  await fs.rm(path.join(dataRoot, 'logs', 'recovery.jsonl'), { force: true });
+  await step(`${second} → ${brokenStart}: instala, mas a nova versão não abre e volta à anterior`, async () => {
+    await update(session.app, session.page, {
+      target: brokenStart,
+      installer: installerOf(path.join(builds, 'broken')),
+    });
+    await waitFor(() => readJSON('recovery-notice.json'), 420000, 'aviso de recuperação');
+    const notice = readJSON('recovery-notice.json');
+    assert.equal(notice.failedVersion, brokenStart);
+    assert.equal(notice.reason, 'starting');
+    assert.ok(log().includes('update.guardian.installed'), 'A instalação deveria ter sido conferida:\n' + log());
+    await waitFor(() => visibleWindows().length > 0, 60000, 'janela depois da reversão');
+    stopProgram();
+    await new Promise(r => setTimeout(r, 2500));
+    session = await launch();
+    const state = await session.page.evaluate(() => window.advocacia.state());
+    assert.equal(state.version, second, 'o programa anterior foi restaurado na pasta');
+    assert.equal(state.entities.clients.length, 1);
+    assert.ok(state.settings.blockedVersions.includes(brokenStart));
+    await session.page.evaluate(() => window.advocacia.dismissRecoveryNotice());
+    return { motivo: notice.reason };
+  });
   await fs.rm(path.join(dataRoot, 'logs', 'recovery.jsonl'), { force: true });
   await step(`Queda de energia durante a instalação de ${interrupted}`, async () => {
     await update(session.app, session.page, {
@@ -559,7 +632,7 @@ try {
       '-NoProfile',
       '-NonInteractive',
       '-Command',
-      `$d='${runDir.replace(/'/g, "''")}'; foreach ($root in 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall','HKCU:\\Software') { Get-ChildItem $root -ErrorAction SilentlyContinue | Where-Object { $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue; $p.InstallLocation -like ($d + '*') -or $p.UninstallString -like ('*' + $d + '*') } | Remove-Item -Recurse -Force }`,
+      `$d='${runDir.replace(/'/g, "''")}'; foreach ($root in 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall','HKCU:\\Software'${allUsers ? ",'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall','HKLM:\\Software'" : ''}) { Get-ChildItem $root -ErrorAction SilentlyContinue | Where-Object { $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue; $p.InstallLocation -like ($d + '*') -or $p.UninstallString -like ('*' + $d + '*') } | Remove-Item -Recurse -Force }`,
     ]);
     await fs.rm(installDir, { recursive: true, force: true }).catch(() => {});
     say('Instalação de teste removida.');
@@ -575,7 +648,11 @@ try {
   } else results.push({ name: 'Instalação real intacta', ok: true });
   await fs.writeFile(
     path.join(work, 'result.json'),
-    JSON.stringify({ at: new Date().toISOString(), baseVersion, candidate, second, failing, results }, null, 2),
+    JSON.stringify(
+      { at: new Date().toISOString(), baseVersion, candidate, second, failing, brokenStart, allUsers, results },
+      null,
+      2,
+    ),
   );
   say('Resultado: ' + path.join(work, 'result.json'));
 }

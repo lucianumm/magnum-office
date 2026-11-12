@@ -24,6 +24,9 @@ export const documentVariables = [
   ['processo.valor_causa', 'Valor da causa com extenso'],
   ['processo.parte_contraria', 'Parte contrária'],
   ['processo.parte_contraria_documento', 'CPF/CNPJ da parte contrária'],
+  ['calculo.total', 'Total do último cálculo trabalhista do processo, com extenso'],
+  ['calculo.verbas', 'Verbas rescisórias do último cálculo de rescisão, com extenso'],
+  ['debito.total', 'Total da última atualização de débito do processo, com extenso'],
   ['advogado.nome', 'Primeiro advogado escolhido'],
   ['advogado.oab', 'OAB do primeiro advogado'],
   ['advogado.email', 'E-mail do primeiro advogado'],
@@ -57,7 +60,15 @@ const oabNumber = n => String(n || '').replace(/^(\d+)(\d{3})([A-Z]?)$/, '$1.$2$
 export const lawyerOAB = l => `OAB/${l.uf} nº ${oabNumber(l.oab)}`;
 const listJoin = items => (items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} e ${items.at(-1)}`);
 
-export function documentContext({ client, caseItem, lawyers = [], settings = {}, courts = [], now = new Date() }) {
+export function documentContext({
+  client,
+  caseItem,
+  lawyers = [],
+  settings = {},
+  courts = [],
+  calculations = {},
+  now = new Date(),
+}) {
   const c = client || {},
     p = caseItem || {};
   const cnj = parseCNJ(p.number);
@@ -83,6 +94,9 @@ export function documentContext({ client, caseItem, lawyers = [], settings = {},
     'processo.valor_causa': p.claimValue ? moneyWithWords(p.claimValue) : '',
     'processo.parte_contraria': p.opposingParty,
     'processo.parte_contraria_documento': p.opposingDocument,
+    'calculo.total': calculations.labor?.total ? moneyWithWords(calculations.labor.total) : '',
+    'calculo.verbas': calculations.labor?.net ? moneyWithWords(calculations.labor.net) : '',
+    'debito.total': calculations.debt?.total ? moneyWithWords(calculations.debt.total) : '',
     'advogado.nome': first.name,
     'advogado.oab': first.oab ? lawyerOAB(first) : '',
     'advogado.email': first.email,
@@ -186,15 +200,48 @@ export const templateBlocks = template =>
 
 // ---- Filling --------------------------------------------------------------------------------
 
-const tokenPattern = /\{(\?[^{}]{0,120}|[a-z_]+\.[a-z_]+)\}/g;
+// Up to 400 characters, so a question with a list of options fits.
+const tokenPattern = /\{(\?[^{}]{0,400}|[a-z_]+\.[a-z_]+)\}/g;
 // "{?Valor recebido:moeda}" → { key, label, type: 'money' }
-function question(raw) {
-  const [label, type] = raw
-    .slice(1)
-    .split(':')
-    .map(s => s.trim());
-  return { key: raw.slice(1).trim(), label, type: type === 'moeda' ? 'money' : 'text' };
+// Types after the colon: moeda, data, sim/não, texto longo and opções=a|b|c.
+const normalize = value =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+export function questionType(spec) {
+  const t = normalize(spec);
+  if (!t) return { type: 'text' };
+  if (t === 'moeda') return { type: 'money' };
+  if (t === 'data') return { type: 'date' };
+  if (t === 'sim/nao' || t === 'simnao' || t === 'sim ou nao') return { type: 'yesno', options: ['Sim', 'Não'] };
+  if (t === 'texto longo' || t === 'longo') return { type: 'long' };
+  const options = /^op[cç]oes?\s*=/.test(t) || /^opcoes?\s*=/.test(t);
+  if (options) {
+    const list = String(spec)
+      .slice(String(spec).indexOf('=') + 1)
+      .split('|')
+      .map(o => o.trim())
+      .filter(Boolean)
+      .slice(0, 30);
+    if (list.length) return { type: 'options', options: [...new Set(list)] };
+  }
+  return { type: 'text' };
 }
+function question(raw) {
+  const body = raw.slice(1);
+  const colon = body.indexOf(':');
+  const label = (colon < 0 ? body : body.slice(0, colon)).trim();
+  return { key: body.trim(), label, ...questionType(colon < 0 ? '' : body.slice(colon + 1)) };
+}
+const isoToBR = value => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!m) return null;
+  const d = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value ? null : `${m[3]}/${m[2]}/${m[1]}`;
+};
 
 // Placeholder names copied from the help text ("{?Pergunta}") say nothing about the field. Each
 // occurrence of one of them is a separate question, named after the text that comes before it
@@ -320,6 +367,14 @@ export function fillBlocks(blocks, values, answers = {}) {
             const parsed = parseMoney(answer);
             if (parsed === null) invalid.add(label);
             value = parsed ? moneyWithWords(parsed) : '';
+          } else if (q.type === 'date' && answer) {
+            // The date field sends AAAA-MM-DD; a date typed as dd/mm/aaaa is also accepted.
+            const typed = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(answer);
+            value = isoToBR(typed ? `${typed[3]}-${typed[2]}-${typed[1]}` : answer) || '';
+            if (!value) invalid.add(label);
+          } else if ((q.type === 'options' || q.type === 'yesno') && answer) {
+            value = q.options.find(o => normalize(o) === normalize(answer)) || '';
+            if (!value) invalid.add(label);
           } else value = answer;
         } else if (raw in values) {
           label = labels[raw];

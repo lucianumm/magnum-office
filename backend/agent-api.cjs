@@ -4,7 +4,7 @@ const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
 const { z } = require('zod');
 const version = require('../app/version.cjs');
-const kinds = ['clients', 'tasks', 'notes', 'cases', 'people', 'finance', 'intakes'];
+const kinds = ['clients', 'tasks', 'notes', 'cases', 'people', 'finance', 'intakes', 'time'];
 // Read-only legal tools (1.9). None of them saves, sends or changes anything.
 const legalReadTools = [
   'get_case_summary',
@@ -125,6 +125,8 @@ class AgentAPI {
     try {
       if (!this.authorized(req))
         return json(401, { error: 'Acesso local autenticado obrigatório; origens de navegador não são aceitas.' });
+      if (this.isLocked?.())
+        return json(423, { error: 'O programa está bloqueado. Desbloqueie-o com a senha para usar a API.' });
       if (req.method === 'GET' && req.url === '/api/v1')
         return json(200, {
           name: 'Advocacia Gestão API',

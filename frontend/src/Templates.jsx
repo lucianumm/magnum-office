@@ -270,6 +270,11 @@ export default function Templates({ data, act, reload, kind = 'document', header
                   para um valor em reais com extenso, <code>{'{?Valor dos honorários:moeda}'}</code>.
                 </p>
                 <p>
+                  Outros tipos de resposta: <code>{'{?Data de admissão:data}'}</code>,{' '}
+                  <code>{'{?CTPS anotada:sim/não}'}</code>, <code>{'{?Relato dos fatos:texto longo}'}</code> e{' '}
+                  <code>{'{?Estado civil:opções=solteiro|casado|divorciado}'}</code>.
+                </p>
+                <p>
                   A mesma pergunta escrita em vários lugares é respondida uma vez só. Uma pergunta sem nome, como{' '}
                   <code>{'{?Pergunta}'}</code>, vira um campo separado em cada lugar, com o nome do texto que vem antes
                   dela (em “Telefone: {'{?Pergunta}'}”, o campo se chama Telefone).

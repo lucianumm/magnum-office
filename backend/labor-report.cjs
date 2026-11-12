@@ -23,6 +23,7 @@ const fields = [
   'extras',
   'salaryDays',
   'vestedPeriods',
+  'thirteenthAdvance',
   'doubledPeriods',
   'fgtsBalance',
 ];
@@ -62,6 +63,16 @@ function laborReport(input = {}) {
     p(''),
     p(`Gerado pelo Magnum Office em ${new Date().toLocaleDateString('pt-BR')}.`),
   ];
-  return { blocks, caseId, title: `Cálculo de rescisão ${br(r.termination).replace(/\//g, '-')}` };
+  return {
+    blocks,
+    caseId,
+    title: `Cálculo de rescisão ${br(r.termination).replace(/\//g, '-')}`,
+    calculation: {
+      type: 'labor',
+      total: (r.totals.total / 100).toFixed(2),
+      net: (r.totals.net / 100).toFixed(2),
+      date: r.termination,
+    },
+  };
 }
 module.exports = { laborReport };

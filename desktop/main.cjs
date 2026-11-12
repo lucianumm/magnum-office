@@ -13,6 +13,7 @@ const {
   nativeImage,
   Notification,
   clipboard,
+  powerMonitor,
 } = require('electron');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
@@ -40,6 +41,9 @@ const { Finance } = require('../backend/finance.cjs');
 const { Indices } = require('../backend/indices.cjs');
 const { DataJud } = require('../backend/datajud.cjs');
 const { CNPJLookup } = require('../backend/cnpj.cjs');
+const { CEPLookup } = require('../backend/cep.cjs');
+const { AppLock } = require('../backend/app-lock.cjs');
+const { Digest } = require('../backend/digest.cjs');
 const { DJEN } = require('../backend/djen.cjs');
 const { Intakes } = require('../backend/intakes.cjs');
 const { DocumentIndex } = require('../backend/document-index.cjs');
@@ -112,7 +116,10 @@ let win,
   djen,
   intakes,
   docIndex,
-  cnpj;
+  cnpj,
+  cep,
+  appLock,
+  digest;
 const operations = new Operations();
 let notificationTimer;
 let quitting = false;
@@ -146,6 +153,7 @@ function show() {
 function keepInBackground() {
   ensureTray();
   if (win && !win.isDestroyed()) win.hide();
+  if (appLock?.config().onHide && appLock.lock()) dataChanged();
   store?.audit('window.background');
 }
 function ensureTray() {
@@ -199,6 +207,12 @@ function applyBranding() {
 const readOnlyCommands = new Set([
   'ready',
   'state',
+  'trashList',
+  'lockConfig',
+  'lookupCEP',
+  'digestConfig',
+  'previewDigest',
+  'certificateInfo',
   'legalText',
   'previewDocument',
   'previewWorkflow',
@@ -231,6 +245,32 @@ const readOnlyCommands = new Set([
   'searchDocuments',
 ]);
 let changeTimer = null;
+// Locking (idle time, Windows session lock), the morning summary and the trash cleanup.
+function startLockAndDailyTasks() {
+  const lockNow = () => {
+    if (appLock?.lock()) dataChanged();
+  };
+  powerMonitor.on('lock-screen', () => {
+    if (appLock?.config().onHide) lockNow();
+  });
+  let lastPurge = '';
+  const tick = () => {
+    try {
+      if (appLock?.idle(powerMonitor.getSystemIdleTime())) dataChanged();
+      const day = new Date().toISOString().slice(0, 10);
+      if (lastPurge !== day) {
+        lastPurge = day;
+        if (store.purgeTrash({ olderThanDays: 30 })) dataChanged();
+      }
+      if (settings.get().termsAcceptedVersion === terms.version && !operations.maintenance && digest.tick())
+        dataChanged();
+    } catch {
+      /* Each part records its own failures; the next tick tries again. */
+    }
+  };
+  tick();
+  setInterval(tick, 30000).unref();
+}
 function dataChanged() {
   if (changeTimer) return;
   changeTimer = setTimeout(() => {
@@ -315,6 +355,8 @@ function register(command, handler) {
         ].includes(command)
       )
         throw new Error('Leia e aceite os termos antes de usar esta função.');
+      if (appLock?.locked && !['ready', 'state', 'unlockApp', 'window', 'legalText'].includes(command))
+        throw new Error('O programa está bloqueado. Digite a senha para continuar.');
       if (data !== undefined && JSON.stringify(data).length > 400000)
         throw new Error('Solicitação maior que o limite permitido.');
       const value = await handler(data);
@@ -334,7 +376,19 @@ function register(command, handler) {
   });
 }
 function state() {
+  if (appLock?.locked)
+    return {
+      locked: true,
+      settings: {
+        appName: settings.get().appName,
+        theme: settings.get().theme,
+        appearance: settings.get().appearance,
+        density: settings.get().density,
+      },
+      version,
+    };
   return {
+    locked: false,
     backupSchedule: weeklyBackups.get(),
     terms,
     termsAccepted: settings.get().termsAcceptedVersion === terms.version,
@@ -351,7 +405,7 @@ function state() {
     settings: settings.get(),
     counts: store.counts(),
     entities: Object.fromEntries(
-      ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes'].map(kind => [
+      ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes', 'time'].map(kind => [
         kind,
         store.list(kind),
       ]),
@@ -379,6 +433,15 @@ function bindHandlers() {
   // The IPC files under desktop/ipc read the current objects through this context.
   const ctx = {
     desktopDir: __dirname,
+    get appLock() {
+      return appLock;
+    },
+    get cep() {
+      return cep;
+    },
+    get digest() {
+      return digest;
+    },
     get Notification() {
       return Notification;
     },
@@ -536,7 +599,7 @@ function bindHandlers() {
       return workflowRunner;
     },
   };
-  for (const group of ['backups', 'terms', 'documents', 'records', 'public', 'updates', 'messaging'])
+  for (const group of ['backups', 'terms', 'documents', 'records', 'public', 'updates', 'messaging', 'extras'])
     require(`./ipc/${group}.cjs`)(ctx);
 }
 async function createWindow() {
@@ -597,6 +660,12 @@ function updateInProgress() {
   }
 }
 async function boot() {
+  // Only the "broken" build of scripts/update-e2e.mjs carries this flag: a version that installs but does
+  // not start, to prove the guardian restores the previous one. Released packages never have it.
+  if (app.isPackaged && require('../package.json').e2eFailStart === true && !recovering) {
+    app.exit(3);
+    return;
+  }
   const waitPid = Number(getArg('--wait-pid='));
   if (recovering && waitPid > 0) {
     for (let i = 0; i < 120; i++) {
@@ -728,6 +797,9 @@ async function boot() {
   indices = new Indices({ root: dataRoot, fetch: publicFetch, store });
   datajud = new DataJud({ store, settings, fetch: publicFetch });
   cnpj = new CNPJLookup({ store, fetch: publicFetch });
+  cep = new CEPLookup({ store, fetch: publicFetch });
+  appLock = new AppLock({ store, settings });
+  digest = new Digest({ store, settings, messaging, djen: null });
   djen = new DJEN({ store, settings, fetch: publicFetch });
   intakes = new Intakes({ store });
   docIndex = new DocumentIndex({ store, documents });
@@ -746,6 +818,9 @@ async function boot() {
     courts: courts.courts,
   });
   agentAPI.requireTerms = true;
+  // While the program is locked the agents' API answers nothing.
+  agentAPI.isLocked = () => Boolean(appLock?.locked);
+  digest.djen = djen;
   await agentAPI.start();
   birthdays = new (require('../backend/birthdays.cjs').Birthdays)({ store, settings, library, messaging });
   messaging.birthdays = birthdays;
@@ -779,6 +854,7 @@ async function boot() {
     clearTimeout(readyTimeout);
   }
   store.audit('application.started', { version });
+  startLockAndDailyTasks();
   setTimeout(() => void weeklyBackups.tick(), 3000);
   if (fs.existsSync(pendingFile)) {
     const pending = JSON.parse(fs.readFileSync(pendingFile, 'utf8'));

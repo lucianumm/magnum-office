@@ -18,6 +18,13 @@ function parseFiled(value) {
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';
 }
 
+// IBGE municipality code → name, as the DataJud sends it with the court (orgaoJulgador.codigoMunicipioIBGE).
+let municipalities = null;
+function countyFromCode(code) {
+  if (!code) return '';
+  municipalities ||= require('../app/municipios.json');
+  return municipalities[String(code)]?.[0] || '';
+}
 const instances = {
   G1: '1º grau',
   G2: '2º grau',
@@ -142,8 +149,10 @@ class DataJud {
     const json = await response.json();
     return (json?.hits?.hits || []).map(h => h._source).filter(Boolean);
   }
-  async refresh(caseId) {
-    if (!this.settings.get().datajudEnabled)
+  // requested: the person looked the number up in the case form and saved it, which is consent for
+  // this one case even with the daily check turned off.
+  async refresh(caseId, { requested = false } = {}) {
+    if (!requested && !this.settings.get().datajudEnabled)
       throw new Error('Ative a consulta ao DataJud em Configurações → Consultas públicas.');
     const caseItem = this.store.get('cases', uuid(caseId));
     const alias = this.alias(caseItem);
@@ -225,7 +234,7 @@ class DataJud {
     const fields = {
       procedure: classe,
       court: orgao,
-      county: countyFrom(orgao),
+      county: countyFromCode(latest.orgaoJulgador?.codigoMunicipioIBGE) || countyFrom(orgao),
       filedAt: parseFiled(first.dataAjuizamento),
       instance: instances[latest.grau] || '',
       area: areaFrom(parsed.segment, classe),

@@ -10,7 +10,20 @@ const {
   intakeStatuses,
   intakeSources,
 } = require('../app/legal-options.mjs');
-const kinds = ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes'];
+const limitationRuleIds = [
+  'trabalhista',
+  'reparacao',
+  'consumidor',
+  'cobranca',
+  'tributario',
+  'previdenciario',
+  'geral',
+];
+const validDate = value =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+  new Date(value + 'T12:00:00Z').toISOString().slice(0, 10) === value &&
+  value >= '1900-01-01';
+const kinds = ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes', 'time'];
 const fields = {
   clients: {
     name: 160,
@@ -62,6 +75,8 @@ const fields = {
     filedAt: 10,
     tags: 300,
     parentCaseId: 36,
+    factDate: 10,
+    limitationRule: 20,
   },
   tasks: {
     title: 200,
@@ -77,8 +92,12 @@ const fields = {
     reminderTemplateId: 36,
     reminderMessageId: 36,
     reminderKey: 64,
+    seriesId: 36,
+    repeat: 20,
   },
   notes: { title: 200, content: 60000, caseId: 36 },
+  // Hours worked on a case; billed holds the finance entry that charged them.
+  time: { caseId: 36, date: 10, minutes: 5, description: 300, lawyer: 160, rate: 20, billed: 36 },
   documents: { name: 255, caseId: 36, clientId: 36, notes: 4000 },
   people: { name: 160, role: 40, document: 32, email: 254, phone: 40, oab: 20, caseId: 36, notes: 4000 },
   intakes: {
@@ -235,6 +254,9 @@ function entity(kind, data, { allowLegacyContact = false } = {}) {
       throw new Error('Opção de segredo de justiça inválida.');
     result.secret = data.secret === true;
     if (result.parentCaseId) uuid(result.parentCaseId);
+    if (result.factDate && !validDate(result.factDate)) throw new Error('Informe uma data do fato válida.');
+    if (result.limitationRule && !limitationRuleIds.includes(result.limitationRule))
+      throw new Error('Regra de prescrição inválida.');
     result.tags = [
       ...new Set(
         result.tags
@@ -244,6 +266,17 @@ function entity(kind, data, { allowLegacyContact = false } = {}) {
       ),
     ].join(', ');
   }
+  if (kind === 'time') {
+    if (!result.caseId) throw new Error('Escolha o processo das horas.');
+    uuid(result.caseId);
+    if (!validDate(result.date)) throw new Error('Informe a data das horas.');
+    const minutes = Number(result.minutes);
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440) throw new Error('Minutos: de 1 a 1.440.');
+    result.minutes = String(minutes);
+    result.rate = money(result.rate, 'o valor da hora');
+    if (result.billed) uuid(result.billed);
+  }
+  if (kind === 'tasks' && result.seriesId) uuid(result.seriesId);
   if (kind === 'people') {
     if (!personRoles.includes(result.role)) result.role = 'Outro';
     result.document = documentNumber(result.document, allowLegacyContact, 'CPF ou CNPJ');

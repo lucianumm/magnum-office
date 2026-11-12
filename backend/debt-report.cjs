@@ -72,6 +72,11 @@ function report(input, indices) {
       `Índices: Banco Central do Brasil, Sistema Gerenciador de Séries Temporais (SGS). Gerado pelo Magnum Office em ${new Date().toLocaleDateString('pt-BR')}.`,
     ),
   ];
-  return { blocks, caseId, title: `Memória de cálculo ${br(r.end).replace(/\//g, '-')}` };
+  return {
+    blocks,
+    caseId,
+    title: `Memória de cálculo ${br(r.end).replace(/\//g, '-')}`,
+    calculation: { type: 'debt', total: String(r.total), date: r.end },
+  };
 }
 module.exports = { report };

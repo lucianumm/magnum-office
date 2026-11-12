@@ -13,35 +13,64 @@ module.exports = function registerPublic(ctx) {
   );
   ctx.register('saveDebtReport', input =>
     ctx.operations.run('Memória de cálculo', async () => {
-      const { blocks, caseId, title } = require('../../backend/debt-report.cjs').report(input, ctx.indices);
+      const { blocks, caseId, title, calculation } = require('../../backend/debt-report.cjs').report(
+        input,
+        ctx.indices,
+      );
       const caseItem = caseId ? ctx.store.get('cases', caseId) : null;
       const pdfBytes = await require('../../backend/document-files.cjs').pdf(blocks, {
         title,
         author: ctx.settings.get().officeName,
       });
-      return ctx.documents.save(`${title}.pdf`, pdfBytes, {
-        caseId: caseItem?.id || '',
-        clientId: caseItem?.clientId || '',
-      });
+      return ctx.documents.save(
+        `${title}.pdf`,
+        pdfBytes,
+        { caseId: caseItem?.id || '', clientId: caseItem?.clientId || '' },
+        { calculation },
+      );
     }),
   );
   ctx.register('saveLaborReport', input =>
     ctx.operations.run('Memória de cálculo', async () => {
-      const { blocks, caseId, title } = require('../../backend/labor-report.cjs').laborReport(input);
+      const { blocks, caseId, title, calculation } = require('../../backend/labor-report.cjs').laborReport(input);
       const caseItem = caseId ? ctx.store.get('cases', caseId) : null;
       const pdfBytes = await require('../../backend/document-files.cjs').pdf(blocks, {
         title,
         author: ctx.settings.get().officeName,
       });
-      return ctx.documents.save(`${title}.pdf`, pdfBytes, {
-        caseId: caseItem?.id || '',
-        clientId: caseItem?.clientId || '',
+      return ctx.documents.save(
+        `${title}.pdf`,
+        pdfBytes,
+        { caseId: caseItem?.id || '', clientId: caseItem?.clientId || '' },
+        { calculation },
+      );
+    }),
+  );
+  ctx.register('saveLiquidationReport', input =>
+    ctx.operations.run('Memória de cálculo', async () => {
+      const { blocks, caseId, title, calculation } = require('../../backend/liquidation-report.cjs').liquidationReport(
+        input,
+        ctx.indices,
+      );
+      const caseItem = caseId ? ctx.store.get('cases', caseId) : null;
+      const pdfBytes = await require('../../backend/document-files.cjs').pdf(blocks, {
+        title,
+        author: ctx.settings.get().officeName,
       });
+      return ctx.documents.save(
+        `${title}.pdf`,
+        pdfBytes,
+        { caseId: caseItem?.id || '', clientId: caseItem?.clientId || '' },
+        { calculation },
+      );
     }),
   );
   ctx.register('caseMovements', caseId => ctx.datajud.movements(caseId));
   ctx.register('lookupCase', number => ctx.datajud.lookup(number));
   ctx.register('lookupCNPJ', value => ctx.cnpj.lookup(value));
+  ctx.register('importMovementsAfterLookup', caseId =>
+    ctx.operations.run('Consulta ao DataJud', () => ctx.datajud.refresh(caseId, { requested: true })),
+  );
   ctx.register('refreshMovements', caseId =>
     ctx.operations.run('Consulta ao DataJud', () => ctx.datajud.refresh(caseId)),
   );

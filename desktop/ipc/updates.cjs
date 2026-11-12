@@ -3,6 +3,13 @@
 module.exports = function registerUpdates(ctx) {
   ctx.register('installUpdateOnQuit', value => ctx.updater.setInstallOnQuit(value));
   ctx.register('checkUpdate', () => ctx.updater.check());
+  // The last attempt recorded by the update guardian, for the screen and for support.
+  ctx.register('updateAttempt', () => require('../../backend/update-history.cjs').lastAttempt(ctx.dataRoot));
+  ctx.register('copyUpdateDiagnostic', async () => {
+    const { lastAttempt, attemptText } = require('../../backend/update-history.cjs');
+    ctx.clipboard.writeText(attemptText(await lastAttempt(ctx.dataRoot), ctx.version));
+    return true;
+  });
   ctx.register('forceUpdate', async () => {
     const response = await ctx.dialog.showMessageBox(ctx.win, {
       type: 'question',

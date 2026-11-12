@@ -11,6 +11,7 @@ export default function PublicSettings({ data, act }) {
     datajudKey: s.datajudKey || '',
     caseLookupEnabled: s.caseLookupEnabled,
     cnpjLookupEnabled: s.cnpjLookupEnabled,
+    cepLookupEnabled: s.cepLookupEnabled,
   });
   const lawyers = (s.lawyers || []).filter(l => l.oab && l.uf);
   const save = () => act(() => window.advocacia.saveSettings(form), 'Consultas públicas salvas.');
@@ -61,6 +62,12 @@ export default function PublicSettings({ data, act }) {
             onChange={v => setForm(f => ({ ...f, cnpjLookupEnabled: v }))}
             title="Preencher a empresa pelo CNPJ (Receita Federal)"
             description="Ao informar um CNPJ válido no cliente ou na parte contrária, busca razão social, endereço e sócio administrador na BrasilAPI (ou no minhareceita.org, se ela falhar) e preenche só os campos vazios. Envia apenas o número do CNPJ. Desligado, o botão Buscar dados da empresa continua disponível no formulário."
+          />
+          <Toggle
+            checked={form.cepLookupEnabled}
+            onChange={v => setForm(f => ({ ...f, cepLookupEnabled: v }))}
+            title="Preencher o endereço pelo CEP"
+            description="Ao informar o CEP do cliente, busca logradouro, bairro, cidade e UF na BrasilAPI (ou no ViaCEP, se ela falhar) e preenche só os campos vazios. Envia apenas os 8 dígitos do CEP. Desligado, o botão Buscar endereço continua disponível."
           />
           <div className="section-divider" />
           <Toggle

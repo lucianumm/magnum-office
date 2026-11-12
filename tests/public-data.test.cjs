@@ -306,6 +306,9 @@ test('DataJud: request format, merged movements, news count and errors', async t
   const noNumber = store.save('cases', { title: 'Sem número', status: 'Em andamento' });
   await assert.rejects(datajud.refresh(noNumber.id), /número CNJ válido/);
   store.remove('cases', caseItem.id);
+  // In the trash the movements are kept, so restoring brings them back; deleting for good removes them.
+  assert.equal(store.db.prepare('SELECT COUNT(*) AS n FROM case_movements').get().n, 1, 'one row per case');
+  store.purgeTrash({ id: caseItem.id });
   assert.equal(store.db.prepare('SELECT COUNT(*) AS n FROM case_movements').get().n, 0);
 });
 
@@ -390,6 +393,26 @@ test('DataJud lookup fills the case form from the number alone, without storing 
     'Rio Verde',
     'labour courts put the city first',
   );
+  // The IBGE code wins over the court name, which may not have a recognisable city.
+  const coded = new DataJud({
+    store,
+    settings,
+    fetch: fakeFetch(() => ({
+      body: {
+        hits: {
+          hits: [
+            {
+              _source: {
+                ...source('G1', '', '1ª VARA CÍVEL DO RIO DE JANEIRO', 'Procedimento Comum Cível'),
+                orgaoJulgador: { nome: '1ª VARA CÍVEL DO RIO DE JANEIRO', codigoMunicipioIBGE: 3304557 },
+              },
+            },
+          ],
+        },
+      },
+    })).fetch,
+  });
+  assert.equal((await coded.lookup('0010001-69.2024.5.18.0101')).fields.county, 'Rio de Janeiro');
   assert.equal(family.fields.area, 'Trabalhista', 'the CNJ segment wins over the class');
   const empty = new DataJud({ store, settings, fetch: fakeFetch(() => ({ body: { hits: { hits: [] } } })).fetch });
   assert.deepEqual(await empty.lookup('0010001-69.2024.5.18.0101'), {

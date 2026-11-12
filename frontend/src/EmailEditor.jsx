@@ -32,7 +32,8 @@ export default function EmailEditor({
     [error, setError] = useState(''),
     [tab, setTab] = useState('edit'),
     [question, setQuestion] = useState(''),
-    [money, setMoney] = useState(false);
+    [questionKind, setQuestionKind] = useState(''),
+    [choices, setChoices] = useState('');
   useEffect(() => {
     last.current = { html: initialHTML, body: initialText };
     if (initialHTML) editor.current.innerHTML = initialHTML;
@@ -175,10 +176,23 @@ export default function EmailEditor({
               value={question}
               onChange={e => setQuestion(e.target.value)}
             />
-            <label className="check-row">
-              <input type="checkbox" checked={money} onChange={e => setMoney(e.target.checked)} />
-              Valor em reais
-            </label>
+            <select aria-label="Tipo da resposta" value={questionKind} onChange={e => setQuestionKind(e.target.value)}>
+              <option value="">Texto curto</option>
+              <option value="texto longo">Texto longo</option>
+              <option value="moeda">Valor em reais</option>
+              <option value="data">Data</option>
+              <option value="sim/não">Sim ou não</option>
+              <option value="opções">Lista de opções</option>
+            </select>
+            {questionKind === 'opções' && (
+              <input
+                aria-label="Opções separadas por barra"
+                placeholder="solteiro | casado | divorciado"
+                maxLength={300}
+                value={choices}
+                onChange={e => setChoices(e.target.value)}
+              />
+            )}
             <Button
               type="button"
               tone="secondary"
@@ -189,9 +203,19 @@ export default function EmailEditor({
                   setError('Escreva a pergunta sem chaves nem dois-pontos, por exemplo: Nome do reclamante.');
                   return;
                 }
+                const list = choices
+                  .split('|')
+                  .map(c => c.trim())
+                  .filter(Boolean);
+                if (questionKind === 'opções' && (list.length < 2 || list.some(c => /[{}]/.test(c)))) {
+                  setError('Escreva pelo menos duas opções separadas por barra, por exemplo: solteiro | casado.');
+                  return;
+                }
                 setError('');
-                command('insertText', `{?${label}${money ? ':moeda' : ''}}`);
+                const type = questionKind === 'opções' ? `opções=${list.join('|')}` : questionKind;
+                command('insertText', `{?${label}${type ? ':' + type : ''}}`);
                 setQuestion('');
+                setChoices('');
               }}
             >
               Inserir pergunta

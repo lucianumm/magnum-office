@@ -159,7 +159,7 @@ module.exports = function registerBackups(ctx) {
       await ctx.fsp.mkdir(dest, { mode: 0o700 });
       await ctx.fsp.mkdir(ctx.path.join(dest, 'documentos'));
       const entities = Object.fromEntries(
-        ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes'].map(kind => [
+        ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes', 'time'].map(kind => [
           kind,
           ctx.store.list(kind),
         ]),

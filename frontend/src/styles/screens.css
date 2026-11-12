@@ -471,6 +471,13 @@
   flex-direction: column;
   gap: var(--space-3);
   min-width: 0;
+  /* Stays in view while the questions on the left scroll. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+.document-preview mark {
+  cursor: pointer;
 }
 .document-preview {
   max-height: 56vh;
@@ -1316,6 +1323,30 @@
 }
 .manual-update small {
   color: var(--text-3);
+}
+.update-attempt {
+  margin-top: var(--space-3);
+  align-items: flex-start;
+}
+.update-attempt ul {
+  margin: var(--space-1) 0 var(--space-2);
+  padding-left: var(--space-4);
+  line-height: 1.6;
+}
+.update-attempt code {
+  word-break: break-all;
+}
+.update-attempt .heading-actions {
+  justify-content: flex-start;
+}
+.attempt-green {
+  color: var(--success, #15803d);
+}
+.attempt-red {
+  color: var(--danger);
+}
+.attempt-amber {
+  color: var(--warning, #b45309);
 }
 .export-section {
   display: flex;
@@ -2759,4 +2790,167 @@
   .setup-progress li {
     font-size: var(--text-xs);
   }
+}
+
+/* Toast with an action (Desfazer). */
+.toast .toast-action {
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* Lock screen. */
+.lock-screen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--bg, var(--surface-2));
+  padding: var(--space-5);
+}
+.lock-card {
+  width: min(380px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6, 32px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+}
+.lock-card > svg {
+  color: var(--accent);
+}
+.lock-card h1 {
+  font-size: var(--text-lg, 18px);
+  margin: 0;
+}
+.lock-card p,
+.lock-card small {
+  margin: 0;
+  color: var(--text-2);
+}
+
+/* Trash. */
+.trash-list {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+}
+.trash-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.trash-list li > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.trash-list small {
+  color: var(--text-3);
+}
+
+/* Cases by phase. */
+.case-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(220px, 1fr);
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding: var(--space-3) 0;
+}
+.board-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 200px;
+  padding: var(--space-2);
+  background: var(--surface-2);
+  border: 1px dashed transparent;
+  border-radius: var(--radius-md);
+}
+.board-column.over {
+  border-color: var(--accent);
+}
+.board-column header {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  padding: var(--space-1);
+}
+.board-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: grab;
+  font-size: var(--text-sm);
+}
+.board-card:focus-visible {
+  outline: 2px solid var(--accent);
+}
+.board-card small {
+  color: var(--text-3);
+}
+
+/* Hours of a case. */
+.time-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.time-form .field {
+  min-width: 110px;
+}
+.time-form .field.grow {
+  flex: 1;
+  min-width: 200px;
+}
+.time-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.time-table th,
+.time-table td {
+  text-align: left;
+  padding: 6px var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+.time-table .numeric {
+  text-align: right;
+}
+.time-table tr.billed td {
+  color: var(--text-3);
+}
+.time-summary {
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-3);
+}
+
+/* Document expiry in the list. */
+.inline-date {
+  min-height: 30px;
+  padding: 2px var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.digest-preview {
+  white-space: pre-wrap;
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
 }

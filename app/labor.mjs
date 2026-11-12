@@ -93,6 +93,8 @@ export function calculateSeverance(input) {
   const extras = cents(input.extras);
   if (!salary) throw new Error('Informe o salário mensal.');
   if (extras === null) throw new Error('Valor inválido nas médias de variáveis.');
+  const advance = cents(input.thirteenthAdvance);
+  if (advance === null) throw new Error('Valor inválido no adiantamento do 13º.');
   const balance = String(input.fgtsBalance ?? '').trim() ? cents(input.fgtsBalance) : '';
   if (balance === null) throw new Error('Valor inválido no saldo do FGTS.');
   const vested = Math.max(0, Math.min(10, Number.parseInt(input.vestedPeriods, 10) || 0));
@@ -203,6 +205,10 @@ export function calculateSeverance(input) {
       'Na justa causa são devidos apenas o saldo de salário e as férias vencidas com 1/3 (Súmula 171 do TST).',
     );
   }
+  if (advance && kind !== 'justa-causa') {
+    add('adiantamento-13', 'Adiantamento do 13º salário já pago', '', advance, true);
+    basis.push('O adiantamento do 13º pago no ano (1ª parcela) é abatido do 13º proporcional.');
+  }
   if (input.art477) {
     add('multa-477', 'Multa do art. 477, § 8º, da CLT (atraso no pagamento)', '1 salário', salary);
     basis.push(
@@ -239,8 +245,13 @@ export function calculateSeverance(input) {
     );
   if (kind === 'pedido' || kind === 'justa-causa')
     warnings.push('Não há multa do FGTS nem saque do saldo nesta modalidade.');
+  // A full period completed by the termination date is easy to forget in "férias vencidas".
+  if (!vested && years > 0)
+    warnings.push(
+      `O contrato completou ${years} período(s) aquisitivo(s) de férias. Informe em Férias vencidas os que não foram gozados; eles são devidos em qualquer modalidade.`,
+    );
   warnings.push(
-    'Estimativa sem descontos de INSS e IRRF, sem horas extras, adicionais ou médias não informados, e sem correção ou juros. Confira o adiantamento do 13º, se houver.',
+    'Estimativa sem descontos de INSS e IRRF, sem horas extras, adicionais ou médias não informados, e sem correção ou juros.',
   );
 
   const gross = items.filter(i => !i.debit).reduce((n, i) => n + i.value, 0);

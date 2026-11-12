@@ -21,12 +21,14 @@ import {
   Plus,
   Upload,
   Trash2,
+  HandCoins,
 } from 'lucide-react';
 import { Badge, Button, DataTable, Empty, Panel, bytes, date, dateTime, formatPhone, dayKey } from './components.jsx';
 import { messageLabels } from './Messages.jsx';
 import { parseCNJ } from '../../app/cnj.mjs';
 import Finance from './Finance.jsx';
 import Movements from './Movements.jsx';
+import TimeEntries from './TimeEntries.jsx';
 import { qualification, clientAddress } from '../../app/qualification.mjs';
 
 const currency = value => (value ? Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '');
@@ -70,6 +72,7 @@ export default function Detail({
   reload,
   generateDocument,
   calculateDeadline,
+  calculateSeverance,
   applyWorkflow,
   navigateSettings,
 }) {
@@ -125,6 +128,7 @@ export default function Detail({
     ['notes', 'Anotações', notes.length],
     ...(isClient ? [] : [['people', 'Pessoas', people.length]]),
     ...(isClient ? [] : [['movements', 'Andamentos', data.movementsNew?.[id] || undefined]]),
+    ...(isClient ? [] : [['time', 'Horas', (data.entities.time || []).filter(t => t.caseId === id).length]]),
     [
       'finance',
       'Financeiro',
@@ -274,9 +278,16 @@ export default function Detail({
               Novo prazo
             </Button>
           ) : (
-            <Button tone="secondary" icon={Calculator} onClick={() => calculateDeadline(id)}>
-              Calcular prazo
-            </Button>
+            <>
+              <Button tone="secondary" icon={Calculator} onClick={() => calculateDeadline(id)}>
+                Calcular prazo
+              </Button>
+              {item.area === 'Trabalhista' && calculateSeverance && (
+                <Button tone="secondary" icon={HandCoins} onClick={() => calculateSeverance(id)}>
+                  Calcular rescisão
+                </Button>
+              )}
+            </>
           )}
           <Button tone="secondary" icon={Pencil} onClick={() => edit(kind, item)}>
             Editar
@@ -604,6 +615,7 @@ export default function Detail({
           composeMessage={composeMessage}
         />
       )}
+      {tab === 'time' && !isClient && <TimeEntries {...{ caseItem: item, data, save, act, remove }} />}
       {tab === 'finance' && (
         <Finance
           {...{ data, act, create, edit, remove, save, composeMessage, generateDocument }}

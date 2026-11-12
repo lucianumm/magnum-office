@@ -160,3 +160,29 @@ test('the PDF report is recalculated from the inputs and becomes a valid PDF', a
   assert.equal((await pdf(blocks, { title })).subarray(0, 5).toString(), '%PDF-');
   assert.throws(() => laborReport({ salary: 'x'.repeat(100) }), /Campo inválido/);
 });
+
+test('the 13th advance is deducted and forgotten vacation periods are pointed out', () => {
+  const r = calculateSeverance({
+    kind: 'sem-justa-causa',
+    notice: 'indenizado',
+    admission: '2022-03-10',
+    termination: '2025-08-20',
+    salary: '3.000,00',
+    thirteenthAdvance: '1.000,00',
+    fgtsBalance: '9.000,00',
+  });
+  const advance = r.items.find(i => i.key === 'adiantamento-13');
+  assert.deepEqual([advance.value, advance.debit], [100000, true]);
+  assert.equal(r.totals.deductions, 100000);
+  assert.ok(r.warnings.some(w => /completou 3 período\(s\) aquisitivo/.test(w)));
+  assert.throws(
+    () =>
+      calculateSeverance({
+        admission: '2024-01-10',
+        termination: '2025-01-10',
+        salary: '1000',
+        thirteenthAdvance: 'x',
+      }),
+    /adiantamento/,
+  );
+});

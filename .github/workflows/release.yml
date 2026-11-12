@@ -1,4 +1,4 @@
-name: Gerar release Windows
+name: Gerar release Windows e Linux
 on:
   workflow_dispatch:
     inputs:
@@ -9,7 +9,38 @@ on:
 permissions:
   contents: read
 jobs:
+  # Linux packages (AppImage, which updates itself, and .deb). They enter the same signed manifest,
+  # written by the Windows job.
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Incorporar chave pública
+        run: node scripts/configure-release.mjs
+        env:
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+      - name: Gerar AppImage e .deb
+        run: |
+          npx vite build
+          npx electron-builder --linux AppImage deb --x64 --publish never
+      - uses: actions/upload-artifact@v7
+        with:
+          name: instaladores-linux
+          path: |
+            installers/artifacts/*.AppImage
+            installers/artifacts/*.deb
+          if-no-files-found: error
   windows:
+    needs: linux
     runs-on: windows-latest
     timeout-minutes: 90
     permissions:
@@ -44,6 +75,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
       - name: Atualização real em Windows limpo
         run: npm run test:update-e2e
+      # Second pass on the same disposable machine: data from the first pass is cleared, and the first
+      # installation stays registered "for this user", so both registrations exist at once.
+      - name: Atualização real com instalação para todos os usuários
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force (Join-Path $env:APPDATA 'AdvocaciaGestao') -ErrorAction SilentlyContinue
+          npm run test:update-e2e -- --skip-build
+        env:
+          E2E_ALLUSERS: '1'
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -67,6 +107,10 @@ jobs:
         run: |
           node scripts/run-smokes.mjs all "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
           node scripts/guardian-smoke.mjs "${{ github.workspace }}/installers/artifacts/win-unpacked/Advocacia Gestao.exe"
+      - uses: actions/download-artifact@v7
+        with:
+          name: instaladores-linux
+          path: installers/artifacts
       - name: Assinar manifesto de atualização
         run: node scripts/release-manifest.mjs
         env:
@@ -83,7 +127,7 @@ jobs:
           $version = $env:RELEASE_TAG.TrimStart('v')
           $notes = (Get-Content CHANGELOG.md -Raw) -split '(?m)^## ' | Where-Object { $_.StartsWith("$version ") } | Select-Object -First 1
           ($notes -replace '^[^\n]*\n', '').Trim() | Out-File release-notes.md -Encoding utf8
-          gh release create "$env:RELEASE_TAG" installers/artifacts/*.exe installers/artifacts/release-*.json installers/artifacts/release-*.json.sig installers/artifacts/checksums.txt @releaseFlags --title "Magnum Office $env:RELEASE_TAG" --notes-file release-notes.md
+          gh release create "$env:RELEASE_TAG" installers/artifacts/*.exe installers/artifacts/*.AppImage installers/artifacts/*.deb installers/artifacts/release-*.json installers/artifacts/release-*.json.sig installers/artifacts/checksums.txt @releaseFlags --title "Magnum Office $env:RELEASE_TAG" --notes-file release-notes.md
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}

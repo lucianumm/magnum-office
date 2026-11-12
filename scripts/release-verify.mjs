@@ -65,6 +65,22 @@ if (bytes && signature) {
   } catch (error) {
     check(false, `Assinatura recusada: ${error.message}`);
   }
+  // The same manifest serves the Linux AppImage, when the release has one.
+  if (manifest.files.some(f => f.platform === 'linux'))
+    try {
+      verifyManifest(bytes, signature, build.trustedUpdateKeys, {
+        repository: manifest.repository,
+        tag: manifest.tag,
+        channel,
+        currentVersion: '0.1.0',
+        platform: 'linux',
+        arch: 'x64',
+        assets,
+      });
+      check(true, 'Manifesto aceito também por uma instalação Linux');
+    } catch (error) {
+      check(false, `Manifesto recusado no Linux: ${error.message}`);
+    }
   const unpacked = path.join(dir, 'win-unpacked', 'resources', 'app.asar');
   check(
     await fs.stat(unpacked).then(

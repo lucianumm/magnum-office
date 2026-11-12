@@ -29,6 +29,7 @@ import {
   Inbox,
   TrendingUp,
   HandCoins,
+  Scale,
   Handshake,
   ChartBar,
   FileSearch,
@@ -38,6 +39,9 @@ import Finance from './Finance.jsx';
 import Intimations from './Intimations.jsx';
 import DebtCalculator from './DebtCalculator.jsx';
 import LaborCalculator from './LaborCalculator.jsx';
+import LiquidationCalculator from './LiquidationCalculator.jsx';
+import LockScreen from './LockScreen.jsx';
+import { limitationAlerts } from '../../app/prescription.mjs';
 import DeadlineCalculator, { DeadlineModal } from './DeadlineCalculator.jsx';
 import ApplyWorkflow from './ApplyWorkflow.jsx';
 import TermsPrompt from './TermsPrompt.jsx';
@@ -81,6 +85,7 @@ const navGroups = [
       ['deadlines', 'Prazos', Calculator],
       ['debts', 'Débitos', TrendingUp],
       ['labor', 'Rescisão', HandCoins],
+      ['liquidation', 'Liquidação', Scale],
       ['reports', 'Relatórios', ChartBar],
       ['courts', 'Tribunais', Landmark],
       ['pdf', 'PDF', FileCog],
@@ -167,6 +172,21 @@ function buildNotices(data, today) {
       detail: followUps[0].name,
       go: ['intakes'],
     });
+  const limits = limitationAlerts({ cases: data.entities.cases, documents: data.entities.documents, today });
+  if (limits.length) {
+    const first = limits[0];
+    list.push({
+      id: 'limitation',
+      tone: first.days <= 30 ? 'danger' : 'warning',
+      icon: AlertTriangle,
+      title:
+        first.kind === 'case'
+          ? plural(limits.length, 'prazo de prescrição próximo', 'prazos de prescrição próximos')
+          : plural(limits.length, 'documento perto do vencimento', 'documentos perto do vencimento'),
+      detail: `${first.title} · ${first.days < 0 ? 'venceu em' : 'vence em'} ${first.deadline.split('-').reverse().join('/')}`,
+      go: first.kind === 'case' ? ['cases', first.id] : ['documents'],
+    });
+  }
   const intimations = (data.intimations || []).filter(i => i.status === 'new');
   if (intimations.length)
     list.push({
@@ -316,11 +336,11 @@ export default function App() {
       loading.current = false;
     }
   }, []);
-  const notify = useCallback((message, error = false) => {
+  const notify = useCallback((message, error = false, action = null) => {
     clearTimeout(toastTimer.current);
     if (!message) return;
-    setToast({ message, error });
-    toastTimer.current = setTimeout(() => setToast(null), error ? 8500 : 4000);
+    setToast({ message, error, action });
+    toastTimer.current = setTimeout(() => setToast(null), error ? 8500 : action ? 10000 : 4000);
   }, []);
   const act = useCallback(
     async (fn, success) => {
@@ -466,14 +486,18 @@ export default function App() {
         notify(`${saved.length} parcelas criadas.`);
         return saved[0];
       }
-      const item = await window.advocacia.save({ kind, entity });
+      const item = await window.advocacia.save({ kind, entity, applyToSeries: entity.applyToSeries === true });
       await reload();
       notify(
         item?.reminderStatus === 'pending'
           ? 'Registro salvo. O aviso ao cliente foi agendado.'
           : item?.reminderProblem
             ? `Registro salvo. Aviso ao cliente não agendado: ${item.reminderProblem}`
-            : 'Registro salvo.',
+            : item?.seriesCount
+              ? `${item.seriesCount} compromissos criados.`
+              : item?.seriesUpdated
+                ? `Compromisso e ${item.seriesUpdated} seguinte(s) da série atualizados.`
+                : 'Registro salvo.',
         !!item?.reminderProblem,
       );
       return item;
@@ -484,7 +508,19 @@ export default function App() {
     async (kind, id) => {
       const result = await window.advocacia.remove({ kind, id });
       await reload();
-      if (result) notify('Registro excluído.');
+      if (result)
+        notify('Registro movido para a lixeira.', false, {
+          label: 'Desfazer',
+          run: async () => {
+            try {
+              await window.advocacia.restoreTrash(id);
+              await reload();
+              notify('Registro restaurado.');
+            } catch (e) {
+              notify(e.message, true);
+            }
+          },
+        });
       return result;
     },
     [reload, notify],
@@ -507,11 +543,25 @@ export default function App() {
     document.title = visibleName || 'Magnum Office';
     return () => media.removeEventListener('change', apply);
   }, [theme, appearance, density, visibleName]);
+  // Ctrl+L locks the program when a password is set.
+  useEffect(() => {
+    const onKey = e => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        void window.advocacia
+          .lockApp()
+          .then(() => reload())
+          .catch(() => {});
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [reload]);
   const today = dayKey(new Date());
-  const notices = useMemo(() => (data ? buildNotices(data, today) : []), [data, today]);
+  const notices = useMemo(() => (data && !data.locked ? buildNotices(data, today) : []), [data, today]);
   const searchActive = query.trim().length > 0;
   const groupedResults = useMemo(() => {
-    if (!data || !searchActive) return [];
+    if (!data || data.locked || !searchActive) return [];
     const needle = query.trim().toLocaleLowerCase('pt-BR');
     return Object.entries(data.entities)
       .map(([kind, items]) => [
@@ -563,6 +613,7 @@ export default function App() {
       </div>
     );
   }
+  if (data.locked) return <LockScreen appName={data.settings.appName} onUnlocked={reload} />;
   const shared = {
     data,
     navigate,
@@ -579,6 +630,7 @@ export default function App() {
     generateDocument: setGenerateFor,
     calculateDeadline: (caseId, initial = {}) => setDeadlineFor({ caseId, ...initial }),
     applyWorkflow: setWorkflowFor,
+    calculateSeverance: caseId => go({ page: 'labor', caseId }),
   };
   const page = route.page;
   const attention = notices.filter(n => !n.quiet);
@@ -859,8 +911,10 @@ export default function App() {
             <Intimations {...shared} />
           ) : page === 'debts' ? (
             <DebtCalculator {...shared} />
+          ) : page === 'liquidation' ? (
+            <LiquidationCalculator {...shared} />
           ) : page === 'labor' ? (
-            <LaborCalculator {...shared} />
+            <LaborCalculator key={route.caseId || 'labor'} initialCaseId={route.caseId || ''} {...shared} />
           ) : page === 'reports' ? (
             <Reports {...shared} />
           ) : page === 'deadlines' ? (
@@ -884,6 +938,18 @@ export default function App() {
         <div className={'toast ' + (toast.error ? 'error' : '')} role={toast.error ? 'alert' : 'status'}>
           {toast.error ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
           <span>{toast.message}</span>
+          {toast.action && (
+            <button
+              className="toast-action"
+              onClick={() => {
+                const run = toast.action.run;
+                setToast(null);
+                void run();
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
           <button aria-label="Fechar aviso" onClick={() => setToast(null)}>
             <X size={14} />
           </button>
