@@ -10,62 +10,21 @@ const { extractEmails } = require('./email-addresses.cjs');
 
 const { documentKey } = require('../app/br-documents.mjs');
 
-const normalize = s =>
-  String(s || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
-
-const aliases = {
-  birthDate: ['datanascimento', 'datadenascimento', 'nascimento', 'aniversario', 'birthday', 'birthdate'],
-  name: ['nome', 'nomecompleto', 'cliente', 'name', 'fullname'],
-  email: ['email', 'emailaddress', 'correioeletronico'],
-  phone: ['telefone', 'celular', 'whatsapp', 'phone', 'mobile'],
-  document: ['documento', 'cpf', 'cnpj', 'cpfcnpj'],
-  address: ['endereco', 'address'],
-  notes: ['observacoes', 'notas', 'descricao', 'description', 'notes'],
-  title: ['titulo', 'assunto', 'compromisso', 'subject', 'summary', 'title'],
-  due: ['dataehora', 'inicio', 'datainicio', 'start', 'startdate', 'due', 'vencimento'],
-  date: ['data', 'date', 'dia'],
-  time: ['hora', 'horario', 'time', 'starttime'],
-  type: ['tipo', 'type'],
-  priority: ['prioridade', 'priority'],
-  status: ['situacao', 'status'],
-  nationality: ['nacionalidade'],
-  maritalStatus: ['estadocivil'],
-  profession: ['profissao', 'ocupacao'],
-  rg: ['rg', 'identidade', 'cedulaidentidade'],
-  zip: ['cep'],
-  street: ['logradouro', 'rua'],
-  addressNumber: ['numero', 'numeroendereco'],
-  district: ['bairro'],
-  city: ['cidade', 'municipio'],
-  state: ['uf', 'estado'],
-};
-
-const fields = {
-  clients: [
-    'name',
-    'birthDate',
-    'email',
-    'phone',
-    'document',
-    'nationality',
-    'maritalStatus',
-    'profession',
-    'rg',
-    'zip',
-    'street',
-    'addressNumber',
-    'district',
-    'city',
-    'state',
-    'address',
-    'notes',
-  ],
-  tasks: ['title', 'due', 'date', 'time', 'type', 'priority', 'notes'],
-};
+const { importFields: fields, mapHeaders, normalizeHeader: normalize } = require('../app/import-fields.mjs');
+const { choices } = require('./validation.cjs');
+const dmy = value =>
+  String(value || '')
+    .replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, '$3-$2-$1')
+    .slice(0, 10);
+// Situations written by other systems mapped to the four used here.
+function caseStatus(value) {
+  const v = normalize(value);
+  if (!v) return 'Em andamento';
+  if (/arquiv|baixad/.test(v)) return 'Arquivado';
+  if (/conclu|encerr|finaliz|extint|transit/.test(v)) return 'Concluído';
+  if (/aguard|suspen|sobrest/.test(v)) return 'Aguardando';
+  return 'Em andamento';
+}
 
 function cell(value) {
   if (value instanceof Date) return value.toISOString().slice(value.getUTCFullYear() < 1901 ? 11 : 0, 16);
@@ -146,7 +105,7 @@ class Imports {
 
   mapping(kind, headers) {
     if (!fields[kind]) throw new Error('Tipo de importação inválido.');
-    return Object.fromEntries(fields[kind].map(f => [f, headers.findIndex(h => aliases[f].includes(normalize(h)))]));
+    return mapHeaders(kind, headers);
   }
 
   preview({ id, kind, sheet = 0, mapping }) {
@@ -159,6 +118,7 @@ class Imports {
       if (!fields[kind].includes(f) || !Number.isInteger(index) || index < -1 || index >= 80)
         throw new Error('Coluna inválida.');
     const existing = this.store.list(kind);
+    const clients = new Map(this.store.list('clients').map(c => [normalize(c.name), c]));
     const keys = new Set(existing.flatMap(r => this.keys(kind, r)));
     const result = [];
 
@@ -177,6 +137,19 @@ class Imports {
           raw.birthDate = raw.birthDate.replace(/^(\d{2})\/(\d{2})\/(\d{4})$/, '$3-$2-$1').slice(0, 10);
         }
         if (kind === 'tasks') raw.due = localDate(raw.due || raw.date.split('T')[0], raw.time);
+        if (kind === 'cases') {
+          // The client is linked by the name already registered; unknown names stay in the notes.
+          const client = raw.clientName && clients.get(normalize(raw.clientName));
+          raw.clientId = client?.id || '';
+          raw.notes = [raw.caseNotes, raw.clientName && !client ? `Cliente na planilha: ${raw.clientName}` : '']
+            .filter(Boolean)
+            .join('\n');
+          raw.status = caseStatus(raw.status);
+          raw.phase = choices.phase.find(p => normalize(p) === normalize(raw.phase)) || '';
+          raw.filedAt = dmy(raw.filedAt);
+          if (!raw.title) raw.title = raw.procedure || raw.number || 'Processo importado';
+          raw.area ||= 'Outros';
+        }
         const value = entity(kind, raw);
         const rowKeys = this.keys(kind, value);
         const duplicate = rowKeys.some(k => keys.has(k));
@@ -197,6 +170,10 @@ class Imports {
   }
 
   keys(kind, r) {
+    if (kind === 'cases') {
+      const digits = String(r.number || '').replace(/\D/g, '');
+      return [digits.length >= 10 ? 'number:' + digits : 'case:' + normalize(r.title) + ':' + (r.clientId || '')];
+    }
     return kind === 'clients'
       ? [
           r.email && 'email:' + r.email.toLowerCase(),

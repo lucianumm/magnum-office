@@ -46,19 +46,19 @@ Sem servidor, sem assinatura, sem mensalidade.
 
 | | |
 | --- | --- |
-| **Processos** | Número CNJ conferido, com tribunal identificado e atalho para o portal. Partes, juízo, valor da causa, fase, segredo de justiça e processos relacionados. Andamentos, pessoas, documentos, prazos e financeiro em uma página só. |
+| **Processos** | Número CNJ conferido, com tribunal identificado e atalho para o portal. Partes, juízo, valor da causa, fase, segredo de justiça e processos relacionados. Andamentos, pessoas, documentos, prazos e financeiro em uma página só. Busca pelo número no DataJud e da empresa pelo CNPJ, quadro por fase, horas trabalhadas e alerta de prescrição. |
 | **Clientes** | Qualificação completa, pronta para copiar, CPF e CNPJ conferidos (inclusive o alfanumérico) e aviso de conflito de interesses. |
 | **Atendimentos** | Ficha de quem ainda não é cliente, com retorno agendado, e conversão em cliente e processo com um clique. |
 | **Prazos** | Calculadora para CPC, CLT, Juizados e CPP, com feriados, recesso, prazo em dobro e memória de cálculo dia a dia. Calendário próprio do escritório por tribunal. |
 | **Agenda** | Calendário e lista, aviso de audiência ao cliente por WhatsApp, fluxos de tarefas por tipo de ação e exportação para Google Agenda, Outlook ou celular. |
-| **Documentos** | Procurações, contratos, declarações e recibos gerados em Word e PDF com os dados do cadastro. Arquivos criptografados e busca dentro do texto dos documentos. |
+| **Documentos** | Procurações, contratos, declarações e recibos gerados em Word e PDF com os dados do cadastro. Arquivos criptografados e busca dentro do texto dos documentos. Documentos digitalizados são lidos por OCR no próprio computador; perguntas com tipo e documento sem cadastro. |
 | **Financeiro** | Honorários, parcelas, êxito, despesas reembolsáveis, recibo com valor por extenso, cobrança por WhatsApp e planilha. |
-| **Cálculos** | Atualização de débitos por IPCA, INPC, IGP-M, IPCA-E, Selic e Taxa Legal (Lei 14.905/2024), com índices do Banco Central e memória em PDF. |
+| **Cálculos** | Atualização de débitos por IPCA, INPC, IGP-M, IPCA-E, Selic e Taxa Legal (Lei 14.905/2024), com índices do Banco Central e memória em PDF. Rescisão com INSS e IRRF opcionais e liquidação trabalhista (horas extras, reflexos e ADC 58). |
 | **Acompanhamento** | Andamentos pelo DataJud e intimações do Diário de Justiça Eletrônico Nacional, com atalho para calcular o prazo. Desligados por padrão. |
 | **Relatórios** | Relatório ao cliente em linguagem simples e painel do escritório: processos, prazos, atendimentos e dinheiro. |
 | **Comunicação** | WhatsApp por QR Code com modelos, agendamento e recorrência; e-mail com domínio próprio e campanhas; aniversários automáticos. |
-| **Ferramentas** | PDF/A, união e divisão de PDF, diretório oficial de tribunais e importação de planilhas. |
-| **Segurança** | Dados e documentos em AES-256-GCM, chave no cofre do Windows, backups semanais e portáteis, atualizações assinadas com retorno automático se algo falhar. |
+| **Ferramentas** | PDF/A, união e divisão de PDF, diretório oficial de tribunais e importação de planilhas. Assinatura digital de PDF com certificado A1 (PAdES). |
+| **Segurança** | Dados e documentos em AES-256-GCM, chave no cofre do Windows, backups semanais e portáteis, atualizações assinadas com retorno automático se algo falhar. Senha opcional do programa e lixeira de 30 dias. |
 | **Agentes** | API local e servidor MCP, desligados por padrão, para usar o escritório com assistentes de IA de sua confiança. |
 
 ## Telas
@@ -204,7 +204,8 @@ Quer contribuir? Leia o [guia de contribuição](.github/CONTRIBUTING.md), o [c�
 
 | Versão | Data | Destaques |
 | --- | --- | --- |
-| **1.10.0** | 12/11/2026 | Atualização corrigida, perguntas separadas nos modelos, documento sem cadastro, busca por número do processo e CNPJ e calculadora de rescisão |
+| **1.11.0** | 12/11/2026 | Lixeira, senha do programa, OCR, assinatura digital A1, liquidação trabalhista, horas por processo, quadro por fase, resumo diário, prescrição, CEP, importação de processos e Linux |
+| 1.10.0 | 12/11/2026 | Atualização corrigida, perguntas separadas nos modelos, documento sem cadastro, busca por número do processo e CNPJ e calculadora de rescisão |
 | 1.9.1 | 08/11/2026 | Configuração inicial obrigatória do escritório (advogados, identidade visual e logo) e arquivos de comunidade do projeto |
 | 1.9.0 | 07/11/2026 | Calculadora de prazos, gerador de documentos, financeiro, atualização de débitos, DataJud, intimações do DJEN, atendimentos, relatórios, busca em documentos e novas ferramentas MCP |
 | 1.3.0 | 06/11/2026 | Interface nova, página por cliente e processo, central de avisos, atualização automática com retomada e iniciar com o Windows |

@@ -1,6 +1,6 @@
 {
   "name": "advocacia-gestao",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "private": true,
   "description": "Magnum Office 1.9 — Gestão jurídica local",
   "author": "Lucianum",
@@ -35,17 +35,24 @@
     "format": "prettier --write \"app/**/*.{mjs,cjs}\" \"backend/**/*.cjs\" \"desktop/**/*.cjs\" \"updater/**/*.cjs\" \"scripts/**/*.mjs\" \"tests/**/*.cjs\" \"frontend/src/**/*.{jsx,css}\" eslint.config.mjs vite.config.mjs",
     "format:check": "prettier --check \"app/**/*.{mjs,cjs}\" \"backend/**/*.cjs\" \"desktop/**/*.cjs\" \"updater/**/*.cjs\" \"scripts/**/*.mjs\" \"tests/**/*.cjs\" \"frontend/src/**/*.{jsx,css}\" eslint.config.mjs vite.config.mjs",
     "test:documents": "node scripts/documents-smoke.mjs",
-    "test:tools": "node scripts/tools-smoke.mjs"
+    "test:tools": "node scripts/tools-smoke.mjs",
+    "test:new-features": "node scripts/new-features-smoke.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
     "@hyzyla/pdfium": "3.0.0",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "@signpdf/placeholder-pdf-lib": "4.0.0",
+    "@signpdf/signer-p12": "4.0.0",
+    "@signpdf/signpdf": "4.0.0",
+    "@signpdf/utils": "4.0.0",
+    "@tesseract.js-data/por": "1.0.0",
     "@whiskeysockets/baileys": "7.0.0-rc14",
     "csv-parse": "^7.0.3",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.577.0",
     "mammoth": "^1.13.0",
+    "node-forge": "1.4.3",
     "pdf-lib": "^1.17.1",
     "pino": "^10.3.1",
     "qrcode": "^1.5.4",
@@ -53,6 +60,7 @@
     "react-dom": "19.3.1",
     "sanitize-html": "^2.18.1",
     "semver": "^7.7.4",
+    "tesseract.js": "7.0.0",
     "yauzl": "^3.4.0",
     "zod": "^4.6.7"
   },

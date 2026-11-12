@@ -24,13 +24,15 @@ const fields = [
   'salaryDays',
   'vestedPeriods',
   'thirteenthAdvance',
+  'contractEnd',
+  'dependents',
   'doubledPeriods',
   'fgtsBalance',
 ];
 
 function laborReport(input = {}) {
   const clean = Object.fromEntries(fields.map(key => [key, text(String(input[key] ?? ''), 40)]));
-  const r = calculateSeverance({ ...clean, art477: input.art477 === true });
+  const r = calculateSeverance({ ...clean, art477: input.art477 === true, taxes: input.taxes === true });
   const caseId = input.caseId ? uuid(input.caseId) : '';
   const blocks = [
     p('MEMÓRIA DE CÁLCULO — VERBAS RESCISÓRIAS', { heading: true, align: 'center', bold: true }),

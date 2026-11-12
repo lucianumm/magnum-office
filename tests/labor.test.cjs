@@ -186,3 +186,47 @@ test('the 13th advance is deducted and forgotten vacation periods are pointed ou
     /adiantamento/,
   );
 });
+
+test('INSS and IRRF on salary balance and 13th; exemption up to R$ 5.000 from 2026', () => {
+  const { inss, irrf } = require('../app/tax-tables.mjs');
+  // 2025: 1.518,00 × 7,5% + 1.275,88 × 9% + 1.396,95 × 12% + 2.475,84 × 14% = 742,93
+  assert.deepEqual(inss(666667, 2025), { value: 74293, table: 2025, exact: true });
+  // Base 6.666,67 − 742,93 = 5.923,74 × 27,5% − 908,73 = 720,30
+  assert.equal(irrf(666667, 74293, { month: '2025-08' }).value, 72030);
+  // 2.000,00: the simplified discount (607,20) is larger than the INSS, so there is no tax.
+  assert.equal(irrf(200000, inss(200000, 2025).value, { month: '2025-08' }).value, 0);
+  // 2026: up to R$ 5.000 the reduction cancels the tax; above R$ 7.350 there is no reduction.
+  assert.equal(irrf(450000, inss(450000, 2026).value, { month: '2026-03' }).value, 0);
+  assert.equal(irrf(800000, 80000, { month: '2026-03' }).value, irrf(800000, 80000, { month: '2025-12' }).value);
+  assert.equal(inss(200000, 2026).exact, false, '2026 table not registered: the latest one is used');
+  const r = calculateSeverance({
+    kind: 'sem-justa-causa',
+    notice: 'indenizado',
+    admission: '2022-03-10',
+    termination: '2025-08-20',
+    salary: '10.000,00',
+    fgtsBalance: '0',
+    taxes: true,
+  });
+  const v = Object.fromEntries(r.items.map(i => [i.key, i.value]));
+  assert.equal(v['inss-saldo'], 74293);
+  assert.equal(v['irrf-saldo'], 72030);
+  assert.ok(v['inss-13'] > 0 && v['irrf-13'] > 0);
+  assert.equal(v.aviso, 1300000, 'the notice is not taxed');
+});
+
+test('fixed-term contract ended early: art. 479 pays half the remaining days, art. 480 deducts up to it', () => {
+  const base = { admission: '2025-01-09', termination: '2025-03-10', contractEnd: '2025-04-08', salary: '3000' };
+  const employer = calculateSeverance({ ...base, kind: 'antecipada-empregador' });
+  const v = Object.fromEntries(employer.items.map(i => [i.key, [i.reference, i.value]]));
+  assert.deepEqual(v['art-479'], ['29 dia(s)', 145000]);
+  assert.equal(employer.fgts.finePercent, 40);
+  const employee = calculateSeverance({ ...base, kind: 'antecipada-empregado' });
+  const deduction = employee.items.find(i => i.key === 'art-480');
+  assert.deepEqual([deduction.value, deduction.debit], [145000, true]);
+  assert.equal(employee.fgts.finePercent, 0);
+  assert.throws(
+    () => calculateSeverance({ ...base, contractEnd: '2025-03-01', kind: 'antecipada-empregador' }),
+    /terminaria/,
+  );
+});

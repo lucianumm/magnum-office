@@ -13,7 +13,7 @@ const names = [
   'email-layout-smoke',
   'manual-update-smoke',
   'documents-smoke',
-  'tools-smoke',
+  'tools-smoke', 'new-features-smoke',
 ];
 const filter = process.argv[2] && process.argv[2] !== 'all' ? process.argv[2] : '';
 const exe = process.argv[3];

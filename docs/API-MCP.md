@@ -42,6 +42,9 @@ Não coloque tokens reais em repositórios ou documentos compartilhados. Se a po
 | `list_deadlines` | Compromissos pendentes entre duas datas |
 | `calculate_deadline` | Cálculo de prazo com feriados, recesso e calendário do escritório, com a memória de cálculo |
 | `calculate_debt` | Atualização de débito com os índices do Banco Central já baixados no aplicativo |
+| `calculate_severance` | Verbas rescisórias (CLT) com memória de cálculo, INSS e IRRF opcionais |
+| `lookup_case` | Dados públicos de um processo no DataJud pelo número CNJ (envia só o número; não grava) |
+| `lookup_cnpj` | Dados públicos de uma empresa pelo CNPJ (envia só o CNPJ; não grava) |
 | `preview_document` | Texto de um modelo preenchido com os dados do cadastro, como rascunho (não salva arquivo) |
 | `list_movements` | Andamentos já obtidos do DataJud ou registrados pelo escritório |
 | `list_intimations` | Intimações do DJEN já baixadas pelo aplicativo |

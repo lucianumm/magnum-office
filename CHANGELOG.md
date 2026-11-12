@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.11.0 — 12/11/2026
+
+**Se a atualização automática não concluir, baixe o instalador e instale por cima, na mesma pasta. Seus cadastros são preservados.**
+
+**Segurança e dados**
+
+- **Lixeira**: o que é excluído fica 30 dias em Configurações → Lixeira e pode ser restaurado, com os vínculos. Logo depois de excluir, o aviso traz **Desfazer**.
+- **Senha do programa** (opcional): pede a senha ao abrir, depois de um tempo sem uso, ao ir para a bandeja ou quando o Windows bloqueia a sessão. Ctrl+L bloqueia na hora. Enquanto bloqueado, a API de agentes fica parada.
+- **Backup em pasta sincronizada**: a cópia semanal protegida por senha pode ser gravada no OneDrive, Google Drive ou numa pasta de rede, guardando as quatro mais recentes.
+- Mais rápido com escritórios grandes: com 10 mil clientes e 30 mil prazos, cada atualização da tela caiu de cerca de 390 para 195 ms.
+
+**Atualização**
+
+- Configurações → Atualizações mostra a última tentativa (etapa, pasta, código do instalador) e copia o diagnóstico para o suporte.
+- O instalador passou a corrigir a pasta também quando chamado por versões antigas; o teste real de atualização cobre registro apontando para outra pasta, instalação "para todos os usuários" e versão que não abre.
+
+**Documentos**
+
+- **OCR**: PDFs digitalizados e fotos de documentos passam a ser encontrados pela busca, lidos no próprio computador.
+- **Assinatura digital** de PDF com certificado ICP-Brasil A1 (.pfx), no padrão PAdES, em Ferramentas → PDF.
+- Perguntas com tipo nos modelos: data, sim ou não, lista de opções e texto longo (`{?Data de admissão:data}`, `{?CTPS anotada:sim/não}`, `{?Estado civil:opções=solteiro|casado}`).
+- **Gerar de novo**: o documento gerado guarda o modelo e as respostas; o botão na lista de documentos abre tudo preenchido.
+- Variáveis `{calculo.total}`, `{calculo.verbas}` e `{debito.total}` com o último cálculo salvo no processo.
+- Validade de documentos (procurações, contratos) com aviso 30 dias antes.
+- A prévia fica fixa ao rolar as perguntas, e clicar num trecho em branco leva ao campo.
+
+**Processos e agenda**
+
+- **Quadro por fase**: os processos em colunas; arrastar muda a fase.
+- **Horas trabalhadas** por processo, com cronômetro e cobrança no Financeiro.
+- **Alerta de prescrição** para casos ainda não ajuizados, com as regras mais comuns.
+- **Compromissos que se repetem** (dias úteis, semanal, quinzenal, mensal), com edição "este e os próximos".
+- Processo novo encontrado no DataJud já traz os andamentos, e a parte contrária pode ir para Pessoas.
+- Comarca pelo código do município do IBGE.
+- **CEP** preenche o endereço do cliente; o **CNPJ** também funciona em Pessoas e Atendimentos.
+- **Importação de processos** de planilhas exportadas de outros sistemas, com vínculo ao cliente pelo nome.
+
+**Cálculos trabalhistas**
+
+- **Rescisão**: INSS e IRRF opcionais sobre saldo de salário e 13º, contrato a prazo encerrado antes (arts. 479 e 480 da CLT), abatimento do adiantamento do 13º, aviso de férias completas e memória em Word além de PDF. Botão **Calcular rescisão** no processo trabalhista.
+- **Liquidação trabalhista**: horas extras com reflexos (DSR, 13º, férias, aviso e FGTS) e atualização pelas fases da ADC 58 e da Lei 14.905/2024.
+
+**Outros**
+
+- **Resumo diário** por WhatsApp ou e-mail com os prazos do dia, atrasos, intimações e honorários vencidos (desligado por padrão).
+- Agentes (MCP): `calculate_severance`, `lookup_case`, `lookup_cnpj` e dados digitados em `preview_document`.
+- Versão para **Linux** (AppImage e .deb) publicada junto com a do Windows.
+
 ## 1.10.0 — 12/11/2026
 
 **Se a atualização automática não concluir no seu computador, baixe o instalador desta versão e instale por cima, na mesma pasta. Seus cadastros são preservados.** A partir desta versão o problema é detectado e corrigido pelo próprio programa.

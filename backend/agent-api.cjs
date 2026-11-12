@@ -14,6 +14,9 @@ const legalReadTools = [
   'preview_document',
   'list_movements',
   'list_intimations',
+  'calculate_severance',
+  'lookup_case',
+  'lookup_cnpj',
 ];
 class AgentAPI {
   constructor({
@@ -353,7 +356,53 @@ class AgentAPI {
           caseId: z.string().uuid().optional(),
           clientId: z.string().uuid().optional(),
           answers: z.record(z.string(), z.string()).optional(),
+          values: z.record(z.string(), z.string()).optional(),
         }),
+      },
+      {
+        name: 'calculate_severance',
+        description:
+          'Estima as verbas rescisórias (CLT) com a memória de cálculo, em centavos. kind: sem-justa-causa, pedido, justa-causa, acordo, termino-prazo, antecipada-empregador ou antecipada-empregado. Datas AAAA-MM-DD, valores em reais ("3.000,00"). Somente leitura.',
+        schema: z.object({
+          kind: z
+            .enum([
+              'sem-justa-causa',
+              'pedido',
+              'justa-causa',
+              'acordo',
+              'termino-prazo',
+              'antecipada-empregador',
+              'antecipada-empregado',
+            ])
+            .default('sem-justa-causa'),
+          notice: z.enum(['indenizado', 'trabalhado', 'descontado', 'dispensado']).optional(),
+          admission: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          termination: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          contractEnd: z
+            .string()
+            .regex(/^\d{4}-\d{2}-\d{2}$/)
+            .optional(),
+          salary: z.string().max(20),
+          extras: z.string().max(20).optional(),
+          vestedPeriods: z.number().int().min(0).max(10).optional(),
+          doubledPeriods: z.number().int().min(0).max(10).optional(),
+          fgtsBalance: z.string().max(20).optional(),
+          thirteenthAdvance: z.string().max(20).optional(),
+          taxes: z.boolean().optional(),
+          dependents: z.number().int().min(0).max(20).optional(),
+        }),
+      },
+      {
+        name: 'lookup_case',
+        description:
+          'Busca no DataJud (CNJ) os dados públicos de um processo pelo número CNJ: classe, vara, comarca, distribuição, instância, área e assuntos. Envia só o número ao CNJ. Não grava nada.',
+        schema: z.object({ number: z.string().max(40) }),
+      },
+      {
+        name: 'lookup_cnpj',
+        description:
+          'Busca os dados públicos de uma empresa pelo CNPJ (razão social, endereço, situação, sócio administrador) na BrasilAPI ou no minhareceita.org. Envia só o CNPJ. Não grava nada.',
+        schema: z.object({ cnpj: z.string().max(32) }),
       },
       {
         name: 'list_movements',
@@ -438,6 +487,14 @@ class AgentAPI {
         const { calculateDebt, seriesNeeded } = require('../app/debt.mjs');
         return calculateDebt({ ...args, series: need(this.indices).values(seriesNeeded(args)) });
       }
+      case 'calculate_severance': {
+        const { calculateSeverance } = require('../app/labor.mjs');
+        return calculateSeverance(args);
+      }
+      case 'lookup_case':
+        return need(this.datajud).lookup(args.number);
+      case 'lookup_cnpj':
+        return need(this.cnpj).lookup(args.cnpj);
       case 'preview_document': {
         const { blocksText } = require('../app/document-template.mjs');
         const r = need(this.generator).preview(args);

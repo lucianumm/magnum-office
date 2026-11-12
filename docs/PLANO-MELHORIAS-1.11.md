@@ -1,7 +1,7 @@
 # Plano de melhoria — depois da 1.10 (correções, melhorias e novas funções)
 
 Data: 12/11/2026 · Base: `main` em `a00ed7e` (código da 1.10 mesclado, versão ainda 1.9.1).
-Situação: **apenas planejamento**. Nada deste plano foi implementado.
+Situação: **implementado na versão 1.11.0** (ainda não publicada), exceto M12 (certificado de assinatura, depende de compra), A1 (uso em rede, depende de decisão) e a parte macOS do N8 (conta da Apple).
 
 Como ler: cada item traz o **problema** (com a evidência no código, quando há), a **proposta**, os
 **arquivos** envolvidos, o **critério de aceite** e o **esforço** (P = até 1 dia, M = 2 a 4 dias,

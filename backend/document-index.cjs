@@ -3,7 +3,9 @@
 const path = require('node:path');
 const { Worker } = require('node:worker_threads');
 
-const indexable = new Set(['.pdf', '.docx', '.txt', '.csv']);
+// Scanned PDFs and photos are read by OCR (backend/ocr.cjs), which needs more time.
+const indexable = new Set(['.pdf', '.docx', '.txt', '.csv', '.png', '.jpg', '.jpeg']);
+const slow = new Set(['.pdf', '.png', '.jpg', '.jpeg']);
 const MAX_BYTES = 40 * 1024 * 1024;
 const normalize = s =>
   String(s || '')
@@ -48,7 +50,7 @@ class DocumentIndex {
   async index(id) {
     const doc = this.store.get('documents', id);
     if (!indexable.has(doc.ext) || doc.size > MAX_BYTES) return this.write(id, 'skipped', '');
-    const result = await extractInWorker(this.documents.read(id), doc.ext);
+    const result = await extractInWorker(this.documents.read(id), doc.ext, slow.has(doc.ext) ? 600000 : 60000);
     if (result.error) return this.write(id, 'skipped', '');
     const text = result.text.replace(/[ \t]+/g, ' ').trim();
     this.write(id, text ? 'ok' : 'empty', text);

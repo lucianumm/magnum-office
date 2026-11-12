@@ -9,6 +9,13 @@ module.exports = function registerBackups(ctx) {
     }),
   );
   ctx.register('backupNoticeSeen', () => ctx.weeklyBackups.noticeSeen());
+  ctx.register('chooseBackupFolder', async () => {
+    const result = await ctx.dialog.showOpenDialog(ctx.win, {
+      title: 'Pasta da cópia semanal (OneDrive, Google Drive ou rede)',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    return result.canceled ? null : result.filePaths[0];
+  });
   ctx.register('retryBackupEmail', input => {
     if (input?.reviewed !== true) throw new Error('Confira o resultado no Resend antes de tentar novamente.');
     ctx.weeklyBackups.retry();

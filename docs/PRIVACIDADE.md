@@ -19,6 +19,10 @@ O escritório define a finalidade e as condições do tratamento realizado em su
 - DataJud (CNJ): desligado por padrão. Quando ativado em Configurações → Consultas públicas, envia ao CNJ apenas o número CNJ dos processos (na consulta manual ou na conferência diária dos processos em andamento) e recebe metadados e movimentos públicos. Nomes de clientes não são enviados.
 - Preenchimento do processo pelo número (DataJud/CNJ): desligado por padrão. Ativado, ou pelo botão Buscar no DataJud, envia ao CNJ apenas o número CNJ digitado no cadastro do processo e preenche os campos vazios com classe, vara, comarca, distribuição e instância. Nada é gravado além do que a pessoa salvar no cadastro.
 - Preenchimento da empresa pelo CNPJ (dados abertos da Receita Federal): desligado por padrão. Ativado, ou pelo botão Buscar dados da empresa, envia apenas o número do CNPJ à BrasilAPI (brasilapi.com.br) e, se ela falhar, ao minhareceita.org, e preenche os campos vazios com razão social, endereço e sócio administrador. Nomes e CPFs não são enviados.
+- Preenchimento do endereço pelo CEP: desligado por padrão. Ativado, ou pelo botão Buscar endereço, envia apenas os 8 dígitos do CEP à BrasilAPI e, se ela falhar, ao ViaCEP, e preenche os campos vazios do endereço.
+- Leitura de documentos digitalizados (OCR): feita inteiramente no computador, com o Tesseract e o modelo de português instalados com o programa. Nenhum documento é enviado a serviços externos.
+- Assinatura digital de PDF com certificado A1: o certificado e a senha são lidos só no momento da assinatura, no computador, e não são guardados nem enviados.
+- Resumo diário: desligado por padrão. Ativado, envia uma vez por dia ao WhatsApp ou e-mail do próprio escritório os títulos dos prazos e compromissos do dia e as contagens de atrasos, intimações e honorários vencidos, pelos mesmos canais das demais mensagens.
 - Diário de Justiça Eletrônico Nacional (CNJ): desligado por padrão. Quando ativado, envia ao CNJ apenas o número e a UF da OAB dos advogados cadastrados no escritório e recebe as comunicações publicadas em nome deles, que ficam criptografadas no computador.
 - Banco Central (SGS): os índices de correção são baixados somente quando o usuário pede, enviando apenas o código da série e o período. Os índices são dados públicos e ficam salvos sem criptografia.
 - Planilhas, agenda (.ics) e memórias de cálculo exportadas saem do cofre sem criptografia, no local escolhido pelo usuário.
@@ -27,7 +31,7 @@ Avalie os termos, locais de tratamento e eventuais transferências internacionai
 
 ## Recursos para apoiar o atendimento aos titulares
 
-Cadastros podem ser consultados e corrigidos. A exportação fornece dados legíveis e documentos originais. A exclusão verifica vínculos para evitar inconsistência; remova ou reorganize os vínculos necessários antes de excluir. Registros históricos e cópias anteriores podem continuar em backups até seu descarte pelo responsável. Avalie obrigações legais de conservação antes de eliminar dados.
+Cadastros podem ser consultados e corrigidos. Registros excluídos ficam 30 dias na lixeira, de onde podem ser restaurados ou apagados de vez antes desse prazo. A exportação fornece dados legíveis e documentos originais. A exclusão verifica vínculos para evitar inconsistência; remova ou reorganize os vínculos necessários antes de excluir. Registros históricos e cópias anteriores podem continuar em backups até seu descarte pelo responsável. Avalie obrigações legais de conservação antes de eliminar dados.
 
 A preferência “Não receber e-mails” bloqueia comunicações vinculadas ao destinatário na fila, mas não equivale a uma base legal para todos os demais tratamentos. Pedidos de acesso, correção, eliminação, portabilidade ou outras providências devem ser dirigidos ao escritório que cadastrou os dados e analisados segundo a legislação aplicável.
 

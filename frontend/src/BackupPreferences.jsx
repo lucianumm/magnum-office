@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarClock, Mail, HardDrive, LockKeyhole, Download, Upload } from 'lucide-react';
+import { CalendarClock, Mail, HardDrive, LockKeyhole, Download, Upload, FolderSync } from 'lucide-react';
 import { Panel, Button, Toggle, Modal, dateTime } from './components.jsx';
 const labels = {
   idle: 'Ainda não enviado',
@@ -14,6 +14,7 @@ export default function BackupPreferences({ data, act }) {
     [dailyNotice, setDailyNotice] = useState(data.settings.dailyBackupNotice !== false),
     [mode, setMode] = useState(schedule.mode),
     [recipient, setRecipient] = useState(schedule.recipient),
+    [folder, setFolder] = useState(schedule.folder || ''),
     [password, setPassword] = useState(''),
     [ack, setAck] = useState(false),
     [portable, setPortable] = useState(null),
@@ -57,7 +58,63 @@ export default function BackupPreferences({ data, act }) {
               <strong>Receber por e-mail</strong>
               <span>Cópia portátil protegida por senha, para um único responsável.</span>
             </button>
+            <button
+              type="button"
+              aria-pressed={mode === 'folder'}
+              onClick={() => {
+                setMode('folder');
+                setAck(false);
+              }}
+            >
+              <FolderSync size={24} />
+              <strong>Pasta sincronizada</strong>
+              <span>Cópia protegida por senha no OneDrive, Google Drive ou rede.</span>
+            </button>
           </div>
+          {mode === 'folder' && (
+            <div className="form-grid">
+              <label className="field full">
+                <span>Pasta da cópia semanal</span>
+                <div className="heading-actions">
+                  <input aria-label="Pasta do backup" value={folder} readOnly placeholder="Nenhuma pasta escolhida" />
+                  <Button
+                    tone="secondary"
+                    type="button"
+                    onClick={async () => {
+                      const chosen = await act(() => window.advocacia.chooseBackupFolder());
+                      if (chosen) {
+                        setFolder(chosen);
+                        setAck(false);
+                      }
+                    }}
+                  >
+                    Escolher pasta
+                  </Button>
+                </div>
+                <small>
+                  As quatro cópias mais recentes ficam na pasta. Última gravação:{' '}
+                  {schedule.lastFolder ? dateTime(schedule.lastFolder) : 'ainda não feita'}
+                  {schedule.folderError && <span className="danger-text"> · {schedule.folderError}</span>}
+                </small>
+              </label>
+              <label className="field full">
+                <span>Senha da cópia portátil</span>
+                <input
+                  aria-label="Senha do backup na pasta"
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  minLength={12}
+                  maxLength={200}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder={
+                    schedule.hasPassword ? 'Senha já configurada — deixe vazio para manter' : 'Pelo menos 12 caracteres'
+                  }
+                />
+                <small>Sem a senha a cópia não pode ser aberta. Guarde-a fora deste computador.</small>
+              </label>
+            </div>
+          )}
           {mode === 'email' && (
             <div className="form-grid">
               <label className="field full">
@@ -119,7 +176,9 @@ export default function BackupPreferences({ data, act }) {
             description={
               mode === 'email'
                 ? 'Autorizo enviar semanalmente a cópia protegida somente para o e-mail do responsável informado.'
-                : 'Estou ciente de que guardar tudo no mesmo computador não protege contra perda do equipamento.'
+                : mode === 'folder'
+                  ? 'Autorizo gravar semanalmente a cópia protegida na pasta escolhida. Quem tiver acesso à pasta e à senha pode abri-la.'
+                  : 'Estou ciente de que guardar tudo no mesmo computador não protege contra perda do equipamento.'
             }
           />
           <div className="backup-status-grid">
@@ -158,6 +217,7 @@ export default function BackupPreferences({ data, act }) {
                   dailyNotice,
                   mode,
                   recipient,
+                  folder,
                   password,
                   acknowledged: ack,
                 });

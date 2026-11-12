@@ -1,59 +1,11 @@
 import { useState } from 'react';
 import { Upload, FileSpreadsheet } from 'lucide-react';
 import { Button, Panel } from './components.jsx';
-const labels = {
-  birthDate: 'Data de nascimento',
-  name: 'Nome',
-  email: 'E-mail',
-  phone: 'WhatsApp com DDD (obrigatório)',
-  document: 'CPF / CNPJ',
-  nationality: 'Nacionalidade',
-  maritalStatus: 'Estado civil',
-  profession: 'Profissão',
-  rg: 'RG',
-  zip: 'CEP',
-  street: 'Logradouro',
-  addressNumber: 'Número do endereço',
-  district: 'Bairro',
-  city: 'Cidade',
-  state: 'UF',
-  address: 'Endereço completo (texto)',
-  notes: 'Observações',
-  title: 'Título / assunto',
-  due: 'Data e hora juntas',
-  date: 'Data separada',
-  time: 'Hora separada',
-  type: 'Tipo',
-  priority: 'Prioridade',
-};
-const fields = {
-  clients: [
-    'name',
-    'birthDate',
-    'email',
-    'phone',
-    'document',
-    'nationality',
-    'maritalStatus',
-    'profession',
-    'rg',
-    'zip',
-    'street',
-    'addressNumber',
-    'district',
-    'city',
-    'state',
-    'address',
-    'notes',
-  ],
-  tasks: ['title', 'due', 'date', 'time', 'type', 'priority', 'notes'],
-};
-const norm = s =>
-  String(s)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '');
+import {
+  importFields as fields,
+  importLabels as labels,
+  mapHeaders as headerMapping,
+} from '../../app/import-fields.mjs';
 export default function Imports({ act, reload }) {
   const [kind, setKind] = useState('clients'),
     [file, setFile] = useState(null),
@@ -69,34 +21,7 @@ export default function Imports({ act, reload }) {
   }
   function mapHeaders(f, k, index) {
     const headers = f.sheets[index].headers;
-    const aliases = {
-      birthDate: ['datanascimento', 'datadenascimento', 'nascimento', 'aniversario', 'birthday', 'birthdate'],
-      name: ['nome', 'name', 'cliente', 'nomecompleto'],
-      email: ['email', 'emailaddress'],
-      phone: ['telefone', 'phone', 'celular', 'whatsapp'],
-      document: ['cpf', 'cnpj', 'cpfcnpj', 'documento'],
-      title: ['titulo', 'title', 'assunto', 'subject', 'compromisso'],
-      due: ['inicio', 'datainicio', 'dataehora', 'due', 'startdate'],
-      date: ['data', 'date'],
-      time: ['hora', 'horario', 'time'],
-      notes: ['observacoes', 'notes', 'descricao'],
-      address: ['endereco', 'address'],
-      nationality: ['nacionalidade'],
-      maritalStatus: ['estadocivil'],
-      profession: ['profissao', 'ocupacao'],
-      rg: ['rg', 'identidade', 'cedulaidentidade'],
-      zip: ['cep'],
-      street: ['logradouro', 'rua'],
-      addressNumber: ['numero', 'numeroendereco'],
-      district: ['bairro'],
-      city: ['cidade', 'municipio'],
-      state: ['uf', 'estado'],
-      type: ['tipo', 'type'],
-      priority: ['prioridade', 'priority'],
-    };
-    setMapping(
-      Object.fromEntries(fields[k].map(key => [key, headers.findIndex(h => (aliases[key] || []).includes(norm(h)))])),
-    );
+    setMapping(headerMapping(k, headers));
   }
   async function choose() {
     const f = await act(() => window.advocacia.chooseImport());
@@ -142,6 +67,7 @@ export default function Imports({ act, reload }) {
               >
                 <option value="clients">Contatos / clientes</option>
                 <option value="tasks">Agenda / compromissos</option>
+                <option value="cases">Processos (de planilha ou de outro sistema)</option>
               </select>
             </label>
             <div className="field">
