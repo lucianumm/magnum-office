@@ -1,9 +1,12 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Save, ShieldAlert, Info, Search, CheckCircle2 } from 'lucide-react';
 import BirthdayFields from './BirthdayFields.jsx';
 import { Modal, Button, Toggle, dayKey } from './components.jsx';
 import { parseCNJ, cnjProblem, cnjDigits, cnjStates } from '../../app/cnj.mjs';
-import { brDocument } from '../../app/br-documents.mjs';
+import { brDocument, documentKey } from '../../app/br-documents.mjs';
+import { caseFill, companyFill } from '../../app/lookup-fill.mjs';
+import { repeatOptions } from '../../app/task-series.mjs';
+import { limitationRules, suggestedRule, caseLimitation } from '../../app/prescription.mjs';
 import {
   caseAreas,
   caseChoices,
@@ -62,15 +65,6 @@ function LookupNote({ note, onClose }) {
     </div>
   );
 }
-const caseLabels = {
-  procedure: 'Classe',
-  court: 'Vara / órgão julgador',
-  county: 'Comarca',
-  filedAt: 'Distribuição',
-  instance: 'Instância',
-  area: 'Área',
-};
-const addressKeys = ['zip', 'street', 'addressNumber', 'complement', 'district', 'city', 'state'];
 
 const moneyInput = value =>
   /^\d+\.\d{2}$/.test(value || '')
@@ -204,9 +198,22 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
   // Lookups by number: automatic on leaving the field when turned on in Consultas públicas, or by the
   // button. Only empty fields are filled; what the person typed is never replaced.
   const [notes, setNotes] = useState({});
+  // Number found in the DataJud in this form, to bring its movements once the case is saved.
+  const foundNumber = useRef('');
+  const [addPerson, setAddPerson] = useState(false);
   const looked = useRef({});
   const note = (slot, value) => setNotes(current => ({ ...current, [slot]: value }));
   const settings = data.settings || {};
+  // The latest form and whether the dialog is still open, read when a lookup answers.
+  const latest = useRef(form);
+  latest.current = form;
+  const open = useRef(true);
+  useEffect(
+    () => () => {
+      open.current = false;
+    },
+    [],
+  );
   async function lookupCase(number, manual = false) {
     const parsed = parseCNJ(number);
     if (!parsed?.valid || (!manual && looked.current.case === parsed.formatted)) return;
@@ -214,6 +221,8 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
     note('case', { busy: true, title: 'Buscando o processo no DataJud…' });
     try {
       const result = await window.advocacia.lookupCase(parsed.formatted);
+      // The number was changed or the form closed while waiting: this answer is about something else.
+      if (!open.current || cnjDigits(latest.current.number) !== cnjDigits(parsed.formatted)) return;
       if (!result.found) {
         note('case', {
           title: 'Processo não encontrado no DataJud',
@@ -221,67 +230,46 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
         });
         return;
       }
-      const filled = [];
-      for (const [key, value] of Object.entries(result.fields)) {
-        const empty = !String(form[key] || '').trim() || (key === 'area' && form.area === 'Cível' && !item?.area);
-        if (empty && form[key] !== value)
-          filled.push([
-            key,
-            value,
-            `${caseLabels[key]}: ${key === 'filedAt' ? value.split('-').reverse().join('/') : value}`,
-          ]);
-      }
-      setForm(current => ({ ...current, ...Object.fromEntries(filled.map(([key, value]) => [key, value])) }));
+      foundNumber.current = parsed.formatted;
+      const { lines } = caseFill(latest.current, result, { savedArea: item?.area });
+      setForm(current => ({ ...current, ...caseFill(current, result, { savedArea: item?.area }).changes }));
       note('case', {
         title: `Encontrado no DataJud${result.tribunal ? ` (${result.tribunal})` : ''}`,
-        lines: [
-          ...filled.map(f => f[2]),
-          ...(result.subjects.length ? [`Assuntos: ${result.subjects.join('; ')}`] : []),
-        ],
-        hint: filled.length
+        lines: [...lines, ...(result.subjects.length ? [`Assuntos: ${result.subjects.join('; ')}`] : [])],
+        hint: lines.length
           ? 'Preenchido só onde estava vazio. As partes não vêm do DataJud: informe-as abaixo.'
           : 'Os campos já estavam preenchidos e não foram alterados.',
       });
     } catch (failure) {
-      note('case', { error: true, title: 'Não foi possível buscar no DataJud', hint: failure.message });
+      if (open.current)
+        note('case', { error: true, title: 'Não foi possível buscar no DataJud', hint: failure.message });
     }
   }
   async function lookupCNPJ(slot, value, manual = false) {
     const parsed = brDocument(value);
     if (parsed.type !== 'CNPJ' || !parsed.valid || (!manual && looked.current[slot] === parsed.formatted)) return;
     looked.current[slot] = parsed.formatted;
+    const field = slot === 'opposing' ? 'opposingDocument' : 'document';
+    // People and intakes only take the company name.
+    const fill = (current, found) =>
+      slot === 'person'
+        ? current.name?.trim()
+          ? {}
+          : { name: found.name }
+        : companyFill(current, found, slot).changes;
     note(slot, { busy: true, title: 'Buscando os dados do CNPJ…' });
     try {
       const result = await window.advocacia.lookupCNPJ(parsed.formatted);
+      if (!open.current || documentKey(latest.current[field]) !== documentKey(parsed.formatted)) return;
       if (!result.found) {
         note(slot, { error: true, title: 'CNPJ não encontrado', hint: 'Confira o número ou preencha os dados à mão.' });
         return;
       }
-      const changes = {};
-      const lines = [];
-      const put = (key, val, label) => {
-        if (val && !String(form[key] || '').trim()) {
-          changes[key] = val;
-          lines.push(`${label}: ${val}`);
-        }
-      };
-      if (slot === 'opposing') put('opposingParty', result.name, 'Parte contrária');
-      else {
-        put('name', result.name, 'Razão social');
-        if (form.personType !== 'Jurídica') changes.personType = 'Jurídica';
-        put('legalRepresentative', result.legalRepresentative, 'Representante legal');
-        // The address goes in only as a whole, so parts of two addresses are never mixed.
-        if (addressKeys.every(k => !String(form[k] || '').trim()) && result.address.street) {
-          Object.assign(changes, result.address);
-          const a = result.address;
-          lines.push(
-            `Endereço: ${[a.street, a.addressNumber, a.complement, a.district, a.city && `${a.city}/${a.state}`, a.zip]
-              .filter(Boolean)
-              .join(', ')}`,
-          );
-        }
-      }
-      setForm(current => ({ ...current, ...changes }));
+      const lines =
+        slot === 'person'
+          ? Object.values(fill(latest.current, result)).map(v => `Nome: ${v}`)
+          : companyFill(latest.current, result, slot).lines;
+      setForm(current => ({ ...current, ...fill(current, result) }));
       note(slot, {
         warn: !result.active,
         title: result.active ? `Empresa encontrada: ${result.name}` : `Atenção: CNPJ com situação ${result.situation}`,
@@ -291,7 +279,43 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
           : 'Os campos já estavam preenchidos e não foram alterados.',
       });
     } catch (failure) {
-      note(slot, { error: true, title: 'Não foi possível buscar o CNPJ', hint: failure.message });
+      if (open.current) note(slot, { error: true, title: 'Não foi possível buscar o CNPJ', hint: failure.message });
+    }
+  }
+  async function lookupCEP(value, manual = false) {
+    const digits = String(value || '').replace(/\D/g, '');
+    if (digits.length !== 8 || (!manual && looked.current.cep === digits)) return;
+    looked.current.cep = digits;
+    note('cep', { busy: true, title: 'Buscando o endereço…' });
+    try {
+      const result = await window.advocacia.lookupCEP(digits);
+      if (!open.current || String(latest.current.zip || '').replace(/\D/g, '') !== digits) return;
+      if (!result.found) {
+        note('cep', {
+          error: true,
+          title: 'CEP não encontrado',
+          hint: 'Confira o número ou preencha o endereço à mão.',
+        });
+        return;
+      }
+      const keys = { street: 'Logradouro', district: 'Bairro', city: 'Cidade', state: 'UF' };
+      const pick = current =>
+        Object.fromEntries(
+          Object.keys(keys)
+            .filter(k => result[k] && !String(current[k] || '').trim())
+            .map(k => [k, result[k]]),
+        );
+      const filled = pick(latest.current);
+      setForm(current => ({ ...current, zip: result.zip, ...pick(current) }));
+      note('cep', {
+        title: 'Endereço encontrado',
+        lines: Object.entries(filled).map(([k, v]) => `${keys[k]}: ${v}`),
+        hint: Object.keys(filled).length
+          ? 'Preenchido só onde estava vazio. Informe o número e o complemento.'
+          : 'Os campos já estavam preenchidos e não foram alterados.',
+      });
+    } catch (failure) {
+      if (open.current) note('cep', { error: true, title: 'Não foi possível buscar o CEP', hint: failure.message });
     }
   }
   const lookupButton = (label, onClick) => (
@@ -356,7 +380,26 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
     setBusy(true);
     setError('');
     try {
-      await onSave(kind, form);
+      const saved = await onSave(kind, form);
+      if (kind === 'cases' && saved?.id && !item?.id) {
+        if (foundNumber.current && foundNumber.current === parseCNJ(form.number)?.formatted)
+          void window.advocacia.importMovementsAfterLookup(saved.id).catch(() => {});
+        if (addPerson && form.opposingParty.trim()) {
+          const key = documentKey(form.opposingDocument);
+          const known = data.entities.people.some(
+            p =>
+              (key && documentKey(p.document) === key) ||
+              p.name.trim().toLowerCase() === form.opposingParty.trim().toLowerCase(),
+          );
+          if (!known)
+            await onSave('people', {
+              name: form.opposingParty.trim(),
+              role: 'Parte contrária',
+              document: form.opposingDocument,
+              caseId: saved.id,
+            }).catch(() => {});
+        }
+      }
       onClose();
     } catch (failure) {
       setError(failure.message);
@@ -449,8 +492,19 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
               </p>
               <Section>Endereço</Section>
               <Field label="CEP" optional>
-                <input {...props('zip')} maxLength={9} inputMode="numeric" placeholder="00000-000" />
+                <input
+                  {...props('zip')}
+                  maxLength={9}
+                  inputMode="numeric"
+                  placeholder="00000-000"
+                  onBlur={e => {
+                    if (settings.cepLookupEnabled) void lookupCEP(e.target.value);
+                  }}
+                />
+                {String(form.zip || '').replace(/\D/g, '').length === 8 &&
+                  lookupButton('Buscar endereço', () => lookupCEP(form.zip, true))}
               </Field>
+              <LookupNote note={notes.cep} onClose={() => note('cep', null)} />
               <Field label="Logradouro" optional>
                 <input {...props('street')} maxLength={200} placeholder="Rua, avenida..." />
               </Field>
@@ -551,6 +605,12 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
                   lookupButton('Buscar dados da empresa', () => lookupCNPJ('opposing', form.opposingDocument, true))}
               </Field>
               <LookupNote note={notes.opposing} onClose={() => note('opposing', null)} />
+              {!item?.id && form.opposingParty?.trim() && (
+                <label className="check-row full">
+                  <input type="checkbox" checked={addPerson} onChange={e => setAddPerson(e.target.checked)} />
+                  Cadastrar também a parte contrária em Pessoas, vinculada a este processo
+                </label>
+              )}
               <Field label="Advogado da parte contrária" optional>
                 <input {...props('opposingLawyer')} maxLength={160} />
               </Field>
@@ -558,6 +618,38 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
                 <input {...props('opposingLawyerOab')} maxLength={20} placeholder="12345/GO" />
               </Field>
               <Conflicts list={conflicts} />
+              <Section>Prescrição</Section>
+              <Field label="Data do fato ou fim do contrato" optional>
+                <input {...props('factDate')} type="date" min="1900-01-01" max="9999-12-31" />
+              </Field>
+              <Field
+                label="Regra de prescrição"
+                optional
+                hint={(() => {
+                  const l = caseLimitation(form, new Date().toISOString().slice(0, 10));
+                  if (l)
+                    return {
+                      tone: l.days <= 90 ? 'danger' : 'muted',
+                      text: `${l.days < 0 ? 'Prescreveu em' : 'Prescreve em'} ${l.deadline.split('-').reverse().join('/')}${l.days >= 0 ? ` (faltam ${l.days} dias)` : ''}. O aviso aparece no início a 90 dias, enquanto o processo não tiver número.`,
+                    };
+                  return suggestedRule(form.area) && !form.limitationRule
+                    ? {
+                        tone: 'muted',
+                        text:
+                          'Sugestão para a área: ' + limitationRules.find(r => r.id === suggestedRule(form.area)).label,
+                      }
+                    : null;
+                })()}
+              >
+                <select {...props('limitationRule')}>
+                  <option value="">Não controlar</option>
+                  {limitationRules.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <Section>Juízo</Section>
               <Field label="Comarca / seção judiciária" optional>
                 <input {...props('county')} maxLength={120} placeholder="Ex.: Goiânia" />
@@ -641,6 +733,36 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
                   <option>Concluída</option>
                 </select>
               </Field>
+              {!item?.id ? (
+                <>
+                  <Field label="Repetir" optional>
+                    <select {...props('repeat')}>
+                      <option value="">Não repete</option>
+                      {Object.entries(repeatOptions).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  {form.repeat && (
+                    <Field label="Repetir até" hint={{ tone: 'muted', text: 'Até 60 compromissos por série.' }}>
+                      <input {...props('repeatUntil')} type="date" required min={String(form.due).slice(0, 10)} />
+                    </Field>
+                  )}
+                </>
+              ) : (
+                item.seriesId && (
+                  <label className="check-row full">
+                    <input
+                      type="checkbox"
+                      checked={form.applyToSeries === true}
+                      onChange={e => setForm(current => ({ ...current, applyToSeries: e.target.checked }))}
+                    />
+                    Aplicar também aos próximos compromissos desta série (as datas de cada um são mantidas)
+                  </label>
+                )
+              )}
               {process}
               {client}
               {['Audiência', 'Reunião'].includes(form.type) && (
@@ -718,8 +840,19 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
                 <select {...props('role')}>{options(personRoles)}</select>
               </Field>
               <Field label="CPF / CNPJ" optional hint={documentHint(form.document)}>
-                <input {...documentProps('document')} maxLength={32} />
+                <input
+                  {...documentProps('document')}
+                  onBlur={e => {
+                    documentProps('document').onBlur(e);
+                    if (settings.cnpjLookupEnabled) void lookupCNPJ('person', e.target.value);
+                  }}
+                  maxLength={32}
+                />
+                {brDocument(form.document).type === 'CNPJ' &&
+                  brDocument(form.document).valid &&
+                  lookupButton('Buscar dados da empresa', () => lookupCNPJ('person', form.document, true))}
               </Field>
+              <LookupNote note={notes.person} onClose={() => note('person', null)} />
               <Conflicts list={conflicts} />
               {process}
               <Field label="OAB" optional>
@@ -751,8 +884,19 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
                 <input {...props('email')} type="email" maxLength={254} />
               </Field>
               <Field label="CPF / CNPJ" optional hint={documentHint(form.document)}>
-                <input {...documentProps('document')} maxLength={32} />
+                <input
+                  {...documentProps('document')}
+                  onBlur={e => {
+                    documentProps('document').onBlur(e);
+                    if (settings.cnpjLookupEnabled) void lookupCNPJ('person', e.target.value);
+                  }}
+                  maxLength={32}
+                />
+                {brDocument(form.document).type === 'CNPJ' &&
+                  brDocument(form.document).valid &&
+                  lookupButton('Buscar dados da empresa', () => lookupCNPJ('person', form.document, true))}
               </Field>
+              <LookupNote note={notes.person} onClose={() => note('person', null)} />
               <Conflicts list={conflicts} />
               <Field label="Data do atendimento">
                 <input {...props('date')} type="date" required min="1900-01-01" max="9999-12-31" />

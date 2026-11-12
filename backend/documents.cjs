@@ -30,7 +30,7 @@ class Documents {
     return this.save(path.basename(file), await fsp.readFile(file), links);
   }
   // Encrypts content produced or read by the application and lists it with the case/client.
-  async save(name, data, links = {}) {
+  async save(name, data, links = {}, extra = {}) {
     const ext = path.extname(name).toLowerCase();
     if (!allowed.has(ext) || data.length > 100 * 1024 * 1024)
       throw new Error('Formato ou tamanho de documento não permitido.');
@@ -49,6 +49,12 @@ class Documents {
         caseId: links.caseId || '',
         clientId: links.clientId || '',
         notes: '',
+        // Template and answers of a generated document, for "Gerar de novo". Small by construction.
+        ...(extra.generation && JSON.stringify(extra.generation).length <= 60000
+          ? { generation: extra.generation }
+          : {}),
+        // Summary of a saved calculation (rescisão, liquidação, débito), for {calculo.total} in templates.
+        ...(extra.calculation ? { calculation: extra.calculation } : {}),
       });
     } catch (error) {
       await fsp.rm(path.join(this.store.root, 'documents', id + '.enc'), { force: true });

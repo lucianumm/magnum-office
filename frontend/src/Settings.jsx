@@ -29,6 +29,8 @@ import {
   BriefcaseBusiness,
   Clock,
   Globe,
+  Lock,
+  Sunrise,
 } from 'lucide-react';
 import BackupPreferences from './BackupPreferences.jsx';
 import PrivacySettings from './PrivacySettings.jsx';
@@ -38,6 +40,10 @@ import Services from './Services.jsx';
 import LawyersSettings from './LawyersSettings.jsx';
 import DeadlineSettings from './DeadlineSettings.jsx';
 import PublicSettings from './PublicSettings.jsx';
+import UpdateAttempt from './UpdateAttempt.jsx';
+import LockSettings from './LockSettings.jsx';
+import Trash from './Trash.jsx';
+import DigestSettings from './DigestSettings.jsx';
 import { AppearanceSettings, EmailSettings, SupportSettings } from './Personalization.jsx';
 import { PageHeading, Button, Panel, Badge, Toggle, dateTime, bytes, Logo, Modal } from './components.jsx';
 
@@ -48,6 +54,7 @@ const groups = [
       ['office', 'Escritório', Settings2],
       ['deadlines', 'Prazos e fluxos', Clock],
       ['appearance', 'Personalizar', Palette],
+      ['digest', 'Resumo diário', Sunrise],
     ],
   ],
   [
@@ -63,6 +70,8 @@ const groups = [
       ['backups', 'Backups e recuperação', Database],
       ['imports', 'Importar dados', FileSpreadsheet],
       ['privacy', 'Privacidade e LGPD', ShieldCheck],
+      ['lock', 'Senha do programa', Lock],
+      ['trash', 'Lixeira', Trash2],
     ],
   ],
   [
@@ -289,6 +298,9 @@ export default function Settings({ data, act, reload, initialTab = 'office' }) {
           )}
           {tab === 'appearance' && <AppearanceSettings data={data} act={act} reload={reload} />}
           {tab === 'privacy' && <PrivacySettings data={data} act={act} setLegal={setLegal} />}
+          {tab === 'lock' && <LockSettings act={act} />}
+          {tab === 'trash' && <Trash act={act} reload={reload} />}
+          {tab === 'digest' && <DigestSettings act={act} />}
           {tab === 'agents' && <AgentSettings data={data} act={act} />}
           {tab === 'email' && <EmailSettings data={data} act={act} />}
           {tab === 'support' && <SupportSettings data={data} act={act} />}
@@ -421,6 +433,7 @@ export default function Settings({ data, act, reload, initialTab = 'office' }) {
                       </small>
                     </div>
                   </section>
+                  <UpdateAttempt act={act} refreshKey={u.status} />
                   {!u.trusted && (
                     <div className="notice subtle-notice">
                       <Info size={16} />

@@ -25,6 +25,7 @@ import {
 import { personRoles, intakeStatuses } from '../../app/legal-options.mjs';
 import { localDateTime } from './MessageComposer.jsx';
 import { messageLabels } from './Messages.jsx';
+import CaseBoard from './CaseBoard.jsx';
 import {
   PageHeading,
   Button,
@@ -109,6 +110,23 @@ export default function Records({
 }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('Todos');
+  // Cases can be seen as a list or as a board by phase; the choice is remembered on this computer.
+  const [board, setBoard] = useState(() => {
+    try {
+      return kind === 'cases' && localStorage.getItem('magnum-cases-view') === 'board';
+    } catch {
+      return false;
+    }
+  });
+  const toggleBoard = () =>
+    setBoard(value => {
+      try {
+        localStorage.setItem('magnum-cases-view', value ? 'list' : 'board');
+      } catch {
+        /* Only a preference of this window. */
+      }
+      return !value;
+    });
   const [importModal, setImportModal] = useState(false);
   const [links, setLinks] = useState({ clientId: '', caseId: '' });
   const cfg = config[kind];
@@ -439,6 +457,20 @@ export default function Records({
       },
       { key: 'size', label: 'Tamanho', value: d => String(d.size).padStart(14, '0'), render: d => bytes(d.size) },
       {
+        key: 'validUntil',
+        label: 'Validade',
+        value: d => d.validUntil || '9999',
+        render: d => (
+          <input
+            type="date"
+            className="inline-date"
+            aria-label={`Validade de ${d.name}`}
+            value={d.validUntil || ''}
+            onChange={e => act(() => window.advocacia.setDocumentValidity({ id: d.id, validUntil: e.target.value }))}
+          />
+        ),
+      },
+      {
         key: 'createdAt',
         label: 'Importado em',
         value: d => d.createdAt,
@@ -449,6 +481,24 @@ export default function Records({
         label: 'Ações',
         render: d => (
           <div className="row-actions">
+            {d.generation && generateDocument && (
+              <button
+                className="icon-button"
+                aria-label={`Gerar de novo ${d.name}`}
+                title="Gerar de novo com as mesmas respostas"
+                onClick={() =>
+                  generateDocument({
+                    templateId: d.generation.templateId,
+                    answers: d.generation.answers,
+                    values: d.generation.values,
+                    lawyers: d.generation.lawyers,
+                    ...(d.caseId ? { caseId: d.caseId } : d.clientId ? { clientId: d.clientId } : {}),
+                  })
+                }
+              >
+                <FilePenLine size={15} />
+              </button>
+            )}
             <button
               className="icon-button"
               aria-label={`Abrir ${d.name}`}
@@ -522,6 +572,11 @@ export default function Records({
             ))}
           </div>
           <SearchBox value={query} onChange={setQuery} placeholder={`Buscar ${cfg.title.toLowerCase()}...`} />
+          {kind === 'cases' && !embedded && (
+            <button className="text-link" onClick={toggleBoard} aria-pressed={board}>
+              {board ? 'Ver em lista' : 'Ver quadro por fase'}
+            </button>
+          )}
         </div>
         {!rows.length ? (
           <Empty
@@ -564,6 +619,8 @@ export default function Records({
               )
             }
           />
+        ) : kind === 'cases' && board && !embedded ? (
+          <CaseBoard cases={rows} clients={data.entities.clients} save={save} openDetail={openDetail} />
         ) : kind === 'notes' ? (
           <div className="notes-grid">
             {rows.map(item => (

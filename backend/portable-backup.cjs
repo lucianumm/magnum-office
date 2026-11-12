@@ -80,7 +80,7 @@ class PortableBackup {
       ].map(k => [k, cfg[k]]),
     );
     const entities = Object.fromEntries(
-      ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes'].map(k => [
+      ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes', 'time'].map(k => [
         k,
         this.store.list(k),
       ]),
@@ -227,8 +227,9 @@ class PortableBackup {
       const refs = Object.fromEntries(
         ['clients', 'cases'].map(k => [k, new Set(data.entities[k].map(r => uuid(r.id)))]),
       );
-      for (const kind of ['clients', 'cases', 'tasks', 'notes', 'people', 'finance', 'intakes'])
-        for (const r of data.entities[kind]) {
+      for (const kind of ['clients', 'cases', 'tasks', 'notes', 'people', 'finance', 'intakes', 'time'])
+        // Hours exist from 1.11 on; older backups have none.
+        for (const r of data.entities[kind] || []) {
           const value = entity(
             kind,
             { ...r, ...(kind === 'clients' ? { birthdayEnabled: false } : {}) },

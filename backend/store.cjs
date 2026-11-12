@@ -17,6 +17,16 @@ class Store {
     this.db.exec(
       'CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY, checksum TEXT NOT NULL, applied_at TEXT NOT NULL);',
     );
+    // Decrypted payloads by record, reused while the row's updated_at is unchanged. Decrypting every
+    // record on each change was the main cost with large offices (scripts/perf-measure.mjs).
+    this.decrypted = new Map();
+  }
+  unsealRow(row) {
+    const cached = this.decrypted.get(row.id);
+    if (cached && cached.updatedAt === row.updated_at) return cached.payload;
+    const payload = this.vault.unseal(row.payload);
+    this.decrypted.set(row.id, { updatedAt: row.updated_at, payload });
+    return payload;
   }
   async migrate() {
     const files = fs
@@ -124,7 +134,7 @@ class Store {
       .prepare('SELECT * FROM entities WHERE kind=? ORDER BY updated_at DESC')
       .all(kind)
       .map(row => ({
-        ...this.vault.unseal(row.payload),
+        ...structuredCloneSafe(this.unsealRow(row)),
         id: row.id,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
@@ -181,26 +191,121 @@ class Store {
     this.audit('record.saved', { kind, id });
     return this.get(kind, id);
   }
+  hasTable(name) {
+    return !!this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name);
+  }
+  // Excluding moves the record to the trash (migration 009), where it stays for 30 days. Bases kept
+  // at an older schema (tests, partial restores) still delete for good.
   remove(kind, id) {
     this.get(kind, id);
     if (kind === 'clients' && this.linked('client', id))
       throw new Error('Este cliente está vinculado a outros registros. Remova os vínculos antes de excluir.');
     if (kind === 'cases' && this.linked('case', id))
       throw new Error('Este processo está vinculado a outros registros. Remova os vínculos antes de excluir.');
-    this.db.prepare('DELETE FROM entities WHERE kind=? AND id=?').run(kind, id);
-    if (
-      kind === 'cases' &&
-      this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='case_movements'").get()
-    ) {
-      this.db.prepare('DELETE FROM case_movements WHERE case_id=?').run(id);
-      this.db.prepare('UPDATE intimations SET case_id=NULL WHERE case_id=?').run(id);
-    }
-    if (kind === 'documents') {
-      fs.rmSync(path.join(this.root, 'documents', `${id}.enc`), { force: true });
-      if (this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='document_text'").get())
+    const extra = {};
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      if (kind === 'cases' && this.hasTable('intimations')) {
+        extra.intimations = this.db
+          .prepare('SELECT id FROM intimations WHERE case_id=?')
+          .all(id)
+          .map(r => r.id);
+        this.db.prepare('UPDATE intimations SET case_id=NULL WHERE case_id=?').run(id);
+      }
+      // The text index is rebuilt on restore; a document in the trash must not show up in the search.
+      if (kind === 'documents' && this.hasTable('document_text'))
         this.db.prepare('DELETE FROM document_text WHERE document_id=?').run(id);
+      if (this.hasTable('trash')) {
+        const columns = this.linkColumns() ? ',client_id,case_id' : '';
+        this.db
+          .prepare(
+            `INSERT INTO trash (id,kind,payload,created_at,updated_at${columns},deleted_at,extra) SELECT id,kind,payload,created_at,updated_at${columns},?,? FROM entities WHERE kind=? AND id=?`,
+          )
+          .run(new Date().toISOString(), JSON.stringify(extra), kind, id);
+      } else this.dropFiles(kind, id);
+      this.db.prepare('DELETE FROM entities WHERE kind=? AND id=?').run(kind, id);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
     }
+    this.decrypted.delete(id);
     this.audit('record.removed', { kind, id });
+  }
+  // What only a final deletion removes: the document file and the movements of a case.
+  dropFiles(kind, id) {
+    if (kind === 'cases' && this.hasTable('case_movements'))
+      this.db.prepare('DELETE FROM case_movements WHERE case_id=?').run(id);
+    if (kind === 'documents') fs.rmSync(path.join(this.root, 'documents', `${id}.enc`), { force: true });
+  }
+  trashList() {
+    if (!this.hasTable('trash')) return [];
+    return this.db
+      .prepare('SELECT id,kind,payload,deleted_at,client_id,case_id FROM trash ORDER BY deleted_at DESC')
+      .all()
+      .map(row => {
+        const p = this.vault.unseal(row.payload);
+        return {
+          id: row.id,
+          kind: row.kind,
+          title: p.name || p.title || p.description || 'Sem título',
+          deletedAt: row.deleted_at,
+          clientId: row.client_id || '',
+          caseId: row.case_id || '',
+        };
+      });
+  }
+  restore(id) {
+    validation.uuid(id);
+    const row = this.db.prepare('SELECT * FROM trash WHERE id=?').get(id);
+    if (!row) throw new Error('Item não encontrado na lixeira.');
+    for (const [kind, linkId] of [
+      ['clients', row.client_id],
+      ['cases', row.case_id],
+    ])
+      if (linkId && !this.db.prepare('SELECT 1 FROM entities WHERE kind=? AND id=?').get(kind, linkId))
+        throw new Error(
+          `Restaure primeiro o ${kind === 'clients' ? 'cliente' : 'processo'} vinculado, que também está na lixeira ou foi excluído.`,
+        );
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const columns = this.linkColumns() ? ',client_id,case_id' : '';
+      this.db
+        .prepare(
+          `INSERT INTO entities (id,kind,payload,created_at,updated_at${columns}) SELECT id,kind,payload,created_at,?${columns} FROM trash WHERE id=?`,
+        )
+        .run(new Date().toISOString(), id);
+      const extra = JSON.parse(row.extra || '{}');
+      if (row.kind === 'cases' && extra.intimations?.length && this.hasTable('intimations')) {
+        const relink = this.db.prepare('UPDATE intimations SET case_id=? WHERE id=? AND case_id IS NULL');
+        for (const intimation of extra.intimations) relink.run(id, intimation);
+      }
+      this.db.prepare('DELETE FROM trash WHERE id=?').run(id);
+      this.db.exec('COMMIT');
+    } catch (error) {
+      this.db.exec('ROLLBACK');
+      throw error;
+    }
+    this.audit('record.restored', { kind: row.kind, id });
+    return this.get(row.kind, id);
+  }
+  // Deletes for good: one item ({ id }), everything ({ all: true }) or what is older than N days.
+  purgeTrash({ id, all = false, olderThanDays, now = Date.now() } = {}) {
+    if (!this.hasTable('trash')) return 0;
+    let rows;
+    if (id) rows = this.db.prepare('SELECT id,kind FROM trash WHERE id=?').all(validation.uuid(id));
+    else if (all) rows = this.db.prepare('SELECT id,kind FROM trash').all();
+    else if (olderThanDays)
+      rows = this.db
+        .prepare('SELECT id,kind FROM trash WHERE deleted_at < ?')
+        .all(new Date(now - olderThanDays * 86400000).toISOString());
+    else return 0;
+    for (const row of rows) {
+      this.dropFiles(row.kind, row.id);
+      this.db.prepare('DELETE FROM trash WHERE id=?').run(row.id);
+    }
+    if (rows.length) this.audit('trash.purged', { code: String(rows.length) });
+    return rows.length;
   }
   secret(id, value) {
     if (value === undefined) {
@@ -256,5 +361,10 @@ class Store {
   close() {
     this.db.close();
   }
+}
+// Callers get their own copy of nested values (lists, objects), so the cache cannot be changed by them.
+function structuredCloneSafe(payload) {
+  for (const value of Object.values(payload)) if (value && typeof value === 'object') return structuredClone(payload);
+  return payload;
 }
 module.exports = { Store };

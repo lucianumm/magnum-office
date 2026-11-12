@@ -29,6 +29,8 @@ jobs:
       - run: npm run test:birthdays
       - run: npm run test:email-layout
       - run: npm run test:manual-update
+      - run: npm run test:documents
+      - run: npm run test:tools
       - uses: actions/upload-artifact@v7
         if: always()
         with:

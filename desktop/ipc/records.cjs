@@ -27,14 +27,50 @@ module.exports = function registerRecords(ctx) {
     ctx.clipboard.writeText(token);
     return true;
   });
+  const saveTask = entity => {
+    const saved = ctx.store.save('tasks', entity);
+    const synced = ctx.reminders.sync(saved);
+    return { ...synced.task, reminderStatus: synced.status, reminderProblem: synced.reason || '' };
+  };
   ctx.register('save', data =>
     ctx.operations.run('Gravação de cadastro', () => {
-      let result = ctx.store.save(data.kind, data.entity);
-      if (data.kind === 'clients') ctx.birthdays.tick(true);
-      if (data.kind === 'tasks') {
-        const synced = ctx.reminders.sync(result);
-        result = { ...synced.task, reminderStatus: synced.status, reminderProblem: synced.reason || '' };
+      const entity = data.entity || {};
+      // A new repeating appointment becomes one appointment per date, linked by seriesId.
+      if (data.kind === 'tasks' && !entity.id && entity.repeat) {
+        const { seriesDates } = require('../../app/task-series.mjs');
+        const dates = seriesDates(entity.due, entity.repeat, entity.repeatUntil);
+        const seriesId = require('node:crypto').randomUUID();
+        ctx.store.db.exec('BEGIN');
+        try {
+          const saved = dates.map(due => saveTask({ ...entity, due, seriesId }));
+          ctx.store.db.exec('COMMIT');
+          return { ...saved[0], seriesCount: saved.length };
+        } catch (error) {
+          ctx.store.db.exec('ROLLBACK');
+          throw error;
+        }
       }
+      // "Este e os próximos": the same changes, keeping each date, on the later appointments of the series.
+      if (data.kind === 'tasks' && entity.id && data.applyToSeries) {
+        const current = ctx.store.get('tasks', entity.id);
+        if (!current.seriesId) throw new Error('Este compromisso não faz parte de uma série.');
+        const time = String(entity.due || '').slice(11, 16);
+        const later = ctx.store
+          .list('tasks')
+          .filter(t => t.seriesId === current.seriesId && t.id !== current.id && t.due >= current.due);
+        const first = saveTask(entity);
+        for (const t of later)
+          saveTask({
+            ...entity,
+            id: t.id,
+            due: `${t.due.slice(0, 10)}T${time || t.due.slice(11, 16)}`,
+            status: t.status,
+          });
+        return { ...first, seriesUpdated: later.length };
+      }
+      if (data.kind === 'tasks') return saveTask(entity);
+      const result = ctx.store.save(data.kind, entity);
+      if (data.kind === 'clients') ctx.birthdays.tick(true);
       return result;
     }),
   );
@@ -43,9 +79,10 @@ module.exports = function registerRecords(ctx) {
       const response = await ctx.dialog.showMessageBox(ctx.win, {
         type: 'warning',
         title: 'Excluir registro',
-        message: 'Excluir este registro permanentemente?',
-        detail: 'Os vínculos existentes serão verificados antes da exclusão.',
-        buttons: ['Cancelar', 'Excluir'],
+        message: 'Mover este registro para a lixeira?',
+        detail:
+          'Ele fica na lixeira por 30 dias e pode ser restaurado em Configurações → Lixeira. Os vínculos são verificados antes.',
+        buttons: ['Cancelar', 'Mover para a lixeira'],
         defaultId: 0,
         cancelId: 0,
         noLink: true,

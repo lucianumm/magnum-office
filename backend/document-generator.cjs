@@ -46,7 +46,18 @@ class DocumentGenerator {
       }
     }
     const blocks = templateBlocks(template);
+    // Latest calculations saved in the case (their PDFs carry a summary): {calculo.total}, {debito.total}.
+    const calculations = {};
+    if (caseItem)
+      for (const doc of this.store
+        .list('documents')
+        .filter(d => d.caseId === caseItem.id && d.calculation)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))) {
+        const slot = doc.calculation.type === 'debt' ? 'debt' : 'labor';
+        calculations[slot] ||= doc.calculation;
+      }
     const recorded = documentContext({
+      calculations,
       client,
       caseItem,
       lawyers: chosen.map(i => all[i]),
@@ -57,6 +68,8 @@ class DocumentGenerator {
     const blanks = templateVariables(blocks).filter(v => !String(recorded[v.key] ?? '').trim());
     const values = { ...recorded, ...manual };
     return {
+      // What is needed to generate the same document again later.
+      generation: { templateId: template.id, answers, values: manual, lawyers: chosen },
       template,
       client,
       caseItem,
@@ -74,8 +87,11 @@ class DocumentGenerator {
     const formats = Array.isArray(input?.formats) ? [...new Set(input.formats)] : [];
     if (!formats.length || formats.some(f => !['docx', 'pdf'].includes(f)))
       throw new Error('Escolha DOCX, PDF ou os dois.');
-    const { template, client, caseItem, blocks, invalid, subject } = this.prepare(input);
-    if (invalid.length) throw new Error(`Valor inválido em: ${invalid.join(', ')}. Use, por exemplo, 1.500,00.`);
+    const { template, client, caseItem, blocks, invalid, subject, generation } = this.prepare(input);
+    if (invalid.length)
+      throw new Error(
+        `Valor inválido em: ${invalid.join(', ')}. Confira valores em reais (ex.: 1.500,00), datas e opções da lista.`,
+      );
     if (!blocksText(blocks).trim()) throw new Error('O modelo está vazio.');
     // Characters Windows does not accept in file names, and control characters.
     const base = `${template.title}${subject ? ' - ' + subject : ''}`
@@ -89,7 +105,7 @@ class DocumentGenerator {
     const saved = [];
     for (const format of formats) {
       const content = format === 'docx' ? docx(blocks, meta) : await pdf(blocks, meta);
-      saved.push(await this.documents.save(`${base}.${format}`, content, links));
+      saved.push(await this.documents.save(`${base}.${format}`, content, links, { generation }));
     }
     this.store.audit('document.generated', { id: template.id });
     return saved;

@@ -374,3 +374,56 @@ test('migration 006 keeps every record and the link columns', async t => {
     store.close();
   }
 });
+
+test('typed questions: date, yes/no, options and long text; answers are kept to generate again', async t => {
+  const blocks = htmlBlocks(
+    '<p>Admissão: {?Data de admissão:data}</p><p>CTPS: {?CTPS anotada:sim/não}</p>' +
+      '<p>Estado civil: {?Estado civil:opções=solteiro|casado|divorciado}</p><p>{?Relato:texto longo}</p>',
+  );
+  const questions = templateQuestions(blocks);
+  assert.deepEqual(
+    questions.map(q => [q.label, q.type, q.options || null]),
+    [
+      ['Data de admissão', 'date', null],
+      ['CTPS anotada', 'yesno', ['Sim', 'Não']],
+      ['Estado civil', 'options', ['solteiro', 'casado', 'divorciado']],
+      ['Relato', 'long', null],
+    ],
+  );
+  const keys = Object.fromEntries(questions.map(q => [q.label, q.key]));
+  const good = fillBlocks(
+    blocks,
+    {},
+    {
+      [keys['Data de admissão']]: '2024-03-10',
+      [keys['CTPS anotada']]: 'nao',
+      [keys['Estado civil']]: 'Casado',
+      [keys.Relato]: 'Linha 1\nLinha 2',
+    },
+  );
+  assert.equal(blocksText(good.blocks), 'Admissão: 10/03/2024\nCTPS: Não\nEstado civil: casado\nLinha 1 Linha 2');
+  assert.deepEqual(good.invalid, []);
+  assert.equal(
+    blocksText(fillBlocks(blocks, {}, { [keys['Data de admissão']]: '10/03/2024' }).blocks).split('\n')[0],
+    'Admissão: 10/03/2024',
+  );
+  const bad = fillBlocks(blocks, {}, { [keys['Data de admissão']]: '2024-02-30', [keys['Estado civil']]: 'viúvo' });
+  assert.deepEqual(bad.invalid, ['Data de admissão', 'Estado civil']);
+
+  const { store, settings } = await fixture(t);
+  const library = new Library(store);
+  const receipt = library.list().find(x => x.kind === 'document' && x.title.startsWith('Recibo'));
+  const generator = new DocumentGenerator({ store, library, settings, documents: new Documents(store), courts });
+  const answers = Object.fromEntries(
+    generator.preview({ templateId: receipt.id }).questions.map(q => [q.key, q.type === 'money' ? '100,00' : 'teste']),
+  );
+  const [saved] = await generator.generate({
+    templateId: receipt.id,
+    formats: ['docx'],
+    values: { 'cliente.nome': 'Bruno' },
+    answers,
+  });
+  assert.deepEqual(saved.generation.answers, answers);
+  assert.deepEqual(saved.generation.values, { 'cliente.nome': 'Bruno' });
+  assert.equal(saved.generation.templateId, receipt.id);
+});

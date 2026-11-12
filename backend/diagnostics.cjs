@@ -41,6 +41,7 @@ async function diagnostics(store, settings, messaging, backups) {
         .filter(row => row.event.startsWith('update.'))
         .slice(0, 20)
         .map(summary),
+      lastAttempt: await require('./update-history.cjs').lastAttempt(store.root),
     },
     recentErrors: audits
       .filter(row => row.event.includes('failed'))

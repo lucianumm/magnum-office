@@ -35,6 +35,14 @@ const defaults = {
   datajudEnabled: false,
   caseLookupEnabled: false,
   cnpjLookupEnabled: false,
+  cepLookupEnabled: false,
+  lockIdleMinutes: 0,
+  lockOnHide: false,
+  digestEnabled: false,
+  digestChannel: 'whatsapp',
+  digestRecipient: '',
+  digestTime: '08:00',
+  lastDigestDate: '',
   datajudKey: '',
   djenEnabled: false,
   lastDatajudCheck: null,
@@ -271,6 +279,7 @@ class Settings {
       'djenEnabled',
       'caseLookupEnabled',
       'cnpjLookupEnabled',
+      'cepLookupEnabled',
     ])
       if (key in data) {
         if (typeof data[key] !== 'boolean') throw new Error('Configuração inválida.');

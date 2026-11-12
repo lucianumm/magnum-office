@@ -1,15 +1,15 @@
-; The guardian of versions up to 1.9.1 runs "/S --updated" without naming a folder. When the registry
-; lists both a per-user and a per-machine installation, or the folder in use is not the registered one,
-; NSIS installs somewhere else, reports success, and the program in use is never replaced. The folder
-; in use is in pending-update.json (previousExe), written by the program right before updating.
-; Newer guardians pass /D= and the install mode themselves, so this only acts without /D=.
+; The guardian of versions up to 1.9.1 runs the installer silently ("/S", and "--updated" from 1.3 on)
+; without naming a folder. When the registry lists both a per-user and a per-machine installation, or
+; the folder in use is not the registered one, NSIS installs somewhere else, reports success, and the
+; program in use is never replaced (reproduced by scripts/update-e2e.mjs with the 1.2.0 guardian).
+; The folder in use is in pending-update.json (previousExe), written by the program right before
+; updating and removed once the new version starts. Newer guardians pass /D= and the install mode
+; themselves, so this only acts on a silent run without /D=.
 !macro customInit
   ${if} ${Silent}
     ${GetParameters} $R0
-    ${GetOptions} $R0 "--updated" $R1
-    ${IfNot} ${Errors}
-      ${GetOptions} $R0 "/D=" $R1
-      ${If} ${Errors}
+    ${GetOptions} $R0 "/D=" $R1
+    ${If} ${Errors}
         nsExec::ExecToStack `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -C "$$p = Join-Path $$env:APPDATA 'AdvocaciaGestao\pending-update.json'; if (Test-Path -LiteralPath $$p) { [Console]::Write([IO.Path]::GetDirectoryName((Get-Content -Raw -LiteralPath $$p | ConvertFrom-Json).previousExe)) }"`
         Pop $R3
         Pop $R4
@@ -27,7 +27,6 @@
           ${endIf}
           StrCpy $INSTDIR $R4
         ${endIf}
-      ${EndIf}
     ${EndIf}
   ${endIf}
 !macroend

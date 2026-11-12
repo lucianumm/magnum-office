@@ -6,7 +6,7 @@ import { calculateSeverance, centsBRL, noticeOptions, terminationKinds } from '.
 const br = value => value.split('-').reverse().join('/');
 
 // Simple severance (verbas rescisórias). The PDF is recalculated by the main process from the same inputs.
-export default function LaborCalculator({ data, act }) {
+export default function LaborCalculator({ data, act, initialCaseId = '' }) {
   const [form, setForm] = useState({
     kind: 'sem-justa-causa',
     notice: 'indenizado',
@@ -19,7 +19,8 @@ export default function LaborCalculator({ data, act }) {
     doubledPeriods: '0',
     fgtsBalance: '',
     art477: false,
-    caseId: '',
+    thirteenthAdvance: '',
+    caseId: initialCaseId,
   });
   const update = patch => setForm(f => ({ ...f, ...patch }));
   const notices = noticeOptions[form.kind];
@@ -148,6 +149,16 @@ export default function LaborCalculator({ data, act }) {
                 <small>Use o saldo do extrato da Caixa, somando os saques feitos durante o contrato.</small>
               </label>
             )}
+            <label className="field">
+              <span>Adiantamento do 13º já pago</span>
+              <input
+                value={form.thirteenthAdvance}
+                inputMode="decimal"
+                placeholder="R$ 0,00"
+                onChange={e => update({ thirteenthAdvance: e.target.value })}
+              />
+              <small>A 1ª parcela paga no ano é abatida do 13º proporcional.</small>
+            </label>
             <label className="check-row">
               <input type="checkbox" checked={form.art477} onChange={e => update({ art477: e.target.checked })} />
               Incluir multa do art. 477, § 8º (pagamento em atraso)

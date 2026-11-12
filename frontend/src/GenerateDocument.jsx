@@ -3,6 +3,28 @@ import { FilePenLine, FileText, ExternalLink, Download, AlertTriangle } from 'lu
 import { Modal, Button, Empty } from './components.jsx';
 import { lawyerOAB } from '../../app/document-template.mjs';
 
+// Fields are found by the label shown in the preview ("Falta: Telefone").
+const fieldId = label => 'generate-' + encodeURIComponent(label);
+
+// One answer field, by the type written in the template ({?Data:data}, {?CTPS:sim/não}...).
+function AnswerField({ q, value, onChange }) {
+  const common = { id: fieldId(q.label), value, onChange: e => onChange(e.target.value) };
+  if (q.type === 'money') return <input {...common} maxLength={40} inputMode="decimal" placeholder="R$ 0,00" />;
+  if (q.type === 'date') return <input {...common} type="date" min="1900-01-01" max="9999-12-31" />;
+  if (q.type === 'yesno' || q.type === 'options')
+    return (
+      <select {...common}>
+        <option value="">Escolha…</option>
+        {q.options.map(o => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
+    );
+  return <textarea {...common} rows={q.type === 'long' ? 4 : 1} maxLength={4000} />;
+}
+
 // Fills a document template with the client/case data and saves DOCX/PDF in its encrypted documents.
 // Opened from a template (no record), the client and the case are optional and any data the
 // template needs can be typed here.
@@ -24,14 +46,16 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
   );
   const [clientId, setClientId] = useState(initial.clientId || '');
   const [caseId, setCaseId] = useState(initial.caseId || '');
-  const [values, setValues] = useState({});
   const clients = useMemo(
     () => [...data.entities.clients].sort((a, b) => a.name.localeCompare(b.name)),
     [data.entities.clients],
   );
   const cases = data.entities.cases.filter(c => (clientId ? c.clientId === clientId : true));
-  const [chosen, setChosen] = useState(() => lawyers.map((_, i) => i));
+  const [chosen, setChosen] = useState(() =>
+    Array.isArray(initial.lawyers) ? initial.lawyers.filter(i => lawyers[i]) : lawyers.map((_, i) => i),
+  );
   const [answers, setAnswers] = useState(() => initial.answers || {});
+  const [values, setValues] = useState(() => initial.values || {});
   const [formats, setFormats] = useState({ docx: true, pdf: false });
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState('');
@@ -225,6 +249,7 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
                 <label className="field" key={v.key}>
                   <span>{v.label}</span>
                   <textarea
+                    id={fieldId(v.label)}
                     rows={1}
                     value={values[v.key] || ''}
                     maxLength={4000}
@@ -240,22 +265,11 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
               {preview.questions.map(q => (
                 <label className="field" key={q.key}>
                   <span>{q.label}</span>
-                  {q.type === 'money' ? (
-                    <input
-                      value={answers[q.key] || ''}
-                      maxLength={40}
-                      inputMode="decimal"
-                      placeholder="R$ 0,00"
-                      onChange={e => setAnswers(a => ({ ...a, [q.key]: e.target.value }))}
-                    />
-                  ) : (
-                    <textarea
-                      rows={1}
-                      value={answers[q.key] || ''}
-                      maxLength={4000}
-                      onChange={e => setAnswers(a => ({ ...a, [q.key]: e.target.value }))}
-                    />
-                  )}
+                  <AnswerField
+                    q={q}
+                    value={answers[q.key] || ''}
+                    onChange={v => setAnswers(a => ({ ...a, [q.key]: v }))}
+                  />
                   {(q.type === 'money' || q.count > 1) && (
                     <small>
                       {q.type === 'money' ? 'O valor sai com o extenso.' : ''}
@@ -296,7 +310,8 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
           )}
           {preview?.invalid.length > 0 && (
             <div className="form-error" role="alert">
-              Valor inválido em: {preview.invalid.join(', ')}. Use, por exemplo, 1.500,00.
+              Valor inválido em: {preview.invalid.join(', ')}. Confira valores em reais (ex.: 1.500,00), datas e opções
+              da lista.
             </div>
           )}
           {error && (
@@ -314,7 +329,16 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
                     textDecoration: r.underline ? 'underline' : undefined,
                   };
                   return r.missing ? (
-                    <mark key={j} title={`Falta: ${r.missing}`} style={style}>
+                    <mark
+                      key={j}
+                      title={`Falta: ${r.missing}. Clique para preencher.`}
+                      style={style}
+                      onClick={() => {
+                        const field = document.getElementById(fieldId(r.missing));
+                        field?.scrollIntoView({ block: 'center' });
+                        field?.focus();
+                      }}
+                    >
                       {r.text}
                     </mark>
                   ) : (
