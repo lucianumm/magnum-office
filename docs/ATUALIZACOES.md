@@ -56,9 +56,17 @@ Em **Configurações → Atualizações → Forçar atualização agora**, confi
 
 Para reinstalar a mesma versão, clique em **Baixar instalador pelo GitHub**, encerre por **Sair do sistema** na bandeja e execute o instalador na pasta atual. Isso preserva `%APPDATA%\AdvocaciaGestao`. Não desinstale nem apague essa pasta.
 
-## Versões 1.0.0 e 1.1.0
+## Instalação manual
 
-Essas versões usam o guardião antigo, em PowerShell, que não concluiu nenhuma das 3 tentativas registradas em teste real. **Quem está nelas deve instalar a versão nova manualmente**, pelo instalador oficial ou pelo [comando de instalação rápida](../README.md#instalação-rápida-no-windows). Os cadastros são preservados. A partir da 1.2.0 a atualização pelo aplicativo funciona.
+Se a atualização automática não concluir neste computador (permissão do Windows recusada, antivírus, instalação em pasta diferente), use **Configurações → Atualizações → Instalar manualmente**. O sistema copia os dados, fecha e abre o mesmo instalador já verificado, com as telas normais: mantenha a mesma pasta e permita a instalação se o Windows pedir.
+
+Desde a 1.10.0 o guardião informa ao instalador a pasta e o modo da instalação atual ("só para mim" ou "todos os usuários") e confere a versão instalada antes de reabrir o programa. Se a versão não foi trocada, volta à anterior na hora e registra `update.guardian.not-replaced` em `logs/recovery.jsonl`.
+
+Quem ainda usa uma versão anterior à 1.9.0 deve instalar a última versão pelo instalador oficial ou pelo [comando de instalação rápida](../README.md#instalação-rápida-no-windows). Os cadastros são preservados.
+
+## Releases publicadas
+
+O GitHub mantém só as duas últimas releases estáveis: a atual e a anterior, usada como base no teste de atualização. O workflow de publicação remove as mais antigas, com as tags, depois de criar a nova.
 
 ## Testes
 

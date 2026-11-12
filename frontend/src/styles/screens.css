@@ -445,6 +445,17 @@
   font-weight: 500;
   margin-bottom: var(--space-1);
 }
+.generate-questions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.generate-options textarea {
+  field-sizing: content;
+  min-height: 34px;
+  max-height: 160px;
+  resize: vertical;
+}
 .check-row {
   display: flex;
   align-items: center;
@@ -804,6 +815,14 @@
 .deadline-basis,
 .deadline-steps {
   font-size: var(--text-sm);
+}
+.deadline-steps .numeric {
+  text-align: right;
+  white-space: nowrap;
+}
+.deadline-steps tr.labor-total td {
+  font-weight: 600;
+  border-top: 1px solid var(--border-strong);
 }
 .deadline-basis summary,
 .deadline-steps summary {

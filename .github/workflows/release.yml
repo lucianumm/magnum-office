@@ -87,3 +87,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
+      # Keeps the two most recent published stable releases: the current one and the previous one,
+      # which the next run downloads to test the update. Drafts and betas are left alone.
+      - name: Remover releases estáveis antigas (mantém as 2 últimas publicadas)
+        shell: pwsh
+        run: |
+          $old = gh release list --exclude-drafts --exclude-pre-releases --limit 100 --json tagName,publishedAt --jq 'sort_by(.publishedAt) | reverse | .[2:] | .[].tagName'
+          foreach ($tag in $old) { if ($tag) { Write-Host "Removendo $tag"; gh release delete $tag --cleanup-tag --yes } }
+        env:
+          GH_TOKEN: ${{ github.token }}

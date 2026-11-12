@@ -186,7 +186,7 @@ export const templateBlocks = template =>
 
 // ---- Filling --------------------------------------------------------------------------------
 
-const tokenPattern = /\{(\?[^{}]{1,120}|[a-z_]+\.[a-z_]+)\}/g;
+const tokenPattern = /\{(\?[^{}]{0,120}|[a-z_]+\.[a-z_]+)\}/g;
 // "{?Valor recebido:moeda}" → { key, label, type: 'money' }
 function question(raw) {
   const [label, type] = raw
@@ -196,14 +196,93 @@ function question(raw) {
   return { key: raw.slice(1).trim(), label, type: type === 'moeda' ? 'money' : 'text' };
 }
 
+// Placeholder names copied from the help text ("{?Pergunta}") say nothing about the field. Each
+// occurrence of one of them is a separate question, named after the text that comes before it
+// ("Telefone / WhatsApp: {?Pergunta}" asks "Telefone / WhatsApp"). Any other name repeated in the
+// template is the same question on purpose, answered once.
+const genericLabels = new Set([
+  '',
+  'pergunta',
+  'resposta',
+  'campo',
+  'texto',
+  'preencher',
+  'informacao',
+  'dado',
+  'dados',
+]);
+const isGeneric = label => genericLabels.has(label.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim());
+// The label written just before a question: "…\nNº de Funcionários:" → "Nº de Funcionários".
+function labelBefore(text) {
+  let label = text.replace(/[\s:–—\-_=.,;>]+$/, '');
+  label = label
+    .split(/[.;!?]\s+|\n/)
+    .at(-1)
+    .replace(/^[\s:–—\-_,;)]+/, '');
+  if (label.length > 80) label = '…' + label.slice(-80).replace(/^\S*\s/, '');
+  return label.trim();
+}
+
+// Every {?question} in document order, scanned exactly as fillBlocks reads the text.
+function scanQuestions(blocks) {
+  const found = [];
+  let previous = '';
+  for (const block of blocks) {
+    let since = '';
+    for (const run of merge(block.runs)) {
+      let last = 0;
+      for (const m of run.text.matchAll(tokenPattern)) {
+        since += run.text.slice(last, m.index);
+        last = m.index + m[0].length;
+        if (!m[1].startsWith('?')) {
+          since = '';
+          continue;
+        }
+        const q = question(m[1]);
+        if (isGeneric(q.label)) q.context = labelBefore(since) || (previous.length <= 80 ? labelBefore(previous) : '');
+        found.push(q);
+        since = '';
+      }
+      since += run.text.slice(last);
+    }
+    const plain = block.runs.map(r => r.text).join('');
+    if (plain.trim()) previous = tokenPattern.test(plain) ? '' : plain;
+    tokenPattern.lastIndex = 0;
+  }
+  // Generic occurrences get their own key; a repeated context gets a number so the fields differ.
+  const counts = new Map();
+  const used = new Map();
+  let unnamed = 0;
+  for (const q of found) {
+    if (!('context' in q)) continue;
+    const n = (counts.get(q.key) || 0) + 1;
+    counts.set(q.key, n);
+    q.key = `${q.key}#${n}`;
+    let label = q.context || `Pergunta ${++unnamed}`;
+    const seen = (used.get(label) || 0) + 1;
+    used.set(label, seen);
+    if (seen > 1) label = `${label} (${seen})`;
+    q.label = label;
+    delete q.context;
+  }
+  return found;
+}
+
+// The record variables ({cliente.nome}…) the template uses, in document order, without repeats.
+export function templateVariables(blocks) {
+  const seen = new Set();
+  for (const block of blocks)
+    for (const run of merge(block.runs))
+      for (const m of run.text.matchAll(tokenPattern)) if (m[1] in labels) seen.add(m[1]);
+  return [...seen].map(key => ({ key, label: labels[key] }));
+}
+
 export function templateQuestions(blocks) {
   const seen = new Map();
-  for (const b of blocks)
-    for (const [, raw] of b.runs
-      .map(r => r.text)
-      .join('')
-      .matchAll(tokenPattern))
-      if (raw.startsWith('?') && !seen.has(raw.slice(1).trim())) seen.set(raw.slice(1).trim(), question(raw));
+  for (const q of scanQuestions(blocks)) {
+    if (seen.has(q.key)) seen.get(q.key).count++;
+    else seen.set(q.key, { ...q, count: 1 });
+  }
   return [...seen.values()];
 }
 
@@ -221,6 +300,8 @@ function merge(runs) {
 export function fillBlocks(blocks, values, answers = {}) {
   const missing = new Set();
   const invalid = new Set();
+  const questions = scanQuestions(blocks);
+  let asked = 0;
   const filled = blocks.map(block => ({
     ...block,
     runs: merge(block.runs).flatMap(run => {
@@ -230,9 +311,11 @@ export function fillBlocks(blocks, values, answers = {}) {
         const raw = m[1];
         let value, label;
         if (raw.startsWith('?')) {
-          const q = question(raw);
+          const q = questions[asked++];
           label = q.label;
-          const answer = String(answers[q.key] ?? '').trim();
+          const answer = String(answers[q.key] ?? '')
+            .replace(/\s*\n\s*/g, ' ')
+            .trim();
           if (q.type === 'money' && answer) {
             const parsed = parseMoney(answer);
             if (parsed === null) invalid.add(label);

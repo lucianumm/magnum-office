@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { BrowserWindow, app } = require('electron');
 const texts = {
-  installing: ['Atualizando o sistema', 'Instalando a nova versão. Não desligue o computador.'],
+  installing: ['Atualizando o sistema', 'Instalando a nova versão. Se o Windows pedir permissão, clique em Sim. Não desligue o computador.'],
   starting: ['Quase pronto', 'Abrindo a nova versão e conferindo seus dados.'],
   restoring: ['A atualização não pôde ser concluída', 'Voltando à versão anterior. Seus dados estão preservados.']
 };
@@ -19,7 +19,7 @@ i:after{content:'';position:absolute;inset:0 60% 0 0;background:#0d7168;border-r
 async function runProgressWindow(root) {
   await app.whenReady();
   const file = path.join(root, 'update-progress.json');
-  const win = new BrowserWindow({ width: 440, height: 150, frame: false, resizable: false, minimizable: false, maximizable: false, alwaysOnTop: true, skipTaskbar: false, title: 'Atualização', show: false, webPreferences: { sandbox: true, contextIsolation: true } });
+  const win = new BrowserWindow({ width: 440, height: 170, frame: false, resizable: false, minimizable: false, maximizable: false, alwaysOnTop: true, skipTaskbar: false, title: 'Atualização', show: false, webPreferences: { sandbox: true, contextIsolation: true } });
   win.once('ready-to-show', () => { win.show(); if (!win.isVisible()) win.show(); });
   await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page));
   const deadline = Date.now() + 15 * 60000;

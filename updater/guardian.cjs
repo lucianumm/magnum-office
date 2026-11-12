@@ -2,7 +2,10 @@
 // the old application's UI process, including on Windows without a console.
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const { spawn } = require('node:child_process');
+const { spawn, spawnSync } = require('node:child_process');
+// The installed app.asar is read as a plain file, never as Electron's virtual folder.
+process.noAsar = true;
+const rawFs = (() => { try { return require('original-fs').promises; } catch { return fs; } })();
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const HEALTH_LIMIT = 180000;
 const MIGRATION_LIMIT = 600000;
@@ -17,6 +20,47 @@ async function start(executable, args, env, { hidden = false } = {}) {
   return child;
 }
 const readJSON = file => fs.readFile(file, 'utf8').then(text => JSON.parse(text.replace(/^\uFEFF/, '')));
+
+// Version written in <install dir>\resources\app.asar \u2192 package.json. The archive starts with two
+// little-endian uint32 headers: [4][header size] then [payload][JSON length][JSON], and the files
+// begin right after the header.
+async function installedVersion(dir) {
+  const handle = await rawFs.open(path.join(dir, 'resources', 'app.asar'), 'r');
+  try {
+    const head = Buffer.alloc(16);
+    await handle.read(head, 0, 16, 0);
+    const headerSize = head.readUInt32LE(4);
+    const jsonSize = head.readUInt32LE(12);
+    if (jsonSize > 64 * 1024 ** 2) throw new Error('Invalid archive header');
+    const json = Buffer.alloc(jsonSize);
+    await handle.read(json, 0, jsonSize, 16);
+    const entry = JSON.parse(json.toString('utf8')).files['package.json'];
+    const data = Buffer.alloc(entry.size);
+    await handle.read(data, 0, entry.size, 8 + headerSize + Number(entry.offset));
+    return String(JSON.parse(data.toString('utf8')).version || '');
+  } finally { await handle.close(); }
+}
+
+// The NSIS installer chooses "for me" or "for everyone" from the registry. When both entries exist,
+// or none, it falls back to a per-user folder and the program in use is never replaced. The mode is
+// read from the uninstall entry that points at the folder in use, and passed explicitly.
+function installMode(dir) {
+  if (process.platform !== 'win32') return '';
+  const needle = `"${dir.toLowerCase()}\\`;
+  for (const [hive, flag] of [['HKLM', '/allusers'], ['HKCU', '/currentuser']]) {
+    const result = spawnSync('reg.exe', ['query', `${hive}\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall`, '/s', '/f', dir, '/d', '/reg:64'], { encoding: 'utf8', windowsHide: true, timeout: 15000 });
+    const found = String(result.stdout || '').split(/\r?\n/).some(line => /UninstallString/i.test(line) && line.toLowerCase().includes(needle));
+    if (found) return flag;
+  }
+  return '';
+}
+
+// /D= must be the last argument and unquoted, so the command line is written verbatim.
+function runInstaller(installer, dir, mode, env) {
+  const args = ['/S', '--updated', ...(mode ? [mode] : []), `/D=${dir}`];
+  const child = spawn(installer, args, { env, detached: true, stdio: 'ignore', windowsHide: mode !== '/allusers', windowsVerbatimArguments: true, argv0: `"${installer}"` });
+  return new Promise((resolve, reject) => { child.once('spawn', () => resolve(child)); child.once('error', reject); });
+}
 async function main() {
   const request = await readJSON(process.argv[2]);
   const root = path.resolve(request.root);
@@ -43,11 +87,25 @@ async function main() {
   let newProcess;
   try {
     step = 'installing';
-    const installer = await start(request.installer, ['/S', '--updated'], env, { hidden: true });
-    await new Promise((resolve, reject) => {
+    const installDir = path.dirname(path.resolve(request.previousExe));
+    const mode = installMode(installDir);
+    const installStarted = Date.now();
+    await log('update.guardian.installer.started', { dir: installDir, mode: mode || 'registro' });
+    const installer = await runInstaller(request.installer, installDir, mode, env);
+    const exitCode = await new Promise((resolve, reject) => {
       const timer = setTimeout(() => { installer.kill(); reject(new Error('Installation timed out')); }, 300000);
-      installer.once('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error(`Installer exit code ${code}`)); });
+      installer.once('exit', code => { clearTimeout(timer); resolve(code); });
     });
+    await log('update.guardian.installer.exited', { code: exitCode, seconds: Math.round((Date.now() - installStarted) / 1000) });
+    if (exitCode !== 0) throw new Error(`Installer exit code ${exitCode}`);
+    // The installer can report success without touching the folder in use (Windows permission
+    // refused, antivirus, another folder chosen). Opening the old program would only fail later.
+    step = 'verifying';
+    const found = await installedVersion(installDir).catch(error => `ilegível (${error.code || error.message})`);
+    if (found !== request.version) {
+      await log('update.guardian.not-replaced', { dir: installDir, mode: mode || 'registro', found });
+      throw new Error(`Installed version is ${found}, expected ${request.version}`);
+    }
     await log('update.guardian.installed');
     step = 'starting';
     await progress('starting');

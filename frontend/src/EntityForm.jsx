@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Save, ShieldAlert, Info } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Save, ShieldAlert, Info, Search, CheckCircle2 } from 'lucide-react';
 import BirthdayFields from './BirthdayFields.jsx';
 import { Modal, Button, Toggle, dayKey } from './components.jsx';
 import { parseCNJ, cnjProblem, cnjDigits, cnjStates } from '../../app/cnj.mjs';
@@ -35,6 +35,42 @@ function Conflicts({ list }) {
     </div>
   );
 }
+
+// Result of a DataJud or CNPJ lookup, under the field that started it.
+function LookupNote({ note, onClose }) {
+  if (!note) return null;
+  const tone = note.error || note.warn ? 'danger' : 'info';
+  return (
+    <div className={'conflict-alert full lookup-note ' + tone} role="status">
+      {note.busy ? <Search size={16} /> : note.error ? <ShieldAlert size={16} /> : <CheckCircle2 size={16} />}
+      <div>
+        <strong>{note.title}</strong>
+        {note.lines?.length > 0 && (
+          <ul>
+            {note.lines.map(line => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        )}
+        {note.hint && <small>{note.hint}</small>}
+      </div>
+      {!note.busy && (
+        <button type="button" className="text-link" onClick={onClose}>
+          Fechar
+        </button>
+      )}
+    </div>
+  );
+}
+const caseLabels = {
+  procedure: 'Classe',
+  court: 'Vara / órgão julgador',
+  county: 'Comarca',
+  filedAt: 'Distribuição',
+  instance: 'Instância',
+  area: 'Área',
+};
+const addressKeys = ['zip', 'street', 'addressNumber', 'complement', 'district', 'city', 'state'];
 
 const moneyInput = value =>
   /^\d+\.\d{2}$/.test(value || '')
@@ -165,6 +201,104 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Lookups by number: automatic on leaving the field when turned on in Consultas públicas, or by the
+  // button. Only empty fields are filled; what the person typed is never replaced.
+  const [notes, setNotes] = useState({});
+  const looked = useRef({});
+  const note = (slot, value) => setNotes(current => ({ ...current, [slot]: value }));
+  const settings = data.settings || {};
+  async function lookupCase(number, manual = false) {
+    const parsed = parseCNJ(number);
+    if (!parsed?.valid || (!manual && looked.current.case === parsed.formatted)) return;
+    looked.current.case = parsed.formatted;
+    note('case', { busy: true, title: 'Buscando o processo no DataJud…' });
+    try {
+      const result = await window.advocacia.lookupCase(parsed.formatted);
+      if (!result.found) {
+        note('case', {
+          title: 'Processo não encontrado no DataJud',
+          hint: 'Pode estar em segredo de justiça, ser muito recente ou ainda não ter sido enviado pelo tribunal. Preencha à mão.',
+        });
+        return;
+      }
+      const filled = [];
+      for (const [key, value] of Object.entries(result.fields)) {
+        const empty = !String(form[key] || '').trim() || (key === 'area' && form.area === 'Cível' && !item?.area);
+        if (empty && form[key] !== value)
+          filled.push([
+            key,
+            value,
+            `${caseLabels[key]}: ${key === 'filedAt' ? value.split('-').reverse().join('/') : value}`,
+          ]);
+      }
+      setForm(current => ({ ...current, ...Object.fromEntries(filled.map(([key, value]) => [key, value])) }));
+      note('case', {
+        title: `Encontrado no DataJud${result.tribunal ? ` (${result.tribunal})` : ''}`,
+        lines: [
+          ...filled.map(f => f[2]),
+          ...(result.subjects.length ? [`Assuntos: ${result.subjects.join('; ')}`] : []),
+        ],
+        hint: filled.length
+          ? 'Preenchido só onde estava vazio. As partes não vêm do DataJud: informe-as abaixo.'
+          : 'Os campos já estavam preenchidos e não foram alterados.',
+      });
+    } catch (failure) {
+      note('case', { error: true, title: 'Não foi possível buscar no DataJud', hint: failure.message });
+    }
+  }
+  async function lookupCNPJ(slot, value, manual = false) {
+    const parsed = brDocument(value);
+    if (parsed.type !== 'CNPJ' || !parsed.valid || (!manual && looked.current[slot] === parsed.formatted)) return;
+    looked.current[slot] = parsed.formatted;
+    note(slot, { busy: true, title: 'Buscando os dados do CNPJ…' });
+    try {
+      const result = await window.advocacia.lookupCNPJ(parsed.formatted);
+      if (!result.found) {
+        note(slot, { error: true, title: 'CNPJ não encontrado', hint: 'Confira o número ou preencha os dados à mão.' });
+        return;
+      }
+      const changes = {};
+      const lines = [];
+      const put = (key, val, label) => {
+        if (val && !String(form[key] || '').trim()) {
+          changes[key] = val;
+          lines.push(`${label}: ${val}`);
+        }
+      };
+      if (slot === 'opposing') put('opposingParty', result.name, 'Parte contrária');
+      else {
+        put('name', result.name, 'Razão social');
+        if (form.personType !== 'Jurídica') changes.personType = 'Jurídica';
+        put('legalRepresentative', result.legalRepresentative, 'Representante legal');
+        // The address goes in only as a whole, so parts of two addresses are never mixed.
+        if (addressKeys.every(k => !String(form[k] || '').trim()) && result.address.street) {
+          Object.assign(changes, result.address);
+          const a = result.address;
+          lines.push(
+            `Endereço: ${[a.street, a.addressNumber, a.complement, a.district, a.city && `${a.city}/${a.state}`, a.zip]
+              .filter(Boolean)
+              .join(', ')}`,
+          );
+        }
+      }
+      setForm(current => ({ ...current, ...changes }));
+      note(slot, {
+        warn: !result.active,
+        title: result.active ? `Empresa encontrada: ${result.name}` : `Atenção: CNPJ com situação ${result.situation}`,
+        lines: [...(result.tradeName ? [`Nome fantasia: ${result.tradeName}`] : []), ...lines],
+        hint: lines.length
+          ? 'Dados públicos da Receita Federal, preenchidos só onde estava vazio. Confira antes de salvar.'
+          : 'Os campos já estavam preenchidos e não foram alterados.',
+      });
+    } catch (failure) {
+      note(slot, { error: true, title: 'Não foi possível buscar o CNPJ', hint: failure.message });
+    }
+  }
+  const lookupButton = (label, onClick) => (
+    <button type="button" className="text-link lookup-button" onClick={onClick}>
+      <Search size={12} /> {label}
+    </button>
+  );
   const props = name => ({
     value: form[name] || '',
     onChange: e => setForm(current => ({ ...current, [name]: e.target.value })),
@@ -252,10 +386,18 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
               <Field label="CPF / CNPJ" optional hint={documentHint(form.document)}>
                 <input
                   {...documentProps('document')}
+                  onBlur={e => {
+                    documentProps('document').onBlur(e);
+                    if (settings.cnpjLookupEnabled) void lookupCNPJ('client', e.target.value);
+                  }}
                   maxLength={32}
                   placeholder={legal ? '00.000.000/0000-00' : '000.000.000-00'}
                 />
+                {brDocument(form.document).type === 'CNPJ' &&
+                  brDocument(form.document).valid &&
+                  lookupButton('Buscar dados da empresa', () => lookupCNPJ('client', form.document, true))}
               </Field>
+              <LookupNote note={notes.client} onClose={() => note('client', null)} />
               {legal ? (
                 <>
                   <Field label="Representante legal" optional>
@@ -370,9 +512,12 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
                   onBlur={e => {
                     const parsed = parseCNJ(e.target.value);
                     if (parsed?.valid) setForm(current => ({ ...current, number: parsed.formatted }));
+                    if (parsed?.valid && settings.caseLookupEnabled) void lookupCase(parsed.formatted);
                   }}
                 />
+                {parseCNJ(form.number)?.valid && lookupButton('Buscar no DataJud', () => lookupCase(form.number, true))}
               </Field>
+              <LookupNote note={notes.case} onClose={() => note('case', null)} />
               <Field label="Área de atuação">
                 <select {...props('area')}>{options(caseAreas)}</select>
               </Field>
@@ -393,8 +538,19 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
                 <input {...props('opposingParty')} maxLength={300} placeholder="Nome ou razão social" />
               </Field>
               <Field label="CPF / CNPJ da parte contrária" optional hint={documentHint(form.opposingDocument)}>
-                <input {...documentProps('opposingDocument')} maxLength={32} />
+                <input
+                  {...documentProps('opposingDocument')}
+                  onBlur={e => {
+                    documentProps('opposingDocument').onBlur(e);
+                    if (settings.cnpjLookupEnabled) void lookupCNPJ('opposing', e.target.value);
+                  }}
+                  maxLength={32}
+                />
+                {brDocument(form.opposingDocument).type === 'CNPJ' &&
+                  brDocument(form.opposingDocument).valid &&
+                  lookupButton('Buscar dados da empresa', () => lookupCNPJ('opposing', form.opposingDocument, true))}
               </Field>
+              <LookupNote note={notes.opposing} onClose={() => note('opposing', null)} />
               <Field label="Advogado da parte contrária" optional>
                 <input {...props('opposingLawyer')} maxLength={160} />
               </Field>

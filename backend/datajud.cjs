@@ -18,6 +18,36 @@ function parseFiled(value) {
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';
 }
 
+const instances = { G1: '1º grau', G2: '2º grau', JE: 'Juizado especial', TR: 'Turma recursal', SUP: 'Tribunal superior' };
+// "2ª VARA DO TRABALHO DE RIO VERDE" → "Rio Verde". Names without a city ("VARA DA FAZENDA PÚBLICA
+// ESTADUAL") give nothing rather than a wrong guess.
+const notCity = /FAZENDA|FAM[IÍ]LIA|TRABALHO|EXECU|P[UÚ]BLIC|SUCESS|INF[AÂ]NCIA|REGISTRO|FAL[EÊ]NCIA|VIOL[EÊ]NCIA|CRIMINA|C[IÍ]VE|JUIZADO|VARA|TURMA|C[AÂ]MARA|SE[CÇ][AÃ]O|GABINETE|DESEMBARGADOR|ÓRF[AÃ]OS|ENTORPECENTES|EXECUÇÃO/i;
+const small = new Set(['de', 'da', 'do', 'das', 'dos', 'e', "d'"]);
+function countyFrom(orgao) {
+  // Labour courts write the city first: "RIO VERDE - 01ª VARA".
+  const leading = /^([^-–,()/]+?)\s+[-–]\s+.*\b(VARA|JUIZADO|FORO|POSTO)\b/i.exec(String(orgao));
+  // "VARA DE FAMÍLIA DE GOIÂNIA": the first " DE " that is followed by a city name only.
+  const parts = String(orgao).split(/ DE /i);
+  const city = [
+    ...(leading ? [leading[1].trim()] : []),
+    ...parts.slice(1).map((_, i) => parts.slice(i + 1).join(' DE ').trim()),
+  ].find(c => c && !/[-–,()/]/.test(c) && !/\d/.test(c) && !notCity.test(c) && c.length <= 60);
+  if (!city) return '';
+  return city
+    .toLocaleLowerCase('pt-BR')
+    .split(/\s+/)
+    .map((w, i) => (i && small.has(w) ? w : w.charAt(0).toLocaleUpperCase('pt-BR') + w.slice(1)))
+    .join(' ');
+}
+function areaFrom(segment, classe) {
+  if (segment === 5) return 'Trabalhista';
+  if (segment === 6) return 'Eleitoral';
+  if (segment === 7 || segment === 9 || /penal|criminal|inqu[eé]rito|habeas corpus/i.test(classe)) return 'Criminal';
+  if (/div[oó]rcio|alimentos|guarda|fam[ií]lia|invent[aá]rio|uni[aã]o est[aá]vel/i.test(classe)) return 'Família';
+  if (/execu[cç][aã]o fiscal/i.test(classe)) return 'Tributário';
+  return '';
+}
+
 class DataJud {
   constructor({ store, settings, fetch, clock = Date.now }) {
     Object.assign(this, { store, settings, fetch, clock });
@@ -138,6 +168,33 @@ class DataJud {
     });
     this.store.audit('datajud.checked', { id: caseId });
     return { added: incoming.length, found: sources.length > 0, ...this.read(caseId) };
+  }
+  // Data for the case form, from the number alone, before the case exists. Nothing is stored. The
+  // public API has no party names; the office types those (or looks the CNPJ up).
+  async lookup(number) {
+    const parsed = parseCNJ(text(String(number || ''), 40));
+    if (!parsed?.valid) throw new Error('Informe um número CNJ válido para buscar no DataJud.');
+    const alias = this.alias({ number: parsed.formatted });
+    if (!alias) throw new Error('O DataJud não atende processos deste tribunal.');
+    const sources = await this.query(alias, cnjDigits(parsed.formatted));
+    if (!sources.length) return { found: false, fields: {}, subjects: [], tribunal: '' };
+    // The same number can exist in more than one degree; the most recently updated one describes the case now.
+    const latest = [...sources].sort((a, b) => String(b.dataHoraUltimaAtualizacao || '').localeCompare(String(a.dataHoraUltimaAtualizacao || '')))[0];
+    const first = sources.find(s => s.grau === 'G1') || sources[0];
+    const classe = text(String(latest.classe?.nome || ''), 80);
+    const orgao = text(String(latest.orgaoJulgador?.nome || '').replace(/\s+/g, ' ').trim(), 200);
+    const fields = {
+      procedure: classe,
+      court: orgao,
+      county: countyFrom(orgao),
+      filedAt: parseFiled(first.dataAjuizamento),
+      instance: instances[latest.grau] || '',
+      area: areaFrom(parsed.segment, classe),
+    };
+    for (const key of Object.keys(fields)) if (!fields[key]) delete fields[key];
+    const subjects = [...new Set(sources.flatMap(s => (s.assuntos || []).flat().map(a => String(a?.nome || '')).filter(Boolean)))].slice(0, 10);
+    this.store.audit('datajud.lookup', {});
+    return { found: true, fields, subjects, tribunal: String(latest.tribunal || ''), secret: Math.max(0, ...sources.map(s => Number(s.nivelSigilo) || 0)) > 0 };
   }
   // Daily check of active cases; stops on a rejected key or rate limit.
   async checkAll({ pause = 1500 } = {}) {

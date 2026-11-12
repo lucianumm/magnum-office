@@ -9,6 +9,8 @@ export default function PublicSettings({ data, act }) {
     datajudEnabled: s.datajudEnabled,
     djenEnabled: s.djenEnabled,
     datajudKey: s.datajudKey || '',
+    caseLookupEnabled: s.caseLookupEnabled,
+    cnpjLookupEnabled: s.cnpjLookupEnabled,
   });
   const lawyers = (s.lawyers || []).filter(l => l.oab && l.uf);
   const save = () => act(() => window.advocacia.saveSettings(form), 'Consultas públicas salvas.');
@@ -18,9 +20,9 @@ export default function PublicSettings({ data, act }) {
       <Panel title="Consultas públicas" icon={Globe}>
         <div className="settings-body">
           <p className="help-text">
-            Estas consultas usam serviços públicos do CNJ e do Banco Central. Elas vêm desligadas, funcionam só com o
-            programa aberto ou na bandeja e enviam apenas o mínimo descrito em cada uma. Nenhum nome de cliente sai do
-            computador.
+            Estas consultas usam serviços públicos do CNJ, do Banco Central e dados abertos da Receita Federal. Elas vêm
+            desligadas, funcionam só com o programa aberto ou na bandeja e enviam apenas o mínimo descrito em cada uma.
+            Nenhum nome de cliente sai do computador.
           </p>
           <Toggle
             checked={form.datajudEnabled}
@@ -47,6 +49,19 @@ export default function PublicSettings({ data, act }) {
             Última consulta: {s.lastDatajudCheck ? dateTime(s.lastDatajudCheck) : 'nunca'}
             {s.datajudError && <span className="danger-text"> · {s.datajudError}</span>}
           </small>
+          <div className="section-divider" />
+          <Toggle
+            checked={form.caseLookupEnabled}
+            onChange={v => setForm(f => ({ ...f, caseLookupEnabled: v }))}
+            title="Preencher o processo pelo número (DataJud)"
+            description="Ao informar um número CNJ válido no cadastro do processo, busca no DataJud a classe, a vara, a comarca, a data de distribuição e a instância e preenche só os campos vazios. Envia ao CNJ apenas o número digitado. As partes não vêm do DataJud. Desligado, o botão Buscar no DataJud continua disponível no formulário."
+          />
+          <Toggle
+            checked={form.cnpjLookupEnabled}
+            onChange={v => setForm(f => ({ ...f, cnpjLookupEnabled: v }))}
+            title="Preencher a empresa pelo CNPJ (Receita Federal)"
+            description="Ao informar um CNPJ válido no cliente ou na parte contrária, busca razão social, endereço e sócio administrador na BrasilAPI (ou no minhareceita.org, se ela falhar) e preenche só os campos vazios. Envia apenas o número do CNPJ. Desligado, o botão Buscar dados da empresa continua disponível no formulário."
+          />
           <div className="section-divider" />
           <Toggle
             checked={form.djenEnabled}

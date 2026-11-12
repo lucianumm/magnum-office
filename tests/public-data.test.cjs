@@ -9,6 +9,7 @@ const { Settings } = require('../backend/settings.cjs');
 const { Indices } = require('../backend/indices.cjs');
 const { DataJud, DEFAULT_KEY } = require('../backend/datajud.cjs');
 const { DJEN } = require('../backend/djen.cjs');
+const { CNPJLookup } = require('../backend/cnpj.cjs');
 const { report } = require('../backend/debt-report.cjs');
 const { pdf } = require('../backend/document-files.cjs');
 const { calculateDebt, seriesNeeded } = require('../app/debt.mjs');
@@ -155,6 +156,68 @@ test('DataJud: request format, merged movements, news count and errors', async t
   await assert.rejects(datajud.refresh(noNumber.id), /número CNJ válido/);
   store.remove('cases', caseItem.id);
   assert.equal(store.db.prepare('SELECT COUNT(*) AS n FROM case_movements').get().n, 0);
+});
+
+test('DataJud lookup fills the case form from the number alone, without storing anything', async t => {
+  const { store, settings } = await fixture(t);
+  const source = (grau, update, orgao, classe) => ({ tribunal: 'TRT18', grau, numeroProcesso: '00100016920245180101', nivelSigilo: 0, dataAjuizamento: '20240115093000', dataHoraUltimaAtualizacao: update, classe: { nome: classe }, orgaoJulgador: { nome: orgao }, assuntos: [{ nome: 'Horas Extras' }, [{ nome: 'Adicional Noturno' }]], movimentos: [] });
+  const { fetch, calls } = fakeFetch(() => ({
+    body: { hits: { hits: [{ _source: source('G1', '2024-06-01T10:00:00', '1ª VARA DO TRABALHO DE RIO VERDE', 'Ação Trabalhista - Rito Ordinário') }, { _source: source('G2', '2025-02-01T10:00:00', 'GABINETE DA DESEMBARGADORA FULANA', 'Recurso Ordinário Trabalhista') }] } },
+  }));
+  const datajud = new DataJud({ store, settings, fetch });
+  const found = await datajud.lookup('0010001-69.2024.5.18.0101');
+  assert.equal(calls[0].url, 'https://api-publica.datajud.cnj.jus.br/api_publica_trt18/_search');
+  assert.deepEqual(found.fields, { procedure: 'Recurso Ordinário Trabalhista', court: 'GABINETE DA DESEMBARGADORA FULANA', filedAt: '2024-01-15', instance: '2º grau', area: 'Trabalhista' }, 'latest degree describes the case; no city in a cabinet name');
+  assert.deepEqual(found.subjects, ['Horas Extras', 'Adicional Noturno']);
+  assert.equal(found.tribunal, 'TRT18');
+  const firstDegree = new DataJud({ store, settings, fetch: fakeFetch(() => ({ body: { hits: { hits: [{ _source: source('G1', '', 'VARA DE FAMÍLIA E SUCESSÕES DE ANÁPOLIS', 'Divórcio Litigioso') }] } } })).fetch });
+  const family = await firstDegree.lookup('0010001-69.2024.5.18.0101');
+  assert.equal(family.fields.county, 'Anápolis');
+  const labour = new DataJud({ store, settings, fetch: fakeFetch(() => ({ body: { hits: { hits: [{ _source: source('G1', '', 'Rio Verde - 01a Vara', 'Ação Trabalhista - Rito Ordinário') }] } } })).fetch });
+  assert.equal((await labour.lookup('0010001-69.2024.5.18.0101')).fields.county, 'Rio Verde', 'labour courts put the city first');
+  assert.equal(family.fields.area, 'Trabalhista', 'the CNJ segment wins over the class');
+  const empty = new DataJud({ store, settings, fetch: fakeFetch(() => ({ body: { hits: { hits: [] } } })).fetch });
+  assert.deepEqual(await empty.lookup('0010001-69.2024.5.18.0101'), { found: false, fields: {}, subjects: [], tribunal: '' });
+  await assert.rejects(datajud.lookup('0010001-00.2024.5.18.0101'), /número CNJ válido/);
+  assert.equal(store.db.prepare('SELECT COUNT(*) AS n FROM case_movements').get().n, 0, 'nothing stored');
+});
+
+test('CNPJ lookup maps Receita data, falls back to the second source and explains failures', async t => {
+  const { store } = await fixture(t);
+  const company = {
+    razao_social: 'EMPRESA EXEMPLO LTDA',
+    nome_fantasia: 'EXEMPLO',
+    descricao_situacao_cadastral: 'ATIVA',
+    descricao_tipo_de_logradouro: 'AVENIDA',
+    logradouro: 'GOIAS',
+    numero: '100',
+    complemento: 'SALA 2',
+    bairro: 'SETOR CENTRAL',
+    municipio: 'GOIANIA',
+    uf: 'go',
+    cep: '74000000',
+    qsa: [{ nome_socio: 'JOAO SOCIO', qualificacao_socio: 'Sócio' }, { nome_socio: 'MARIA DA SILVA', qualificacao_socio: 'Sócio-Administrador' }],
+  };
+  const { fetch, calls } = fakeFetch(url => (url.includes('brasilapi') ? { status: 500 } : { body: company }));
+  const result = await new CNPJLookup({ store, fetch }).lookup('11.222.333/0001-81');
+  assert.deepEqual(calls.map(c => c.url), ['https://brasilapi.com.br/api/cnpj/v1/11222333000181', 'https://minhareceita.org/11222333000181']);
+  assert.deepEqual(result, {
+    found: true,
+    document: '11.222.333/0001-81',
+    name: 'EMPRESA EXEMPLO LTDA',
+    tradeName: 'EXEMPLO',
+    situation: 'ATIVA',
+    active: true,
+    address: { street: 'Avenida Goias', addressNumber: '100', complement: 'Sala 2', district: 'Setor Central', city: 'Goiania', state: 'GO', zip: '74000-000' },
+    legalRepresentative: 'Maria da Silva',
+  });
+  const closed = await new CNPJLookup({ fetch: fakeFetch(() => ({ body: { ...company, descricao_situacao_cadastral: 'BAIXADA' } })).fetch }).lookup('11222333000181');
+  assert.equal(closed.active, false);
+  assert.deepEqual(await new CNPJLookup({ fetch: fakeFetch(() => ({ status: 404 })).fetch }).lookup('11222333000181'), { found: false, document: '11.222.333/0001-81' });
+  await assert.rejects(new CNPJLookup({ fetch: fakeFetch(() => ({ status: 429 })).fetch }).lookup('11222333000181'), /Muitas consultas/);
+  await assert.rejects(new CNPJLookup({ fetch: async () => { throw new TypeError('fetch failed'); } }).lookup('11222333000181'), /Sem conexão/);
+  await assert.rejects(new CNPJLookup({ fetch }).lookup('11.222.333/0001-80'), /CNPJ válido/);
+  await assert.rejects(new CNPJLookup({ fetch }).lookup('529.982.247-25'), /CNPJ válido/, 'CPF is never sent');
 });
 
 test('DJEN: queries each lawyer by OAB, pages, links cases and never stores a publication twice', async t => {

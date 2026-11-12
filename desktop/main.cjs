@@ -25,6 +25,7 @@ const {WorkflowRunner}=require('../backend/workflow-runner.cjs');
 const {Finance}=require('../backend/finance.cjs');
 const {Indices}=require('../backend/indices.cjs');
 const {DataJud}=require('../backend/datajud.cjs');
+const {CNPJLookup}=require('../backend/cnpj.cjs');
 const {DJEN}=require('../backend/djen.cjs');
 const {Intakes}=require('../backend/intakes.cjs');
 const {DocumentIndex}=require('../backend/document-index.cjs');
@@ -61,7 +62,7 @@ if (relaunchWatch) setTimeout(() => {
   });
 }, 30000);
 if (progressRoot) void require('../updater/progress-window.cjs').runProgressWindow(path.resolve(progressRoot)).catch(() => app.quit());
-let win, tray, store, settings, messaging, updater, documents, backups, library, imports, agentAPI, pdfTools, weeklyBackups, birthdays, generator, reminders, workflowRunner, finance, indices, datajud, djen, intakes, docIndex;
+let win, tray, store, settings, messaging, updater, documents, backups, library, imports, agentAPI, pdfTools, weeklyBackups, birthdays, generator, reminders, workflowRunner, finance, indices, datajud, djen, intakes, docIndex, cnpj;
 const operations = new Operations();
 let notificationTimer;
 let quitting = false;
@@ -236,6 +237,12 @@ function bindHandlers() {
     const pdfBytes = await require('../backend/document-files.cjs').pdf(blocks, { title, author: settings.get().officeName });
     return documents.save(`${title}.pdf`, pdfBytes, { caseId: caseItem?.id || '', clientId: caseItem?.clientId || '' });
   }));
+  register('saveLaborReport', input => operations.run('Memória de cálculo', async () => {
+    const { blocks, caseId, title } = require('../backend/labor-report.cjs').laborReport(input);
+    const caseItem = caseId ? store.get('cases', caseId) : null;
+    const pdfBytes = await require('../backend/document-files.cjs').pdf(blocks, { title, author: settings.get().officeName });
+    return documents.save(`${title}.pdf`, pdfBytes, { caseId: caseItem?.id || '', clientId: caseItem?.clientId || '' });
+  }));
   register('convertIntake', input => operations.run('Converter atendimento', () => intakes.convert(input?.id, { createCase: input?.createCase !== false })));
   register('searchDocuments', query => (typeof query === 'string' && query.length <= 200 ? docIndex.search(query) : []));
   register('saveTextReport', input => operations.run('Relatório', async () => {
@@ -249,6 +256,9 @@ function bindHandlers() {
     return documents.save(`${title}.pdf`, bytes, { caseId: caseItem.id, clientId: caseItem.clientId || '' });
   }));
   register('caseMovements', caseId => datajud.movements(caseId));
+  // Lookups for the forms: only the number typed leaves the computer, and nothing is stored.
+  register('lookupCase', number => datajud.lookup(number));
+  register('lookupCNPJ', value => cnpj.lookup(value));
   register('refreshMovements', caseId => operations.run('Consulta ao DataJud', () => datajud.refresh(caseId)));
   register('addMovement', input => operations.run('Andamento', () => datajud.addManual(input?.caseId, input)));
   register('removeMovement', input => operations.run('Andamento', () => datajud.removeManual(input?.caseId, input?.id)));
@@ -362,6 +372,10 @@ function bindHandlers() {
     const response = await dialog.showMessageBox(win, { type: 'warning', title: 'Instalar atualização', message: 'Criar backup, instalar e reiniciar o sistema?', detail: 'As filas ficarão pausadas durante a manutenção. Operações em andamento precisam terminar antes da atualização.', buttons: ['Cancelar', 'Instalar e reiniciar'], defaultId: 0, cancelId: 0, noLink: true });
     if (response.response === 1) return updater.install(); return updater.get();
   });
+  register('installUpdateManually', async () => {
+    const response = await dialog.showMessageBox(win, { type: 'warning', title: 'Instalar manualmente', message: 'Fechar o sistema e abrir o instalador da nova versão?', detail: 'Use quando a instalação automática não concluir. Uma cópia dos seus dados é feita antes. No instalador, mantenha a mesma pasta e, se o Windows pedir, permita a instalação. Ao terminar, abra o Magnum Office pelo atalho.', buttons: ['Cancelar', 'Fechar e instalar'], defaultId: 0, cancelId: 0, noLink: true });
+    if (response.response === 1) return updater.installManually(); return updater.get();
+  });
   register('connectWhatsApp', () => operations.run('Conexão WhatsApp', () => messaging.connectWhatsApp()));
   register('disconnectWhatsApp', () => operations.run('Desconexão WhatsApp', () => messaging.disconnectWhatsApp()));
   register('configureEmail', key => operations.run('Configuração do e-mail', () => messaging.configureEmail(key)));
@@ -470,7 +484,7 @@ async function boot() {
   pdfTools=new PDFTools();library=new Library(store);generator=new DocumentGenerator({store,library,settings,documents,courts:courts.courts});reminders=new HearingReminders({store,settings,library,messaging});workflowRunner=new WorkflowRunner({store,settings});finance=new Finance({store});
   // Public consultations use Chromium's network stack (Windows proxy and certificates).
   const publicFetch=(url,options)=>net.fetch(url,{...options,headers:{'User-Agent':`MagnumOffice/${version}`,...options?.headers}});
-  indices=new Indices({root:dataRoot,fetch:publicFetch,store});datajud=new DataJud({store,settings,fetch:publicFetch});djen=new DJEN({store,settings,fetch:publicFetch});
+  indices=new Indices({root:dataRoot,fetch:publicFetch,store});datajud=new DataJud({store,settings,fetch:publicFetch});cnpj=new CNPJLookup({store,fetch:publicFetch});djen=new DJEN({store,settings,fetch:publicFetch});
   intakes=new Intakes({store});docIndex=new DocumentIndex({store,documents});imports=new Imports(store);agentAPI=new AgentAPI({store,settings,operations,library,messaging,reminders,datajud,djen,indices,generator,courts:courts.courts});agentAPI.requireTerms=true;await agentAPI.start();
   birthdays=new (require('../backend/birthdays.cjs').Birthdays)({store,settings,library,messaging});messaging.birthdays=birthdays;
   weeklyBackups=new WeeklyBackups({store,settings,backups,operations,messaging});

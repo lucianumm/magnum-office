@@ -1,6 +1,6 @@
 # Publicação e manutenção
 
-O repositório oficial é `lucianumm/magnum-office`. A versão 1.0.0 é distribuída primeiro para Windows x64. A licença é própria, de uso gratuito e com comercialização do próprio sistema proibida, conforme LICENSE.
+O repositório oficial é `lucianumm/magnum-office`. O sistema é distribuído para Windows x64. A licença é própria, de uso gratuito e com comercialização do próprio sistema proibida, conforme LICENSE.
 
 ## O que publicar
 
