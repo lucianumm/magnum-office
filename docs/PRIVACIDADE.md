@@ -1,6 +1,6 @@
 # Privacidade, proteção de dados e LGPD
 
-Versão: 1.1.0 · Magnum Office.
+Versão: 1.2.0 · Magnum Office.
 
 ## Onde os dados ficam
 

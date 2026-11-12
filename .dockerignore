@@ -1,0 +1,7 @@
+node_modules
+dist
+work
+installers/artifacts
+.git
+*.pem
+*.pfx

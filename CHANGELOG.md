@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.10.0 — 12/11/2026
+
+**Se a atualização automática não concluir no seu computador, baixe o instalador desta versão e instale por cima, na mesma pasta. Seus cadastros são preservados.** A partir desta versão o problema é detectado e corrigido pelo próprio programa.
+
+**Atualização**
+
+- Corrigida a atualização que baixava, fechava o programa e reabria a versão antiga. O instalador agora recebe a pasta e o modo da instalação em uso ("só para mim" ou "todos os usuários") e o sistema confere a versão instalada antes de reabrir. Se o programa não foi trocado, volta à versão anterior na hora e explica o motivo.
+- Novo botão **Instalar manualmente** em Configurações → Atualizações: abre o mesmo instalador já verificado, com as telas normais, depois de copiar os dados.
+
+**Documentos**
+
+- Perguntas do modelo deixam de se misturar: cada `{?Pergunta}` vira um campo próprio, com o nome do texto que vem antes dela ("Telefone / WhatsApp: {?Pergunta}" pergunta "Telefone / WhatsApp"). Modelos existentes funcionam sem editar.
+- Botão **Inserir pergunta** no editor de modelos, inclusive para valor em reais.
+- **Gerar documento sem cadastro**: pelo botão em cada modelo ou em Documentos, com cliente e processo opcionais. Os dados que o modelo usa e não estão no cadastro viram campos para preencher na hora.
+
+**Cadastros**
+
+- **Processo pelo número**: classe, vara, comarca, distribuição, instância e área buscadas no DataJud.
+- **Empresa pelo CNPJ**: razão social, endereço e sócio administrador do cliente, e o nome da parte contrária, pelos dados abertos da Receita Federal.
+- As duas buscas só preenchem campos vazios. O preenchimento automático vem desligado (Configurações → Consultas públicas) e os botões de busca ficam sempre no formulário.
+
+**Ferramentas**
+
+- **Calculadora de verbas rescisórias** (Ferramentas → Rescisão): saldo de salário, aviso prévio proporcional com projeção, 13º, férias vencidas, em dobro e proporcionais com 1/3, FGTS e multa de 40% ou 20%, nas modalidades sem justa causa, pedido de demissão, justa causa, acordo e fim de contrato a prazo. Memória de cálculo em PDF.
+
+**Publicação**
+
+- O GitHub passa a manter só as duas últimas versões publicadas.
+- Política de privacidade 1.2.0, com as consultas por número de processo e por CNPJ.
+
 ## 1.9.1 — 08/11/2026
 
 O sistema agora começa configurado para o seu escritório.
