@@ -1,9 +1,131 @@
-import {_electron as electron,expect} from '@playwright/test';import fs from 'node:fs/promises';import path from 'node:path';import assert from 'node:assert/strict';import {prepareTestApp} from './test-helpers.mjs';
-const base=path.resolve('work/email-layout-smoke');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,'run-'));const env={...process.env,ADVOCACIA_TEST_DATA:root};delete env.ELECTRON_RUN_AS_NODE;const executablePath=process.argv[2]?path.resolve(process.argv[2]):null;let app;
-const local=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}T14:30`;
-try{app=await electron.launch({...executablePath?{executablePath,args:[`--data-dir=${root}`]}:{args:['.']},env});let page=await app.firstWindow();await page.getByRole('heading',{name:/Bom dia|Boa tarde|Boa noite/}).waitFor();await prepareTestApp(page);await page.evaluate(async()=>{await window.advocacia.saveSettings({ownDomain:'office.test',emailFrom:'contact@office.test',emailDNSConfirmed:true,queuePaused:true,background:true});await window.advocacia.configureEmail('re_fixture');});
- const nav=()=>page.getByRole('navigation');await nav().getByRole('button',{name:'Mensagens',exact:true}).click();await page.getByRole('button',{name:'Campanha de e-mail',exact:true}).click();const addresses=Array.from({length:88},(_,i)=>`cliente${i+1}@example.test`);await page.getByLabel('Colar vários e-mails',{exact:true}).fill(addresses.map((e,i)=>`Cliente ${i+1} <${e}>`).join('\n')+'\ncliente1@example.test');await page.getByRole('button',{name:'Identificar e organizar e-mails',exact:true}).click();await expect(page.getByRole('list',{name:'Destinatários selecionados'}).getByRole('listitem')).toHaveCount(88);await expect(page.getByLabel('Colar vários e-mails',{exact:true})).toHaveCount(0);const list=page.getByRole('list',{name:'Destinatários selecionados'});assert.ok((await list.boundingBox()).height<=180);await expect(page.getByLabel(/Horário individual/)).toHaveCount(0);await page.getByRole('switch',{name:/Agendar campanha automaticamente/}).check();const when=local(new Date(Date.now()+86400000));await page.getByLabel('Horário geral da campanha').fill(when);assert.equal(await page.locator('input[type="datetime-local"]').count(),1);await page.getByLabel('Assunto da campanha').fill('Comunicado único');await page.getByRole('textbox',{name:'Mensagem formatada'}).fill('Conteúdo de teste para a lista.');await page.getByRole('dialog').evaluate(e=>e.scrollTop=0);await page.screenshot({path:path.join(base,'lista-88-emails.png')});await page.getByRole('switch',{name:/Revisei os destinatários/}).check();await page.getByRole('button',{name:'Cadastrar 88 e-mail(s)',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);let state=await page.evaluate(()=>window.advocacia.state());assert.equal(state.messages.length,88);assert.ok(state.messages.every(m=>m.scheduledFor===new Date(when).toISOString()));assert.equal(new Set(state.messages.map(m=>m.availableAt)).size,1);
- await page.getByRole('button',{name:'Nova mensagem',exact:true}).click();await page.getByLabel('Canal',{exact:true}).selectOption('email');await page.getByLabel('Colar vários e-mails',{exact:true}).fill('Ana <ana@example.test>;\nBia bia@example.test\nANA@example.test');await page.getByRole('button',{name:'Identificar e organizar e-mails',exact:true}).click();await expect(page.getByRole('list',{name:'Destinatários selecionados'}).getByRole('listitem')).toHaveCount(2);await page.getByLabel('Assunto do e-mail',{exact:true}).fill('Nova mensagem para vários');await page.getByRole('textbox',{name:'Mensagem formatada'}).fill('Mensagem única para dois endereços.');await page.getByRole('dialog').evaluate(e=>e.scrollTop=0);await page.screenshot({path:path.join(base,'nova-mensagem-varios.png')});await page.getByRole('switch',{name:/Confirmo os destinatários/}).check();await page.getByRole('button',{name:'Enviar 2 e-mail(s)',exact:true}).click();await expect(page.getByRole('dialog')).toHaveCount(0);state=await page.evaluate(()=>window.advocacia.state());assert.equal(state.messages.length,90);assert.equal(new Set(state.messages.filter(m=>m.subject==='Nova mensagem para vários').map(m=>m.availableAt)).size,1);
- await app.evaluate(()=>{globalThis.__backgroundEmailCount=0;global.fetch=async()=>{globalThis.__backgroundEmailCount++;return new Response('{"id":"fixture"}',{status:200});};});await page.evaluate(()=>window.advocacia.saveSettings({queuePaused:false}));await page.getByRole('button',{name:'Fechar janela',exact:true}).click();await expect.poll(()=>app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].isVisible())).toBe(false);await expect.poll(()=>app.evaluate(()=>globalThis.__backgroundEmailCount),{timeout:18000}).toBeGreaterThan(0);assert.ok((await app.evaluate(()=>process.pid))>0);
- await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].destroy());assert.ok((await app.evaluate(()=>process.pid))>0);const reopened=app.waitForEvent('window');await app.evaluate(({app})=>app.emit('activate'));page=await reopened;await page.getByRole('heading',{name:/Bom dia|Boa tarde|Boa noite/}).waitFor();state=await page.evaluate(()=>window.advocacia.state());assert.equal(state.messages.length,90);await fs.writeFile(path.join(base,'result.json'),JSON.stringify({ok:true,version:state.version,compact88Recipients:true,sharedSchedule:true,newMessageMultiple:true,backgroundDelivery:true,backgroundAfterNativeDestroy:true,reopened:true},null,2));process.stdout.write('E-mail: lista compacta de 88, horário único, vários destinatários em Nova mensagem e envio na bandeja verificados.\n');
-}catch(error){if(app){const page=await app.firstWindow().catch(()=>null);await page?.screenshot({path:path.join(base,'failure.png')}).catch(()=>{});}throw error;}finally{if(app)await app.close();}
+import { _electron as electron, expect } from '@playwright/test';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import { prepareTestApp } from './test-helpers.mjs';
+const base = path.resolve('work/email-layout-smoke');
+await fs.mkdir(base, { recursive: true });
+const root = await fs.mkdtemp(path.join(base, 'run-'));
+const env = { ...process.env, ADVOCACIA_TEST_DATA: root };
+delete env.ELECTRON_RUN_AS_NODE;
+const executablePath = process.argv[2] ? path.resolve(process.argv[2]) : null;
+let app;
+const local = d =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T14:30`;
+try {
+  app = await electron.launch({
+    ...(executablePath ? { executablePath, args: [`--data-dir=${root}`] } : { args: ['.'] }),
+    env,
+  });
+  let page = await app.firstWindow();
+  await page.getByRole('heading', { name: /Bom dia|Boa tarde|Boa noite/ }).waitFor();
+  await prepareTestApp(page);
+  await page.evaluate(async () => {
+    await window.advocacia.saveSettings({
+      ownDomain: 'office.test',
+      emailFrom: 'contact@office.test',
+      emailDNSConfirmed: true,
+      queuePaused: true,
+      background: true,
+    });
+    await window.advocacia.configureEmail('re_fixture');
+  });
+  const nav = () => page.getByRole('navigation');
+  await nav().getByRole('button', { name: 'Mensagens', exact: true }).click();
+  await page.getByRole('button', { name: 'Campanha de e-mail', exact: true }).click();
+  const addresses = Array.from({ length: 88 }, (_, i) => `cliente${i + 1}@example.test`);
+  await page
+    .getByLabel('Colar vários e-mails', { exact: true })
+    .fill(addresses.map((e, i) => `Cliente ${i + 1} <${e}>`).join('\n') + '\ncliente1@example.test');
+  await page.getByRole('button', { name: 'Identificar e organizar e-mails', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Destinatários selecionados' }).getByRole('listitem')).toHaveCount(88);
+  await expect(page.getByLabel('Colar vários e-mails', { exact: true })).toHaveCount(0);
+  const list = page.getByRole('list', { name: 'Destinatários selecionados' });
+  assert.ok((await list.boundingBox()).height <= 180);
+  await expect(page.getByLabel(/Horário individual/)).toHaveCount(0);
+  await page.getByRole('switch', { name: /Agendar campanha automaticamente/ }).check();
+  const when = local(new Date(Date.now() + 86400000));
+  await page.getByLabel('Horário geral da campanha').fill(when);
+  assert.equal(await page.locator('input[type="datetime-local"]').count(), 1);
+  await page.getByLabel('Assunto da campanha').fill('Comunicado único');
+  await page.getByRole('textbox', { name: 'Mensagem formatada' }).fill('Conteúdo de teste para a lista.');
+  await page.getByRole('dialog').evaluate(e => (e.scrollTop = 0));
+  await page.screenshot({ path: path.join(base, 'lista-88-emails.png') });
+  await page.getByRole('switch', { name: /Revisei os destinatários/ }).check();
+  await page.getByRole('button', { name: 'Cadastrar 88 e-mail(s)', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  let state = await page.evaluate(() => window.advocacia.state());
+  assert.equal(state.messages.length, 88);
+  assert.ok(state.messages.every(m => m.scheduledFor === new Date(when).toISOString()));
+  assert.equal(new Set(state.messages.map(m => m.availableAt)).size, 1);
+  await page.getByRole('button', { name: 'Nova mensagem', exact: true }).click();
+  await page.getByLabel('Canal', { exact: true }).selectOption('email');
+  await page
+    .getByLabel('Colar vários e-mails', { exact: true })
+    .fill('Ana <ana@example.test>;\nBia bia@example.test\nANA@example.test');
+  await page.getByRole('button', { name: 'Identificar e organizar e-mails', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Destinatários selecionados' }).getByRole('listitem')).toHaveCount(2);
+  await page.getByLabel('Assunto do e-mail', { exact: true }).fill('Nova mensagem para vários');
+  await page.getByRole('textbox', { name: 'Mensagem formatada' }).fill('Mensagem única para dois endereços.');
+  await page.getByRole('dialog').evaluate(e => (e.scrollTop = 0));
+  await page.screenshot({ path: path.join(base, 'nova-mensagem-varios.png') });
+  await page.getByRole('switch', { name: /Confirmo os destinatários/ }).check();
+  await page.getByRole('button', { name: 'Enviar 2 e-mail(s)', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  state = await page.evaluate(() => window.advocacia.state());
+  assert.equal(state.messages.length, 90);
+  assert.equal(
+    new Set(state.messages.filter(m => m.subject === 'Nova mensagem para vários').map(m => m.availableAt)).size,
+    1,
+  );
+  await app.evaluate(() => {
+    globalThis.__backgroundEmailCount = 0;
+    global.fetch = async () => {
+      globalThis.__backgroundEmailCount++;
+      return new Response('{"id":"fixture"}', { status: 200 });
+    };
+  });
+  await page.evaluate(() => window.advocacia.saveSettings({ queuePaused: false }));
+  await page.getByRole('button', { name: 'Fechar janela', exact: true }).click();
+  await expect
+    .poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].isVisible()))
+    .toBe(false);
+  await expect.poll(() => app.evaluate(() => globalThis.__backgroundEmailCount), { timeout: 18000 }).toBeGreaterThan(0);
+  assert.ok((await app.evaluate(() => process.pid)) > 0);
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].destroy());
+  assert.ok((await app.evaluate(() => process.pid)) > 0);
+  const reopened = app.waitForEvent('window');
+  await app.evaluate(({ app }) => app.emit('activate'));
+  page = await reopened;
+  await page.getByRole('heading', { name: /Bom dia|Boa tarde|Boa noite/ }).waitFor();
+  state = await page.evaluate(() => window.advocacia.state());
+  assert.equal(state.messages.length, 90);
+  await fs.writeFile(
+    path.join(base, 'result.json'),
+    JSON.stringify(
+      {
+        ok: true,
+        version: state.version,
+        compact88Recipients: true,
+        sharedSchedule: true,
+        newMessageMultiple: true,
+        backgroundDelivery: true,
+        backgroundAfterNativeDestroy: true,
+        reopened: true,
+      },
+      null,
+      2,
+    ),
+  );
+  process.stdout.write(
+    'E-mail: lista compacta de 88, horário único, vários destinatários em Nova mensagem e envio na bandeja verificados.\n',
+  );
+} catch (error) {
+  if (app) {
+    const page = await app.firstWindow().catch(() => null);
+    await page?.screenshot({ path: path.join(base, 'failure.png') }).catch(() => {});
+  }
+  throw error;
+} finally {
+  if (app) await app.close();
+}

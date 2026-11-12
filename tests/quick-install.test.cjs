@@ -1,8 +1,27 @@
-const {test}=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const {spawnSync}=require('node:child_process');
-test('README quick installation matches the script and blocks corrupt, unofficial or incomplete releases before execution',{skip:process.platform!=='win32'},()=>{
- const source=fs.readFileSync(path.resolve('installers/quick-install.ps1'),'utf8').replace(/\r\n/g,'\n').trim();const readme=fs.readFileSync(path.resolve('README.md'),'utf8');assert.equal(readme.match(/```powershell\r?\n([\s\S]*?)\r?\n```/)[1].replace(/\r\n/g,'\n').trim(),source);
- const base=path.resolve('work/quick-install-tests');fs.mkdirSync(base,{recursive:true});const root=fs.mkdtempSync(path.join(base,'run-'));assert.ok(root.startsWith(base+path.sep),'Unsafe cleanup');
- try{const script=String.raw`
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+test(
+  'README quick installation matches the script and blocks corrupt, unofficial or incomplete releases before execution',
+  { skip: process.platform !== 'win32' },
+  () => {
+    const source = fs.readFileSync(path.resolve('installers/quick-install.ps1'), 'utf8').replace(/\r\n/g, '\n').trim();
+    const readme = fs.readFileSync(path.resolve('README.md'), 'utf8');
+    assert.equal(
+      readme
+        .match(/```powershell\r?\n([\s\S]*?)\r?\n```/)[1]
+        .replace(/\r\n/g, '\n')
+        .trim(),
+      source,
+    );
+    const base = path.resolve('work/quick-install-tests');
+    fs.mkdirSync(base, { recursive: true });
+    const root = fs.mkdtempSync(path.join(base, 'run-'));
+    assert.ok(root.startsWith(base + path.sep), 'Unsafe cleanup');
+    try {
+      const script = String.raw`
 $ErrorActionPreference='Stop'
 Import-Module Microsoft.PowerShell.Utility -ErrorAction Stop
 $script:source=[IO.File]::ReadAllText((Join-Path (Get-Location) 'installers/quick-install.ps1'))
@@ -22,6 +41,18 @@ foreach($case in @('valid','hash','url','prerelease','draft','missing-digest','m
  $results += $case
 }
 Write-Output ('VERIFIED:'+($results -join ','))
-`;const result=spawnSync('powershell.exe',['-NoProfile','-NonInteractive','-Command',script],{cwd:process.cwd(),env:{...process.env,TEMP:root,TMP:root},encoding:'utf8',windowsHide:true,timeout:30000});assert.equal(result.status,0,result.stdout+'\n'+result.stderr);assert.match(result.stdout,/VERIFIED:valid,hash,url,prerelease,draft,missing-digest,missing-asset,tag/);
- }finally{fs.rmSync(root,{recursive:true,force:true});}
-});
+`;
+      const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+        cwd: process.cwd(),
+        env: { ...process.env, TEMP: root, TMP: root },
+        encoding: 'utf8',
+        windowsHide: true,
+        timeout: 30000,
+      });
+      assert.equal(result.status, 0, result.stdout + '\n' + result.stderr);
+      assert.match(result.stdout, /VERIFIED:valid,hash,url,prerelease,draft,missing-digest,missing-asset,tag/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  },
+);

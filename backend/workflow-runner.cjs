@@ -12,7 +12,17 @@ class WorkflowRunner {
     const workflow = (cfg.workflows || []).find(w => w.id === workflowId);
     if (!workflow) throw new Error('Escolha um fluxo.');
     const tasks = planWorkflow(workflow, start, { custom: cfg.courtCalendar || [] });
-    return { caseItem, workflow, tasks: tasks.map(t => ({ ...t, caseId: caseItem.id, clientId: caseItem.clientId || '', status: 'Pendente', notes: `Fluxo: ${workflow.name}` })) };
+    return {
+      caseItem,
+      workflow,
+      tasks: tasks.map(t => ({
+        ...t,
+        caseId: caseItem.id,
+        clientId: caseItem.clientId || '',
+        status: 'Pendente',
+        notes: `Fluxo: ${workflow.name}`,
+      })),
+    };
   }
   apply(input) {
     const { tasks } = this.preview(input);

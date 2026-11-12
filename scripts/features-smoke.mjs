@@ -1,37 +1,188 @@
-import {prepareTestApp} from './test-helpers.mjs';
+import { prepareTestApp } from './test-helpers.mjs';
 import { _electron as electron, expect } from '@playwright/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-const require=createRequire(import.meta.url);const {PNG}=require('pngjs');const jsQR=require('jsqr');
-const base=path.resolve('work','features-smoke');await fs.mkdir(base,{recursive:true});const root=await fs.mkdtemp(path.join(base,'run-'));
-const executablePath=process.argv[2]?path.resolve(process.argv[2]):null;const env={...process.env,ADVOCACIA_TEST_DATA:root};delete env.ELECTRON_RUN_AS_NODE;
-let app;const errors=[];
-try{
-  app=await electron.launch({...executablePath?{executablePath,args:[`--data-dir=${root}`]}:{args:['.']},env,timeout:45000});const page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await page.getByRole('heading',{name:/Bom dia|Boa tarde|Boa noite/}).waitFor();await prepareTestApp(page);
-  await app.evaluate(({shell,clipboard})=>{globalThis.__lastExternal='';globalThis.__copiedPix='';shell.openExternal=async url=>{globalThis.__lastExternal=url;};clipboard.writeText=text=>{globalThis.__copiedPix=text;};});
-  const nav=name=>page.getByRole('navigation').getByRole('button',{name:new RegExp('^'+name)}).click();
-  await nav('Agenda');await page.getByRole('button',{name:'Agendar WhatsApp',exact:true}).click();
-  const scheduled=new Date(Date.now()+2*86400000);scheduled.setHours(14,30,0,0);const local=`${scheduled.getFullYear()}-${String(scheduled.getMonth()+1).padStart(2,'0')}-${String(scheduled.getDate()).padStart(2,'0')}T14:30`;
-  await page.getByLabel('Destinatário',{exact:true}).fill('5564999991111');await page.getByLabel('Mensagem',{exact:true}).fill('Disparo de teste, sem envio real.');await page.getByLabel('Data e horário do disparo').fill(local);await page.getByRole('switch',{name:/^Confirmo o destinatário/}).check();await page.getByRole('dialog').getByRole('button',{name:'Agendar disparo',exact:true}).click();
-  const dateLabel=new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'long',year:'numeric'}).format(scheduled);await page.getByRole('button',{name:dateLabel,exact:true}).click();await expect(page.getByText('WhatsApp · 5564999991111',{exact:true})).toBeVisible();
-  await page.screenshot({path:path.join(base,'01-agenda.png')});
-  await page.getByRole('button',{name:/WhatsApp · 5564999991111/}).click();await page.getByLabel('Mensagem',{exact:true}).fill('Disparo reagendado pelo teste.');await page.getByRole('switch',{name:/^Confirmo o destinatário/}).check();await page.getByRole('button',{name:'Salvar disparo',exact:true}).click();
-  await nav('Mensagens');await expect(page.getByRole('table')).toContainText('Agendada');await page.getByRole('button',{name:'Pausar envios',exact:true}).click();await expect(page.getByRole('button',{name:'Retomar envios',exact:true})).toBeVisible();await page.getByRole('button',{name:'Retomar envios',exact:true}).click();
-  await page.getByRole('button',{name:'Configurações',exact:true}).click(); await page.getByRole('button',{name:'Agora não',exact:true}).click();await page.getByRole('tab',{name:'Personalizar',exact:true}).click();await page.getByLabel('Nome visível do sistema').fill('Escritório de teste — Jurídico');await page.getByRole('button',{name:'Violeta',exact:true}).click();await page.getByLabel('Aparência').selectOption('dark');await page.getByLabel('Espaçamento').selectOption('compact');await page.getByRole('button',{name:'Salvar personalização',exact:true}).click();await expect(page.locator('html')).toHaveAttribute('data-theme','purple');await expect(page.locator('html')).toHaveAttribute('data-appearance','dark');assert.equal(await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].getTitle()),'Escritório de teste — Jurídico');
-  await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},path.resolve('desktop/assets/icon.png'));await page.getByRole('button',{name:'Escolher logo',exact:true}).click();await expect(page.locator('.sidebar-brand img')).toBeVisible();await page.screenshot({path:path.join(base,'02-personalizacao-escura.png')});
-  await page.getByRole('tab',{name:'E-mail',exact:true}).click();await page.getByLabel('Seu domínio próprio').fill('escritorio.test');await page.getByLabel('Nome antes do @').fill('contato');await page.getByRole('switch',{name:/^Confirmo que configurei o domínio/}).check();await page.getByRole('button',{name:'Salvar configuração do e-mail',exact:true}).click();await expect(page.getByText('contato@escritorio.test',{exact:true})).toBeVisible();
-  await page.getByRole('button',{name:'Quero configuração profissional',exact:true}).click();assert.ok((await app.evaluate(()=>globalThis.__lastExternal)).startsWith('https://wa.me/5564992684429?text='));
-  await page.screenshot({path:path.join(base,'03-email.png')});
-  await page.getByRole('tab',{name:'Apoie o projeto',exact:true}).click();const qr=page.getByRole('img',{name:'QR Code Pix original de Lucianum para apoiar o projeto'});await expect(qr).toBeVisible();const qrScreenshot=await qr.screenshot();const png=PNG.sync.read(qrScreenshot);const decoded=jsQR(new Uint8ClampedArray(png.data),png.width,png.height,{inversionAttempts:'attemptBoth'});assert.ok(decoded,'O QR Code renderizado não pôde ser lido.');await page.getByRole('button',{name:'Copiar Pix',exact:true}).click();const payload=await app.evaluate(()=>globalThis.__copiedPix);assert.equal(payload,decoded.data);await page.screenshot({path:path.join(base,'04-apoio.png')});
-  await page.getByRole('button',{name:'Configurações',exact:true}).click(); await page.getByRole('button',{name:'Agora não',exact:true}).click();await page.getByRole('tab',{name:'Sobre o sistema',exact:true}).click();await page.getByRole('button',{name:'Falar com o desenvolvedor',exact:true}).click();assert.equal(await app.evaluate(()=>globalThis.__lastExternal),'https://wa.me/5564992684429');
-  await nav('Tribunais');await expect(page.locator('.court-card')).toHaveCount(0);await page.getByLabel('Estado dos tribunais').selectOption('GO');await page.getByLabel('Buscar tribunal ou sistema').fill('TRT18');await expect(page.locator('.court-card')).toHaveCount(1);await page.getByRole('button',{name:'Adicionar TRT18 aos favoritos',exact:true}).click();await expect(page.getByRole('button',{name:'Remover TRT18 dos favoritos',exact:true})).toBeVisible();await page.getByRole('button',{name:/^PJe .*1.*Grau$|^PJe · 1º grau$/}).first().click();assert.ok((await app.evaluate(()=>globalThis.__lastExternal)).startsWith('https://pje.trt18.jus.br/primeirograu/'));
-  await page.getByLabel('Buscar tribunal ou sistema').fill('');await page.getByLabel('Estado').selectOption('GO');await expect(page.locator('.court-card')).toHaveCount(4);await page.screenshot({path:path.join(base,'05-tribunais.png')});
-  await page.getByRole('button',{name:'Meus favoritos',exact:true}).click();await expect(page.locator('.court-card')).toHaveCount(1);
-  await page.getByRole('button',{name:'Configurações',exact:true}).click(); await page.getByRole('button',{name:'Agora não',exact:true}).click();await page.getByLabel('Nome do escritório',{exact:true}).fill('Escritório de teste');await page.getByRole('button',{name:'Salvar configurações',exact:true}).click();
-  const state=await page.evaluate(()=>window.advocacia.state());assert.equal(state.settings.appName,'Escritório de teste — Jurídico');assert.equal(state.settings.theme,'purple');assert.equal(state.settings.ownDomain,'escritorio.test');assert.equal(state.settings.emailFrom,'contato@escritorio.test');assert.equal(state.settings.emailDNSConfirmed,true);assert.ok(state.settings.brandLogo.startsWith('data:image/png;base64,'));assert.equal(state.messages[0].status,'pending');assert.equal(state.messages[0].scheduledFor,new Date(local).toISOString());
-  await app.close();app=null;
-  app=await electron.launch({...executablePath?{executablePath,args:[`--data-dir=${root}`]}:{args:['.']},env});const reopened=await app.firstWindow();await reopened.getByRole('heading',{name:/Bom dia|Boa tarde|Boa noite/}).waitFor();await prepareTestApp(reopened);const restored=await reopened.evaluate(()=>window.advocacia.state());assert.equal(restored.settings.theme,'purple');assert.equal(restored.settings.appName,'Escritório de teste — Jurídico');assert.equal(restored.messages[0].scheduledFor,state.messages[0].scheduledFor);assert.ok(restored.settings.favoriteCourts.includes('trt18'));assert.equal(errors.length,0,errors.join('\n'));
-  await fs.writeFile(path.join(base,'result.json'),JSON.stringify({ok:true,at:new Date().toISOString(),scheduledDispatch:true,persistentBranding:true,customDomain:true,pixRenderedAndDecoded:true,contactLink:true,courtFavorites:true,courts:state.courts.courts.length},null,2));process.stdout.write('Novos recursos: agenda de disparos, pausa, identidade visual, logo, domínio próprio, Pix legível, contato e tribunais favoritos verificados.\n');
-}catch(error){if(app){const page=await app.firstWindow().catch(()=>null);await page?.screenshot({path:path.join(base,'failure.png')}).catch(()=>{});}throw error;}finally{if(app)await app.close();}
+const require = createRequire(import.meta.url);
+const { PNG } = require('pngjs');
+const jsQR = require('jsqr');
+const base = path.resolve('work', 'features-smoke');
+await fs.mkdir(base, { recursive: true });
+const root = await fs.mkdtemp(path.join(base, 'run-'));
+const executablePath = process.argv[2] ? path.resolve(process.argv[2]) : null;
+const env = { ...process.env, ADVOCACIA_TEST_DATA: root };
+delete env.ELECTRON_RUN_AS_NODE;
+let app;
+const errors = [];
+try {
+  app = await electron.launch({
+    ...(executablePath ? { executablePath, args: [`--data-dir=${root}`] } : { args: ['.'] }),
+    env,
+    timeout: 45000,
+  });
+  const page = await app.firstWindow();
+  page.on('pageerror', e => errors.push(e.message));
+  await page.getByRole('heading', { name: /Bom dia|Boa tarde|Boa noite/ }).waitFor();
+  await prepareTestApp(page);
+  await app.evaluate(({ shell, clipboard }) => {
+    globalThis.__lastExternal = '';
+    globalThis.__copiedPix = '';
+    shell.openExternal = async url => {
+      globalThis.__lastExternal = url;
+    };
+    clipboard.writeText = text => {
+      globalThis.__copiedPix = text;
+    };
+  });
+  const nav = name =>
+    page
+      .getByRole('navigation')
+      .getByRole('button', { name: new RegExp('^' + name) })
+      .click();
+  await nav('Agenda');
+  await page.getByRole('button', { name: 'Agendar WhatsApp', exact: true }).click();
+  const scheduled = new Date(Date.now() + 2 * 86400000);
+  scheduled.setHours(14, 30, 0, 0);
+  const local = `${scheduled.getFullYear()}-${String(scheduled.getMonth() + 1).padStart(2, '0')}-${String(scheduled.getDate()).padStart(2, '0')}T14:30`;
+  await page.getByLabel('Destinatário', { exact: true }).fill('5564999991111');
+  await page.getByLabel('Mensagem', { exact: true }).fill('Disparo de teste, sem envio real.');
+  await page.getByLabel('Data e horário do disparo').fill(local);
+  await page.getByRole('switch', { name: /^Confirmo o destinatário/ }).check();
+  await page.getByRole('dialog').getByRole('button', { name: 'Agendar disparo', exact: true }).click();
+  const dateLabel = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(
+    scheduled,
+  );
+  await page.getByRole('button', { name: dateLabel, exact: true }).click();
+  await expect(page.getByText('WhatsApp · 5564999991111', { exact: true })).toBeVisible();
+  await page.screenshot({ path: path.join(base, '01-agenda.png') });
+  await page.getByRole('button', { name: /WhatsApp · 5564999991111/ }).click();
+  await page.getByLabel('Mensagem', { exact: true }).fill('Disparo reagendado pelo teste.');
+  await page.getByRole('switch', { name: /^Confirmo o destinatário/ }).check();
+  await page.getByRole('button', { name: 'Salvar disparo', exact: true }).click();
+  await nav('Mensagens');
+  await expect(page.getByRole('table')).toContainText('Agendada');
+  await page.getByRole('button', { name: 'Pausar envios', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Retomar envios', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Retomar envios', exact: true }).click();
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('button', { name: 'Agora não', exact: true }).click();
+  await page.getByRole('tab', { name: 'Personalizar', exact: true }).click();
+  await page.getByLabel('Nome visível do sistema').fill('Escritório de teste — Jurídico');
+  await page.getByRole('button', { name: 'Violeta', exact: true }).click();
+  await page.getByLabel('Aparência').selectOption('dark');
+  await page.getByLabel('Espaçamento').selectOption('compact');
+  await page.getByRole('button', { name: 'Salvar personalização', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'purple');
+  await expect(page.locator('html')).toHaveAttribute('data-appearance', 'dark');
+  assert.equal(
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getTitle()),
+    'Escritório de teste — Jurídico',
+  );
+  await app.evaluate(({ dialog }, file) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
+  }, path.resolve('desktop/assets/icon.png'));
+  await page.getByRole('button', { name: 'Escolher logo', exact: true }).click();
+  await expect(page.locator('.sidebar-brand img')).toBeVisible();
+  await page.screenshot({ path: path.join(base, '02-personalizacao-escura.png') });
+  await page.getByRole('tab', { name: 'E-mail', exact: true }).click();
+  await page.getByLabel('Seu domínio próprio').fill('escritorio.test');
+  await page.getByLabel('Nome antes do @').fill('contato');
+  await page.getByRole('switch', { name: /^Confirmo que configurei o domínio/ }).check();
+  await page.getByRole('button', { name: 'Salvar configuração do e-mail', exact: true }).click();
+  await expect(page.getByText('contato@escritorio.test', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Quero configuração profissional', exact: true }).click();
+  assert.ok((await app.evaluate(() => globalThis.__lastExternal)).startsWith('https://wa.me/5564992684429?text='));
+  await page.screenshot({ path: path.join(base, '03-email.png') });
+  await page.getByRole('tab', { name: 'Apoie o projeto', exact: true }).click();
+  const qr = page.getByRole('img', { name: 'QR Code Pix original de Lucianum para apoiar o projeto' });
+  await expect(qr).toBeVisible();
+  const qrScreenshot = await qr.screenshot();
+  const png = PNG.sync.read(qrScreenshot);
+  const decoded = jsQR(new Uint8ClampedArray(png.data), png.width, png.height, { inversionAttempts: 'attemptBoth' });
+  assert.ok(decoded, 'O QR Code renderizado não pôde ser lido.');
+  await page.getByRole('button', { name: 'Copiar Pix', exact: true }).click();
+  const payload = await app.evaluate(() => globalThis.__copiedPix);
+  assert.equal(payload, decoded.data);
+  await page.screenshot({ path: path.join(base, '04-apoio.png') });
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('button', { name: 'Agora não', exact: true }).click();
+  await page.getByRole('tab', { name: 'Sobre o sistema', exact: true }).click();
+  await page.getByRole('button', { name: 'Falar com o desenvolvedor', exact: true }).click();
+  assert.equal(await app.evaluate(() => globalThis.__lastExternal), 'https://wa.me/5564992684429');
+  await nav('Tribunais');
+  await expect(page.locator('.court-card')).toHaveCount(0);
+  await page.getByLabel('Estado dos tribunais').selectOption('GO');
+  await page.getByLabel('Buscar tribunal ou sistema').fill('TRT18');
+  await expect(page.locator('.court-card')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Adicionar TRT18 aos favoritos', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Remover TRT18 dos favoritos', exact: true })).toBeVisible();
+  await page
+    .getByRole('button', { name: /^PJe .*1.*Grau$|^PJe · 1º grau$/ })
+    .first()
+    .click();
+  assert.ok((await app.evaluate(() => globalThis.__lastExternal)).startsWith('https://pje.trt18.jus.br/primeirograu/'));
+  await page.getByLabel('Buscar tribunal ou sistema').fill('');
+  await page.getByLabel('Estado').selectOption('GO');
+  await expect(page.locator('.court-card')).toHaveCount(4);
+  await page.screenshot({ path: path.join(base, '05-tribunais.png') });
+  await page.getByRole('button', { name: 'Meus favoritos', exact: true }).click();
+  await expect(page.locator('.court-card')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page.getByRole('button', { name: 'Agora não', exact: true }).click();
+  await page.getByLabel('Nome do escritório', { exact: true }).fill('Escritório de teste');
+  await page.getByRole('button', { name: 'Salvar configurações', exact: true }).click();
+  const state = await page.evaluate(() => window.advocacia.state());
+  assert.equal(state.settings.appName, 'Escritório de teste — Jurídico');
+  assert.equal(state.settings.theme, 'purple');
+  assert.equal(state.settings.ownDomain, 'escritorio.test');
+  assert.equal(state.settings.emailFrom, 'contato@escritorio.test');
+  assert.equal(state.settings.emailDNSConfirmed, true);
+  assert.ok(state.settings.brandLogo.startsWith('data:image/png;base64,'));
+  assert.equal(state.messages[0].status, 'pending');
+  assert.equal(state.messages[0].scheduledFor, new Date(local).toISOString());
+  await app.close();
+  app = null;
+  app = await electron.launch({
+    ...(executablePath ? { executablePath, args: [`--data-dir=${root}`] } : { args: ['.'] }),
+    env,
+  });
+  const reopened = await app.firstWindow();
+  await reopened.getByRole('heading', { name: /Bom dia|Boa tarde|Boa noite/ }).waitFor();
+  await prepareTestApp(reopened);
+  const restored = await reopened.evaluate(() => window.advocacia.state());
+  assert.equal(restored.settings.theme, 'purple');
+  assert.equal(restored.settings.appName, 'Escritório de teste — Jurídico');
+  assert.equal(restored.messages[0].scheduledFor, state.messages[0].scheduledFor);
+  assert.ok(restored.settings.favoriteCourts.includes('trt18'));
+  assert.equal(errors.length, 0, errors.join('\n'));
+  await fs.writeFile(
+    path.join(base, 'result.json'),
+    JSON.stringify(
+      {
+        ok: true,
+        at: new Date().toISOString(),
+        scheduledDispatch: true,
+        persistentBranding: true,
+        customDomain: true,
+        pixRenderedAndDecoded: true,
+        contactLink: true,
+        courtFavorites: true,
+        courts: state.courts.courts.length,
+      },
+      null,
+      2,
+    ),
+  );
+  process.stdout.write(
+    'Novos recursos: agenda de disparos, pausa, identidade visual, logo, domínio próprio, Pix legível, contato e tribunais favoritos verificados.\n',
+  );
+} catch (error) {
+  if (app) {
+    const page = await app.firstWindow().catch(() => null);
+    await page?.screenshot({ path: path.join(base, 'failure.png') }).catch(() => {});
+  }
+  throw error;
+} finally {
+  if (app) await app.close();
+}

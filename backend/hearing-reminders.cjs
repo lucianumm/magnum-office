@@ -13,7 +13,8 @@ class HearingReminders {
   }
   // What should be scheduled for this task right now: { message, key } or { reason }.
   plan(task) {
-    if (!task.clientReminder || task.status === 'Concluída' || !['Audiência', 'Reunião'].includes(task.type)) return { reason: 'off' };
+    if (!task.clientReminder || task.status === 'Concluída' || !['Audiência', 'Reunião'].includes(task.type))
+      return { reason: 'off' };
     const caseItem = task.caseId ? this.store.get('cases', task.caseId) : null;
     const clientId = task.clientId || caseItem?.clientId;
     if (!clientId) return { reason: 'Vincule um cliente ou um processo com cliente para enviar o aviso.' };
@@ -24,11 +25,23 @@ class HearingReminders {
     const [y, m, d] = date.split('-').map(Number);
     const [h, min] = task.reminderTime.split(':').map(Number);
     const when = new Date(y, m - 1, d - Number(task.reminderLead), h, min);
-    if (when.getTime() <= this.clock() + 60000) return { reason: 'O horário do aviso já passou; ele não será enviado.' };
-    const model = task.reminderTemplateId && this.library.list().find(t => t.id === task.reminderTemplateId && t.kind === 'whatsapp');
+    if (when.getTime() <= this.clock() + 60000)
+      return { reason: 'O horário do aviso já passou; ele não será enviado.' };
+    const model =
+      task.reminderTemplateId &&
+      this.library.list().find(t => t.id === task.reminderTemplateId && t.kind === 'whatsapp');
     const body = personalizeReminder(model ? model.body : defaultBody(task.type), client, this.settings.get(), task);
-    const message = { channel: 'whatsapp', recipient: phone, body, scheduledFor: when.toISOString(), clientId: client.id, caseId: task.caseId || undefined };
-    const key = createHash('sha256').update(JSON.stringify([phone, body, message.scheduledFor, time])).digest('hex');
+    const message = {
+      channel: 'whatsapp',
+      recipient: phone,
+      body,
+      scheduledFor: when.toISOString(),
+      clientId: client.id,
+      caseId: task.caseId || undefined,
+    };
+    const key = createHash('sha256')
+      .update(JSON.stringify([phone, body, message.scheduledFor, time]))
+      .digest('hex');
     return { message, key };
   }
   row(id) {
@@ -45,7 +58,8 @@ class HearingReminders {
   sync(task, { review = false } = {}) {
     const plan = this.plan(task);
     const current = this.row(task.reminderMessageId);
-    if (current && task.reminderKey === plan.key && current.status !== 'cancelled') return { task, status: 'unchanged' };
+    if (current && task.reminderKey === plan.key && current.status !== 'cancelled')
+      return { task, status: 'unchanged' };
     this.store.db.exec('BEGIN IMMEDIATE');
     try {
       if (current && open.includes(current.status)) this.messaging.change(current.id, 'cancel');
@@ -57,7 +71,11 @@ class HearingReminders {
         saved = this.remember(task, id, plan.key);
       }
       this.store.db.exec('COMMIT');
-      return { task: saved, status: plan.message ? (review ? 'needs_review' : 'pending') : 'none', reason: plan.reason === 'off' ? '' : plan.reason || '' };
+      return {
+        task: saved,
+        status: plan.message ? (review ? 'needs_review' : 'pending') : 'none',
+        reason: plan.reason === 'off' ? '' : plan.reason || '',
+      };
     } catch (error) {
       this.store.db.exec('ROLLBACK');
       throw error;

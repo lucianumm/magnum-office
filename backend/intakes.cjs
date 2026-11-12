@@ -16,7 +16,10 @@ class Intakes {
         phone: intake.phone,
         email: intake.email,
         document: intake.document,
-        notes: [intake.subject && `Primeiro atendimento: ${intake.subject}`, intake.notes].filter(Boolean).join('\n\n').slice(0, 12000),
+        notes: [intake.subject && `Primeiro atendimento: ${intake.subject}`, intake.notes]
+          .filter(Boolean)
+          .join('\n\n')
+          .slice(0, 12000),
         status: 'Ativo',
       });
       const caseItem = createCase
@@ -31,7 +34,13 @@ class Intakes {
       const { id: intakeId, createdAt, updatedAt, ...payload } = intake;
       void createdAt;
       void updatedAt;
-      this.store.save('intakes', { ...payload, id: intakeId, status: 'Contratado', convertedClientId: client.id, convertedCaseId: caseItem?.id || '' });
+      this.store.save('intakes', {
+        ...payload,
+        id: intakeId,
+        status: 'Contratado',
+        convertedClientId: client.id,
+        convertedCaseId: caseItem?.id || '',
+      });
       this.store.db.exec('COMMIT');
       return { client, case: caseItem };
     } catch (error) {

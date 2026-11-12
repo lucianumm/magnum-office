@@ -15,7 +15,23 @@ const { pdf } = require('../backend/document-files.cjs');
 const { calculateDebt, seriesNeeded } = require('../app/debt.mjs');
 
 // Real values from the BCB SGS (series 433 and 29543), read on 2026-11-07.
-const IPCA = { '2003-01': 2.25, '2003-02': 1.57, '2003-03': 1.23, '2003-04': 0.97, '2003-05': 0.61, '2003-06': -0.15, '2003-07': 0.2, '2003-08': 0.34, '2003-09': 0.78, '2003-10': 0.29, '2003-11': 0.34, '2003-12': 0.52, '2024-07': 0.38, '2024-08': -0.02, '2024-09': 0.44 };
+const IPCA = {
+  '2003-01': 2.25,
+  '2003-02': 1.57,
+  '2003-03': 1.23,
+  '2003-04': 0.97,
+  '2003-05': 0.61,
+  '2003-06': -0.15,
+  '2003-07': 0.2,
+  '2003-08': 0.34,
+  '2003-09': 0.78,
+  '2003-10': 0.29,
+  '2003-11': 0.34,
+  '2003-12': 0.52,
+  '2024-07': 0.38,
+  '2024-08': -0.02,
+  '2024-09': 0.44,
+};
 const TAXA_LEGAL = { '2024-08': 0.605306, '2024-09': 0.676227, '2024-10': 0.704241, '2025-03': 0 };
 const SELIC = { '2022-01': 0.73, '2022-02': 0.76 };
 
@@ -46,40 +62,119 @@ function fakeFetch(answer) {
 
 test('debt update reproduces the Banco Central examples (IPCA 2003 and Taxa Legal)', () => {
   // Calculadora do Cidadão: IPCA 01/2003 to 12/2003 → 1,0929994; 01/2003 alone → 1,0225.
-  const year = calculateDebt({ principal: '1000', start: '2003-01-01', end: '2003-12-31', correction: 'IPCA', series: { IPCA } });
+  const year = calculateDebt({
+    principal: '1000',
+    start: '2003-01-01',
+    end: '2003-12-31',
+    correction: 'IPCA',
+    series: { IPCA },
+  });
   // The BCB shows the factor truncated to 7 decimal places (1,09299945… → 1,0929994).
   assert.equal(Math.trunc(year.factor * 1e7) / 1e7, 1.0929994);
   assert.equal(year.corrected, 1093);
-  assert.equal(calculateDebt({ principal: '1000', start: '2003-01-15', end: '2003-01-20', correction: 'IPCA', series: { IPCA } }).factor, 1.0225);
+  assert.equal(
+    calculateDebt({ principal: '1000', start: '2003-01-15', end: '2003-01-20', correction: 'IPCA', series: { IPCA } })
+      .factor,
+    1.0225,
+  );
   // Metodologia da Taxa Legal: 30/08/2024 to 31/08/2024 → 0,00019526; R$ 1.000,00 → R$ 1.000,20.
-  const legal = calculateDebt({ principal: '1.000,00', start: '2024-08-30', end: '2024-08-31', interest: 'legal', series: { TAXA_LEGAL } });
+  const legal = calculateDebt({
+    principal: '1.000,00',
+    start: '2024-08-30',
+    end: '2024-08-31',
+    interest: 'legal',
+    series: { TAXA_LEGAL },
+  });
   assert.equal(legal.interestRate, 0.019526);
   assert.equal(legal.total, 1000.2);
   // Whole month: day 1 to day 1 of the next month gives the monthly rate.
-  assert.equal(calculateDebt({ principal: '1000', start: '2024-09-01', end: '2024-10-01', interest: 'legal', series: { TAXA_LEGAL } }).interestRate, 0.676227);
+  assert.equal(
+    calculateDebt({
+      principal: '1000',
+      start: '2024-09-01',
+      end: '2024-10-01',
+      interest: 'legal',
+      series: { TAXA_LEGAL },
+    }).interestRate,
+    0.676227,
+  );
 });
 
 test('Código Civil transition, Selic, fine, fees and warnings', () => {
   // 30/07 → 30/08/2024 at the rate typed (1% a month): 2/31 + 29/31 = 1%; then 1 day of Taxa Legal.
-  const cc = calculateDebt({ principal: '1000', start: '2024-07-30', end: '2024-08-31', interest: 'cc', rate: '1', series: { TAXA_LEGAL } });
+  const cc = calculateDebt({
+    principal: '1000',
+    start: '2024-07-30',
+    end: '2024-08-31',
+    interest: 'cc',
+    rate: '1',
+    series: { TAXA_LEGAL },
+  });
   assert.equal(cc.interestRate, 1.019526);
   assert.ok(cc.basis.some(b => b.includes('divergência')));
-  const legalOnly = calculateDebt({ principal: '1000', start: '2024-07-30', end: '2024-08-31', interest: 'legal', series: { TAXA_LEGAL } });
+  const legalOnly = calculateDebt({
+    principal: '1000',
+    start: '2024-07-30',
+    end: '2024-08-31',
+    interest: 'legal',
+    series: { TAXA_LEGAL },
+  });
   assert.equal(legalOnly.interestRate, 0.019526);
   assert.ok(legalOnly.warnings.some(w => w.includes('30/08/2024')));
   // Selic replaces any other index (EC 113/2021).
-  const composite = calculateDebt({ principal: '1000', start: '2022-01-10', end: '2022-02-10', correction: 'IPCA', interest: 'selic', series: { SELIC } });
+  const composite = calculateDebt({
+    principal: '1000',
+    start: '2022-01-10',
+    end: '2022-02-10',
+    correction: 'IPCA',
+    interest: 'selic',
+    series: { SELIC },
+  });
   assert.equal(composite.correction, 'none');
   assert.equal(composite.interestAmount, 14.96); // (1.0073 × 1.0076 − 1) × 1000
-  assert.equal(calculateDebt({ principal: '1000', start: '2022-01-10', end: '2022-02-10', interest: 'selic', selicMode: 'simples', series: { SELIC } }).interestAmount, 14.9);
+  assert.equal(
+    calculateDebt({
+      principal: '1000',
+      start: '2022-01-10',
+      end: '2022-02-10',
+      interest: 'selic',
+      selicMode: 'simples',
+      series: { SELIC },
+    }).interestAmount,
+    14.9,
+  );
   // Fine and fees of 10% each on the updated debt (CPC, art. 523, § 1º).
-  const r = calculateDebt({ principal: '1000', start: '2024-09-01', end: '2024-10-01', interest: 'legal', fine: '10', fees: '10', series: { TAXA_LEGAL } });
+  const r = calculateDebt({
+    principal: '1000',
+    start: '2024-09-01',
+    end: '2024-10-01',
+    interest: 'legal',
+    fine: '10',
+    fees: '10',
+    series: { TAXA_LEGAL },
+  });
   assert.equal(r.subtotal, 1006.76);
   assert.deepEqual([r.fine, r.fees, r.total], [100.68, 100.68, 1208.12]);
   // Months not yet published are reported, not invented.
-  const late = calculateDebt({ principal: '1000', start: '2024-08-01', end: '2024-11-15', correction: 'IPCA', series: { IPCA } });
+  const late = calculateDebt({
+    principal: '1000',
+    start: '2024-08-01',
+    end: '2024-11-15',
+    correction: 'IPCA',
+    series: { IPCA },
+  });
   assert.ok(late.warnings.some(w => w.includes('10/2024') && w.includes('11/2024')));
-  assert.throws(() => calculateDebt({ principal: '1000', start: '1999-01-01', end: '1999-02-01', correction: 'IPCA', series: { IPCA } }), /Atualize os índices/);
+  assert.throws(
+    () =>
+      calculateDebt({
+        principal: '1000',
+        start: '1999-01-01',
+        end: '1999-02-01',
+        correction: 'IPCA',
+        series: { IPCA },
+      }),
+    /Atualize os índices/,
+  );
   assert.throws(() => calculateDebt({ principal: '', start: '2024-01-01', end: '2024-02-01' }), /valor/);
   assert.throws(() => calculateDebt({ principal: '10', start: '2024-02-01', end: '2024-01-01' }), /posterior/);
   assert.deepEqual(seriesNeeded({ correction: 'IPCA', interest: 'cc' }), ['IPCA', 'TAXA_LEGAL']);
@@ -92,14 +187,26 @@ test('indices are downloaded in 10-year windows from the SGS and cached for offl
     // The Taxa Legal series only exists from 2024: older windows answer 404, as the real API does.
     if (url.includes('sgs.29543') && !url.includes('dataInicial=01/01/2025')) return { status: 404 };
     const year = Number(/dataInicial=01\/01\/(\d{4})/.exec(url)[1]);
-    return { body: [{ data: `01/01/${year}`, valor: '0.50' }, { data: `01/02/${year}`, valor: '-0.10' }] };
+    return {
+      body: [
+        { data: `01/01/${year}`, valor: '0.50' },
+        { data: `01/02/${year}`, valor: '-0.10' },
+      ],
+    };
   });
   const indices = new Indices({ root, fetch, store, clock: () => Date.parse('2026-11-07T12:00:00Z') });
   assert.equal(indices.status().updatedAt, null);
   await indices.update(['IPCA', 'TAXA_LEGAL']);
   const ipcaCalls = calls.filter(c => c.url.includes('sgs.433'));
-  assert.deepEqual(ipcaCalls.map(c => /dataInicial=([^&]+)&dataFinal=([^&]+)/.exec(c.url).slice(1).join('-')), ['01/01/1995-31/12/2004', '01/01/2005-31/12/2014', '01/01/2015-31/12/2024', '01/01/2025-31/12/2026']);
-  assert.ok(calls.every(c => c.url.startsWith('https://api.bcb.gov.br/dados/serie/bcdata.sgs.') && c.url.includes('formato=json')));
+  assert.deepEqual(
+    ipcaCalls.map(c => /dataInicial=([^&]+)&dataFinal=([^&]+)/.exec(c.url).slice(1).join('-')),
+    ['01/01/1995-31/12/2004', '01/01/2005-31/12/2014', '01/01/2015-31/12/2024', '01/01/2025-31/12/2026'],
+  );
+  assert.ok(
+    calls.every(
+      c => c.url.startsWith('https://api.bcb.gov.br/dados/serie/bcdata.sgs.') && c.url.includes('formato=json'),
+    ),
+  );
   const values = new Indices({ root, fetch: null }).values(['IPCA', 'TAXA_LEGAL']);
   assert.equal(values.IPCA['2015-02'], -0.1);
   assert.deepEqual(Object.keys(values.TAXA_LEGAL), ['2025-01', '2025-02']);
@@ -111,8 +218,14 @@ test('indices are downloaded in 10-year windows from the SGS and cached for offl
 
 test('debt report is recalculated from the cache and becomes a PDF', async t => {
   const { root } = await fixture(t);
-  fs.writeFileSync(path.join(root, 'indices.json'), JSON.stringify({ updatedAt: '2026-11-07', series: { IPCA, TAXA_LEGAL } }));
-  const { blocks, title } = report({ principal: '1000', start: '2024-08-30', end: '2024-08-31', interest: 'legal' }, new Indices({ root }));
+  fs.writeFileSync(
+    path.join(root, 'indices.json'),
+    JSON.stringify({ updatedAt: '2026-11-07', series: { IPCA, TAXA_LEGAL } }),
+  );
+  const { blocks, title } = report(
+    { principal: '1000', start: '2024-08-30', end: '2024-08-31', interest: 'legal' },
+    new Indices({ root }),
+  );
   const text = blocks.map(b => b.runs.map(r => r.text).join('')).join('\n');
   assert.match(text, /TOTAL: R\$ 1\.000,20/);
   assert.match(text, /Taxa Legal/);
@@ -123,11 +236,35 @@ test('debt report is recalculated from the cache and becomes a PDF', async t => 
 
 test('DataJud: request format, merged movements, news count and errors', async t => {
   const { store, settings } = await fixture(t);
-  const caseItem = store.save('cases', { title: 'Indenização', status: 'Em andamento', number: '00000016320248090051' });
+  const caseItem = store.save('cases', {
+    title: 'Indenização',
+    status: 'Em andamento',
+    number: '00000016320248090051',
+  });
   const movement = (codigo, dataHora, nome) => ({ codigo, dataHora, nome, orgaoJulgador: { nome: '21ª Vara Cível' } });
-  let movements = [movement(26, '2024-03-01T10:00:00.000Z', 'Distribuído por sorteio'), movement(85, '2024-03-05T11:00:00.000Z', 'Petição')];
+  let movements = [
+    movement(26, '2024-03-01T10:00:00.000Z', 'Distribuído por sorteio'),
+    movement(85, '2024-03-05T11:00:00.000Z', 'Petição'),
+  ];
   const { fetch, calls } = fakeFetch(() => ({
-    body: { hits: { hits: [{ _source: { tribunal: 'TJGO', grau: 'G1', numeroProcesso: '00000016320248090051', nivelSigilo: 0, dataAjuizamento: '20240301100000', classe: { nome: 'Procedimento Comum Cível' }, orgaoJulgador: { nome: '21ª Vara Cível' }, movimentos: movements } }] } },
+    body: {
+      hits: {
+        hits: [
+          {
+            _source: {
+              tribunal: 'TJGO',
+              grau: 'G1',
+              numeroProcesso: '00000016320248090051',
+              nivelSigilo: 0,
+              dataAjuizamento: '20240301100000',
+              classe: { nome: 'Procedimento Comum Cível' },
+              orgaoJulgador: { nome: '21ª Vara Cível' },
+              movimentos: movements,
+            },
+          },
+        ],
+      },
+    },
   }));
   const datajud = new DataJud({ store, settings, fetch });
   await assert.rejects(datajud.refresh(caseItem.id), /Ative a consulta/);
@@ -135,10 +272,21 @@ test('DataJud: request format, merged movements, news count and errors', async t
   const first = await datajud.refresh(caseItem.id);
   assert.equal(calls[0].url, 'https://api-publica.datajud.cnj.jus.br/api_publica_tjgo/_search');
   assert.equal(calls[0].options.headers.Authorization, `APIKey ${DEFAULT_KEY}`);
-  assert.deepEqual(JSON.parse(calls[0].options.body), { size: 10, query: { match: { numeroProcesso: '00000016320248090051' } } });
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    size: 10,
+    query: { match: { numeroProcesso: '00000016320248090051' } },
+  });
   assert.equal(first.added, 2);
   assert.equal(first.newCount, 0, 'first import is history');
-  assert.deepEqual(first.meta, { classe: 'Procedimento Comum Cível', orgao: '21ª Vara Cível', graus: ['G1'], sigilo: 0, filedAt: '2024-03-01', updatedAt: '', tribunal: 'TJGO' });
+  assert.deepEqual(first.meta, {
+    classe: 'Procedimento Comum Cível',
+    orgao: '21ª Vara Cível',
+    graus: ['G1'],
+    sigilo: 0,
+    filedAt: '2024-03-01',
+    updatedAt: '',
+    tribunal: 'TJGO',
+  });
   assert.equal(first.movements[0].name, 'Petição', 'newest first');
   movements = [...movements, movement(193, '2024-04-10T09:00:00.000Z', 'Decisão')];
   assert.equal((await datajud.refresh(caseItem.id)).added, 1);
@@ -147,7 +295,10 @@ test('DataJud: request format, merged movements, news count and errors', async t
   assert.deepEqual(datajud.newCounts(), {});
   const manual = datajud.addManual(caseItem.id, { date: '2024-05-01', name: 'Protocolo de memoriais' });
   assert.equal(manual.movements.filter(m => m.source === 'manual').length, 1);
-  assert.equal(datajud.removeManual(caseItem.id, manual.movements.find(m => m.source === 'manual').id).movements.length, 3);
+  assert.equal(
+    datajud.removeManual(caseItem.id, manual.movements.find(m => m.source === 'manual').id).movements.length,
+    3,
+  );
   settings.save({ datajudKey: 'NOVA_CHAVE==' });
   const rejected = new DataJud({ store, settings, fetch: fakeFetch(() => ({ status: 403 })).fetch });
   await assert.rejects(rejected.refresh(caseItem.id), /recusou a chave/);
@@ -160,24 +311,93 @@ test('DataJud: request format, merged movements, news count and errors', async t
 
 test('DataJud lookup fills the case form from the number alone, without storing anything', async t => {
   const { store, settings } = await fixture(t);
-  const source = (grau, update, orgao, classe) => ({ tribunal: 'TRT18', grau, numeroProcesso: '00100016920245180101', nivelSigilo: 0, dataAjuizamento: '20240115093000', dataHoraUltimaAtualizacao: update, classe: { nome: classe }, orgaoJulgador: { nome: orgao }, assuntos: [{ nome: 'Horas Extras' }, [{ nome: 'Adicional Noturno' }]], movimentos: [] });
+  const source = (grau, update, orgao, classe) => ({
+    tribunal: 'TRT18',
+    grau,
+    numeroProcesso: '00100016920245180101',
+    nivelSigilo: 0,
+    dataAjuizamento: '20240115093000',
+    dataHoraUltimaAtualizacao: update,
+    classe: { nome: classe },
+    orgaoJulgador: { nome: orgao },
+    assuntos: [{ nome: 'Horas Extras' }, [{ nome: 'Adicional Noturno' }]],
+    movimentos: [],
+  });
   const { fetch, calls } = fakeFetch(() => ({
-    body: { hits: { hits: [{ _source: source('G1', '2024-06-01T10:00:00', '1ª VARA DO TRABALHO DE RIO VERDE', 'Ação Trabalhista - Rito Ordinário') }, { _source: source('G2', '2025-02-01T10:00:00', 'GABINETE DA DESEMBARGADORA FULANA', 'Recurso Ordinário Trabalhista') }] } },
+    body: {
+      hits: {
+        hits: [
+          {
+            _source: source(
+              'G1',
+              '2024-06-01T10:00:00',
+              '1ª VARA DO TRABALHO DE RIO VERDE',
+              'Ação Trabalhista - Rito Ordinário',
+            ),
+          },
+          {
+            _source: source(
+              'G2',
+              '2025-02-01T10:00:00',
+              'GABINETE DA DESEMBARGADORA FULANA',
+              'Recurso Ordinário Trabalhista',
+            ),
+          },
+        ],
+      },
+    },
   }));
   const datajud = new DataJud({ store, settings, fetch });
   const found = await datajud.lookup('0010001-69.2024.5.18.0101');
   assert.equal(calls[0].url, 'https://api-publica.datajud.cnj.jus.br/api_publica_trt18/_search');
-  assert.deepEqual(found.fields, { procedure: 'Recurso Ordinário Trabalhista', court: 'GABINETE DA DESEMBARGADORA FULANA', filedAt: '2024-01-15', instance: '2º grau', area: 'Trabalhista' }, 'latest degree describes the case; no city in a cabinet name');
+  assert.deepEqual(
+    found.fields,
+    {
+      procedure: 'Recurso Ordinário Trabalhista',
+      court: 'GABINETE DA DESEMBARGADORA FULANA',
+      filedAt: '2024-01-15',
+      instance: '2º grau',
+      area: 'Trabalhista',
+    },
+    'latest degree describes the case; no city in a cabinet name',
+  );
   assert.deepEqual(found.subjects, ['Horas Extras', 'Adicional Noturno']);
   assert.equal(found.tribunal, 'TRT18');
-  const firstDegree = new DataJud({ store, settings, fetch: fakeFetch(() => ({ body: { hits: { hits: [{ _source: source('G1', '', 'VARA DE FAMÍLIA E SUCESSÕES DE ANÁPOLIS', 'Divórcio Litigioso') }] } } })).fetch });
+  const firstDegree = new DataJud({
+    store,
+    settings,
+    fetch: fakeFetch(() => ({
+      body: {
+        hits: {
+          hits: [{ _source: source('G1', '', 'VARA DE FAMÍLIA E SUCESSÕES DE ANÁPOLIS', 'Divórcio Litigioso') }],
+        },
+      },
+    })).fetch,
+  });
   const family = await firstDegree.lookup('0010001-69.2024.5.18.0101');
   assert.equal(family.fields.county, 'Anápolis');
-  const labour = new DataJud({ store, settings, fetch: fakeFetch(() => ({ body: { hits: { hits: [{ _source: source('G1', '', 'Rio Verde - 01a Vara', 'Ação Trabalhista - Rito Ordinário') }] } } })).fetch });
-  assert.equal((await labour.lookup('0010001-69.2024.5.18.0101')).fields.county, 'Rio Verde', 'labour courts put the city first');
+  const labour = new DataJud({
+    store,
+    settings,
+    fetch: fakeFetch(() => ({
+      body: {
+        hits: { hits: [{ _source: source('G1', '', 'Rio Verde - 01a Vara', 'Ação Trabalhista - Rito Ordinário') }] },
+      },
+    })).fetch,
+  });
+  assert.equal(
+    (await labour.lookup('0010001-69.2024.5.18.0101')).fields.county,
+    'Rio Verde',
+    'labour courts put the city first',
+  );
   assert.equal(family.fields.area, 'Trabalhista', 'the CNJ segment wins over the class');
   const empty = new DataJud({ store, settings, fetch: fakeFetch(() => ({ body: { hits: { hits: [] } } })).fetch });
-  assert.deepEqual(await empty.lookup('0010001-69.2024.5.18.0101'), { found: false, fields: {}, subjects: [], tribunal: '' });
+  assert.deepEqual(await empty.lookup('0010001-69.2024.5.18.0101'), {
+    found: false,
+    fields: {},
+    subjects: [],
+    tribunal: '',
+  });
   await assert.rejects(datajud.lookup('0010001-00.2024.5.18.0101'), /número CNJ válido/);
   assert.equal(store.db.prepare('SELECT COUNT(*) AS n FROM case_movements').get().n, 0, 'nothing stored');
 });
@@ -196,11 +416,17 @@ test('CNPJ lookup maps Receita data, falls back to the second source and explain
     municipio: 'GOIANIA',
     uf: 'go',
     cep: '74000000',
-    qsa: [{ nome_socio: 'JOAO SOCIO', qualificacao_socio: 'Sócio' }, { nome_socio: 'MARIA DA SILVA', qualificacao_socio: 'Sócio-Administrador' }],
+    qsa: [
+      { nome_socio: 'JOAO SOCIO', qualificacao_socio: 'Sócio' },
+      { nome_socio: 'MARIA DA SILVA', qualificacao_socio: 'Sócio-Administrador' },
+    ],
   };
   const { fetch, calls } = fakeFetch(url => (url.includes('brasilapi') ? { status: 500 } : { body: company }));
   const result = await new CNPJLookup({ store, fetch }).lookup('11.222.333/0001-81');
-  assert.deepEqual(calls.map(c => c.url), ['https://brasilapi.com.br/api/cnpj/v1/11222333000181', 'https://minhareceita.org/11222333000181']);
+  assert.deepEqual(
+    calls.map(c => c.url),
+    ['https://brasilapi.com.br/api/cnpj/v1/11222333000181', 'https://minhareceita.org/11222333000181'],
+  );
   assert.deepEqual(result, {
     found: true,
     document: '11.222.333/0001-81',
@@ -208,21 +434,48 @@ test('CNPJ lookup maps Receita data, falls back to the second source and explain
     tradeName: 'EXEMPLO',
     situation: 'ATIVA',
     active: true,
-    address: { street: 'Avenida Goias', addressNumber: '100', complement: 'Sala 2', district: 'Setor Central', city: 'Goiania', state: 'GO', zip: '74000-000' },
+    address: {
+      street: 'Avenida Goias',
+      addressNumber: '100',
+      complement: 'Sala 2',
+      district: 'Setor Central',
+      city: 'Goiania',
+      state: 'GO',
+      zip: '74000-000',
+    },
     legalRepresentative: 'Maria da Silva',
   });
-  const closed = await new CNPJLookup({ fetch: fakeFetch(() => ({ body: { ...company, descricao_situacao_cadastral: 'BAIXADA' } })).fetch }).lookup('11222333000181');
+  const closed = await new CNPJLookup({
+    fetch: fakeFetch(() => ({ body: { ...company, descricao_situacao_cadastral: 'BAIXADA' } })).fetch,
+  }).lookup('11222333000181');
   assert.equal(closed.active, false);
-  assert.deepEqual(await new CNPJLookup({ fetch: fakeFetch(() => ({ status: 404 })).fetch }).lookup('11222333000181'), { found: false, document: '11.222.333/0001-81' });
-  await assert.rejects(new CNPJLookup({ fetch: fakeFetch(() => ({ status: 429 })).fetch }).lookup('11222333000181'), /Muitas consultas/);
-  await assert.rejects(new CNPJLookup({ fetch: async () => { throw new TypeError('fetch failed'); } }).lookup('11222333000181'), /Sem conexão/);
+  assert.deepEqual(await new CNPJLookup({ fetch: fakeFetch(() => ({ status: 404 })).fetch }).lookup('11222333000181'), {
+    found: false,
+    document: '11.222.333/0001-81',
+  });
+  await assert.rejects(
+    new CNPJLookup({ fetch: fakeFetch(() => ({ status: 429 })).fetch }).lookup('11222333000181'),
+    /Muitas consultas/,
+  );
+  await assert.rejects(
+    new CNPJLookup({
+      fetch: async () => {
+        throw new TypeError('fetch failed');
+      },
+    }).lookup('11222333000181'),
+    /Sem conexão/,
+  );
   await assert.rejects(new CNPJLookup({ fetch }).lookup('11.222.333/0001-80'), /CNPJ válido/);
   await assert.rejects(new CNPJLookup({ fetch }).lookup('529.982.247-25'), /CNPJ válido/, 'CPF is never sent');
 });
 
 test('DJEN: queries each lawyer by OAB, pages, links cases and never stores a publication twice', async t => {
   const { store, settings } = await fixture(t);
-  const caseItem = store.save('cases', { title: 'Indenização', status: 'Em andamento', number: '00000016320248090051' });
+  const caseItem = store.save('cases', {
+    title: 'Indenização',
+    status: 'Em andamento',
+    number: '00000016320248090051',
+  });
   const item = (id, extra = {}) => ({
     id,
     data_disponibilizacao: '2026-11-05',
@@ -241,7 +494,13 @@ test('DJEN: queries each lawyer by OAB, pages, links cases and never stores a pu
   const page1 = Array.from({ length: 100 }, (_, i) => item(1000 + i, { numero_processo: '11111111111111111111' }));
   const { fetch, calls } = fakeFetch(url => {
     const page = Number(new URL(url).searchParams.get('pagina'));
-    return { body: { status: 'success', count: 103, items: page === 1 ? page1 : [item(1), item(2, { ativo: false }), item(3, { link: 'https://evil.example/x' })] } };
+    return {
+      body: {
+        status: 'success',
+        count: 103,
+        items: page === 1 ? page1 : [item(1), item(2, { ativo: false }), item(3, { link: 'https://evil.example/x' })],
+      },
+    };
   });
   const clock = () => Date.parse('2026-11-07T12:00:00Z');
   const djen = new DJEN({ store, settings, fetch, clock });
@@ -253,7 +512,14 @@ test('DJEN: queries each lawyer by OAB, pages, links cases and never stores a pu
   assert.deepEqual(result, { found: 103, added: 103, from: '2026-10-31', to: '2026-11-07' });
   const params = new URL(calls[0].url).searchParams;
   assert.equal(calls[0].url.split('?')[0], 'https://comunicaapi.pje.jus.br/api/v1/comunicacao');
-  assert.deepEqual(Object.fromEntries(params), { numeroOab: '12345', ufOab: 'GO', dataDisponibilizacaoInicio: '2026-10-31', dataDisponibilizacaoFim: '2026-11-07', itensPorPagina: '100', pagina: '1' });
+  assert.deepEqual(Object.fromEntries(params), {
+    numeroOab: '12345',
+    ufOab: 'GO',
+    dataDisponibilizacaoInicio: '2026-10-31',
+    dataDisponibilizacaoFim: '2026-11-07',
+    itensPorPagina: '100',
+    pagina: '1',
+  });
   assert.equal(calls.length, 2, 'stops when a page is not full');
   const list = djen.list();
   const one = list.find(i => i.id === '1');

@@ -1,3 +1,32 @@
-const yauzl=require('yauzl');
-function checkArchive(file){return new Promise((resolve,reject)=>{yauzl.open(file,{lazyEntries:true},(error,zip)=>{if(error)return reject(new Error('Arquivo compactado inválido.'));let bytes=0,count=0,ended=false;const fail=()=>{if(ended)return;ended=true;zip.close();reject(new Error('Arquivo excessivamente expandido. Use até 50 MB descompactados e 2.000 entradas.'));};zip.on('error',fail);zip.on('entry',entry=>{bytes+=entry.uncompressedSize;count++;if(bytes>50*1024**2||count>2000||entry.generalPurposeBitFlag&1)return fail();zip.readEntry();});zip.on('end',()=>{if(!ended){ended=true;resolve();}});zip.readEntry();});});}
-module.exports={checkArchive};
+const yauzl = require('yauzl');
+function checkArchive(file) {
+  return new Promise((resolve, reject) => {
+    yauzl.open(file, { lazyEntries: true }, (error, zip) => {
+      if (error) return reject(new Error('Arquivo compactado inválido.'));
+      let bytes = 0,
+        count = 0,
+        ended = false;
+      const fail = () => {
+        if (ended) return;
+        ended = true;
+        zip.close();
+        reject(new Error('Arquivo excessivamente expandido. Use até 50 MB descompactados e 2.000 entradas.'));
+      };
+      zip.on('error', fail);
+      zip.on('entry', entry => {
+        bytes += entry.uncompressedSize;
+        count++;
+        if (bytes > 50 * 1024 ** 2 || count > 2000 || entry.generalPurposeBitFlag & 1) return fail();
+        zip.readEntry();
+      });
+      zip.on('end', () => {
+        if (!ended) {
+          ended = true;
+          resolve();
+        }
+      });
+      zip.readEntry();
+    });
+  });
+}
+module.exports = { checkArchive };

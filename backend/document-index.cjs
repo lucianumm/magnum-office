@@ -13,7 +13,10 @@ const normalize = s =>
 
 function extractInWorker(bytes, ext, timeout = 60000) {
   return new Promise(resolve => {
-    const worker = new Worker(path.join(__dirname, 'document-text-worker.cjs'), { workerData: { bytes, ext }, resourceLimits: { maxOldGenerationSizeMb: 512 } });
+    const worker = new Worker(path.join(__dirname, 'document-text-worker.cjs'), {
+      workerData: { bytes, ext },
+      resourceLimits: { maxOldGenerationSizeMb: 512 },
+    });
     const timer = setTimeout(() => {
       void worker.terminate();
       resolve({ error: 'Tempo esgotado ao ler o documento.' });
@@ -37,7 +40,9 @@ class DocumentIndex {
   }
   write(id, status, text) {
     this.store.db
-      .prepare('INSERT INTO document_text(document_id,payload,status,extracted_at) VALUES(?,?,?,?) ON CONFLICT(document_id) DO UPDATE SET payload=excluded.payload,status=excluded.status,extracted_at=excluded.extracted_at')
+      .prepare(
+        'INSERT INTO document_text(document_id,payload,status,extracted_at) VALUES(?,?,?,?) ON CONFLICT(document_id) DO UPDATE SET payload=excluded.payload,status=excluded.status,extracted_at=excluded.extracted_at',
+      )
       .run(id, this.store.vault.seal({ text }), status, new Date().toISOString());
   }
   async index(id) {
@@ -51,7 +56,9 @@ class DocumentIndex {
   // Documents imported before this version, or whose indexing was interrupted.
   pending() {
     return this.store.db
-      .prepare("SELECT e.id FROM entities e LEFT JOIN document_text t ON t.document_id = e.id WHERE e.kind='documents' AND t.document_id IS NULL")
+      .prepare(
+        "SELECT e.id FROM entities e LEFT JOIN document_text t ON t.document_id = e.id WHERE e.kind='documents' AND t.document_id IS NULL",
+      )
       .all()
       .map(r => r.id);
   }
@@ -83,7 +90,9 @@ class DocumentIndex {
   }
   // Every word of the query must appear; accents and case are ignored. Returns a snippet per match.
   search(query, limit = 50) {
-    const words = normalize(query).split(/\s+/).filter(w => w.length >= 2);
+    const words = normalize(query)
+      .split(/\s+/)
+      .filter(w => w.length >= 2);
     if (!words.length || normalize(query).trim().length < 3) return [];
     const docs = new Map(this.store.list('documents').map(d => [d.id, d]));
     const results = [];
@@ -96,8 +105,17 @@ class DocumentIndex {
       // For ordinary (NFC) text, removing accents keeps the number of characters, so the position
       // found in the normalized text also cuts the original.
       const start = Math.max(0, plain.indexOf(words[0]) - 80);
-      const snippet = text.slice(start, start + 260).replace(/\s+/g, ' ').trim();
-      results.push({ id: doc.id, name: doc.name, caseId: doc.caseId, clientId: doc.clientId, snippet: `${start > 0 ? '… ' : ''}${snippet} …` });
+      const snippet = text
+        .slice(start, start + 260)
+        .replace(/\s+/g, ' ')
+        .trim();
+      results.push({
+        id: doc.id,
+        name: doc.name,
+        caseId: doc.caseId,
+        clientId: doc.clientId,
+        snippet: `${start > 0 ? '… ' : ''}${snippet} …`,
+      });
       if (results.length >= limit) break;
     }
     return results;

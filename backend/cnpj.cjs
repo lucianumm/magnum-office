@@ -13,10 +13,17 @@ const titleCase = value =>
     .filter(Boolean)
     .map((w, i) =>
       // "Torre II", "Sala S101": Roman numerals and codes stay in capitals.
-      /\d/.test(w) || /^(x{0,3})(ix|iv|v?i{0,3})[,.;]?$/.test(w) ? w.toLocaleUpperCase('pt-BR') : i && small.has(w) ? w : w.charAt(0).toLocaleUpperCase('pt-BR') + w.slice(1),
+      /\d/.test(w) || /^(x{0,3})(ix|iv|v?i{0,3})[,.;]?$/.test(w)
+        ? w.toLocaleUpperCase('pt-BR')
+        : i && small.has(w)
+          ? w
+          : w.charAt(0).toLocaleUpperCase('pt-BR') + w.slice(1),
     )
     .join(' ');
-const clip = (value, max) => String(value ?? '').trim().slice(0, max);
+const clip = (value, max) =>
+  String(value ?? '')
+    .trim()
+    .slice(0, max);
 
 class CNPJLookup {
   constructor({ fetch, store = null }) {
@@ -40,7 +47,8 @@ class CNPJLookup {
   }
   async lookup(value) {
     const parsed = brDocument(String(value || '').slice(0, 32));
-    if (parsed.type !== 'CNPJ' || !parsed.valid) throw new Error('Informe um CNPJ válido para buscar os dados da empresa.');
+    if (parsed.type !== 'CNPJ' || !parsed.valid)
+      throw new Error('Informe um CNPJ válido para buscar os dados da empresa.');
     const cnpj = documentKey(parsed.formatted);
     let failure = '';
     let missing = false;
@@ -54,8 +62,10 @@ class CNPJLookup {
       else failure ||= result.failure || 'status';
     }
     if (missing && !failure) return { found: false, document: parsed.formatted };
-    if (failure === 'rate') throw new Error('Muitas consultas de CNPJ em pouco tempo. Tente de novo em alguns minutos.');
-    if (failure === 'network') throw new Error('Sem conexão com o serviço de CNPJ. Verifique a internet e tente de novo.');
+    if (failure === 'rate')
+      throw new Error('Muitas consultas de CNPJ em pouco tempo. Tente de novo em alguns minutos.');
+    if (failure === 'network')
+      throw new Error('Sem conexão com o serviço de CNPJ. Verifique a internet e tente de novo.');
     if (missing) return { found: false, document: parsed.formatted };
     throw new Error('O serviço de CNPJ não respondeu. Tente mais tarde ou preencha os dados à mão.');
   }
@@ -65,7 +75,8 @@ function map(d, formatted) {
   const kind = clip(d.descricao_tipo_de_logradouro, 30);
   const street = clip(d.logradouro, 170);
   const partners = Array.isArray(d.qsa) ? d.qsa : [];
-  const manager = partners.find(p => /administrador|diretor|presidente/i.test(String(p.qualificacao_socio || ''))) || partners[0];
+  const manager =
+    partners.find(p => /administrador|diretor|presidente/i.test(String(p.qualificacao_socio || ''))) || partners[0];
   const zip = String(d.cep || '').replace(/\D/g, '');
   const situation = clip(d.descricao_situacao_cadastral, 40);
   return {
@@ -76,7 +87,10 @@ function map(d, formatted) {
     situation,
     active: !situation || /^ativa$/i.test(situation),
     address: {
-      street: kind && street && !street.toLowerCase().startsWith(kind.toLowerCase()) ? `${titleCase(kind)} ${titleCase(street)}` : titleCase(street),
+      street:
+        kind && street && !street.toLowerCase().startsWith(kind.toLowerCase())
+          ? `${titleCase(kind)} ${titleCase(street)}`
+          : titleCase(street),
       addressNumber: clip(d.numero, 20),
       complement: titleCase(clip(d.complemento, 120)),
       district: titleCase(clip(d.bairro, 120)),
