@@ -202,13 +202,15 @@ try {
   stopProgram(); await new Promise(r => setTimeout(r, 2000));
   await fs.rm(path.join(dataRoot, 'logs', 'recovery.jsonl'), { force: true });
   session = await launch({ noPowerShell: true });
-  await step(`${second} → ${failing} defeituosa, sem PowerShell no PATH: não confirma início e volta à anterior`, async () => {
+  await step(`${second} → ${failing} defeituosa, sem PowerShell no PATH: instalador não substitui o programa e volta à anterior`, async () => {
     await prepare(session.page);
-    // The "new" installer actually installs the same version, so the expected version never confirms.
+    // The "new" installer actually installs the same version: it reports success without replacing the
+    // program, which the guardian detects right after the installer, before opening anything.
     await update(session.app, session.page, { target: failing, installer: installerOf(path.join(builds, 'second')) });
     await waitFor(() => readJSON('recovery-notice.json'), 420000, 'aviso de recuperação');
     const notice = readJSON('recovery-notice.json');
-    assert.equal(notice.failedVersion, failing); assert.equal(notice.reason, 'starting');
+    assert.equal(notice.failedVersion, failing); assert.equal(notice.reason, 'verifying');
+    assert.ok(log().includes('update.guardian.not-replaced'), log());
     // The audit table was restored with the data, so the proof is the backup itself: no shortcut, yet the update went on.
     const preserved = fss.readdirSync(path.join(dataRoot, 'backups')).filter(name => /^\d{4}-/.test(name) && fss.existsSync(path.join(dataRoot, 'backups', name, 'runtime'))).sort().pop();
     assert.equal(fss.existsSync(path.join(dataRoot, 'backups', preserved, 'Recuperar Advocacia.lnk')), false, 'O teste deveria rodar sem PowerShell');

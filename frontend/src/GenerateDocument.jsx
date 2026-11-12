@@ -4,6 +4,8 @@ import { Modal, Button, Empty } from './components.jsx';
 import { lawyerOAB } from '../../app/document-template.mjs';
 
 // Fills a document template with the client/case data and saves DOCX/PDF in its encrypted documents.
+// Opened from a template (no record), the client and the case are optional and any data the
+// template needs can be typed here.
 export default function GenerateDocument({ data, initial, onClose, act, navigateSettings }) {
   const templates = useMemo(
     () => data.library.templates.filter(t => t.kind === 'document').sort((a, b) => a.title.localeCompare(b.title)),
@@ -11,12 +13,23 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
   );
   const lawyers = data.settings.lawyers || [];
   const fixedCase = !!initial.caseId;
-  const clientCases = data.entities.cases.filter(c => c.clientId && c.clientId === initial.clientId);
+  const fixedClient = !!initial.clientId;
   // A receipt opened from the financial screen arrives with its template and answers filled in.
   const [templateId, setTemplateId] = useState(
-    () => templates.find(t => t.title === initial.templateTitle)?.id || templates[0]?.id || '',
+    () =>
+      templates.find(t => t.id === initial.templateId)?.id ||
+      templates.find(t => t.title === initial.templateTitle)?.id ||
+      templates[0]?.id ||
+      '',
   );
+  const [clientId, setClientId] = useState(initial.clientId || '');
   const [caseId, setCaseId] = useState(initial.caseId || '');
+  const [values, setValues] = useState({});
+  const clients = useMemo(
+    () => [...data.entities.clients].sort((a, b) => a.name.localeCompare(b.name)),
+    [data.entities.clients],
+  );
+  const cases = data.entities.cases.filter(c => (clientId ? c.clientId === clientId : true));
   const [chosen, setChosen] = useState(() => lawyers.map((_, i) => i));
   const [answers, setAnswers] = useState(() => initial.answers || {});
   const [formats, setFormats] = useState({ docx: true, pdf: false });
@@ -27,11 +40,12 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
     () => ({
       templateId,
       caseId: caseId || undefined,
-      clientId: initial.clientId || undefined,
+      clientId: clientId || undefined,
       lawyers: chosen,
       answers,
+      values,
     }),
-    [templateId, caseId, initial.clientId, chosen, answers],
+    [templateId, caseId, clientId, chosen, answers, values],
   );
   useEffect(() => {
     if (!templateId) return;
@@ -68,7 +82,15 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
     );
   if (saved)
     return (
-      <Modal title="Documento gerado" subtitle="Salvo criptografado em Documentos deste cadastro." onClose={onClose}>
+      <Modal
+        title="Documento gerado"
+        subtitle={
+          clientId || caseId
+            ? 'Salvo criptografado em Documentos deste cadastro.'
+            : 'Salvo criptografado em Documentos, sem vínculo com cadastro.'
+        }
+        onClose={onClose}
+      >
         <ul className="generated-list">
           {saved.map(doc => (
             <li key={doc.id}>
@@ -102,7 +124,12 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
       </Modal>
     );
   return (
-    <Modal wide title="Gerar documento" subtitle="Preenche o modelo com os dados do cadastro." onClose={onClose}>
+    <Modal
+      wide
+      title="Gerar documento"
+      subtitle="Preenche o modelo com os dados do cadastro ou com o que você digitar aqui."
+      onClose={onClose}
+    >
       <div className="generate-layout">
         <div className="generate-options">
           <label className="field">
@@ -115,14 +142,43 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
               ))}
             </select>
           </label>
+          {!fixedCase && !fixedClient && (
+            <label className="field">
+              <span>Cliente</span>
+              <select
+                value={clientId}
+                onChange={e => {
+                  setClientId(e.target.value);
+                  setCaseId('');
+                  setValues({});
+                }}
+              >
+                <option value="">Sem cliente (preencher abaixo)</option>
+                {clients.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {!fixedCase && (
             <label className="field">
               <span>Processo</span>
-              <select value={caseId} onChange={e => setCaseId(e.target.value)}>
+              <select
+                value={caseId}
+                onChange={e => {
+                  setCaseId(e.target.value);
+                  setValues({});
+                  const owner = data.entities.cases.find(c => c.id === e.target.value)?.clientId;
+                  if (!fixedClient && owner) setClientId(owner);
+                }}
+              >
                 <option value="">Sem processo</option>
-                {clientCases.map(c => (
+                {cases.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.title}
+                    {c.number ? ` · ${c.number}` : ''}
                   </option>
                 ))}
               </select>
@@ -158,19 +214,59 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
               </small>
             )}
           </fieldset>
-          {preview?.questions.map(q => (
-            <label className="field" key={q.key}>
-              <span>{q.label}</span>
-              <input
-                value={answers[q.key] || ''}
-                maxLength={4000}
-                inputMode={q.type === 'money' ? 'decimal' : undefined}
-                placeholder={q.type === 'money' ? 'R$ 0,00' : ''}
-                onChange={e => setAnswers(a => ({ ...a, [q.key]: e.target.value }))}
-              />
-              {q.type === 'money' && <small>O valor sai com o extenso.</small>}
-            </label>
-          ))}
+          {preview?.blanks.length > 0 && (
+            <fieldset className="field generate-questions">
+              <legend>Dados sem cadastro ({preview.blanks.length})</legend>
+              <small className="field-hint muted">
+                O modelo usa estes dados e o cadastro escolhido não tem. Preencha aqui ou deixe em branco para completar
+                depois.
+              </small>
+              {preview.blanks.map(v => (
+                <label className="field" key={v.key}>
+                  <span>{v.label}</span>
+                  <textarea
+                    rows={1}
+                    value={values[v.key] || ''}
+                    maxLength={4000}
+                    onChange={e => setValues(current => ({ ...current, [v.key]: e.target.value }))}
+                  />
+                </label>
+              ))}
+            </fieldset>
+          )}
+          {preview?.questions.length > 0 && (
+            <fieldset className="field generate-questions">
+              <legend>Perguntas do modelo ({preview.questions.length})</legend>
+              {preview.questions.map(q => (
+                <label className="field" key={q.key}>
+                  <span>{q.label}</span>
+                  {q.type === 'money' ? (
+                    <input
+                      value={answers[q.key] || ''}
+                      maxLength={40}
+                      inputMode="decimal"
+                      placeholder="R$ 0,00"
+                      onChange={e => setAnswers(a => ({ ...a, [q.key]: e.target.value }))}
+                    />
+                  ) : (
+                    <textarea
+                      rows={1}
+                      value={answers[q.key] || ''}
+                      maxLength={4000}
+                      onChange={e => setAnswers(a => ({ ...a, [q.key]: e.target.value }))}
+                    />
+                  )}
+                  {(q.type === 'money' || q.count > 1) && (
+                    <small>
+                      {q.type === 'money' ? 'O valor sai com o extenso.' : ''}
+                      {q.type === 'money' && q.count > 1 ? ' ' : ''}
+                      {q.count > 1 ? `Usada em ${q.count} lugares do documento.` : ''}
+                    </small>
+                  )}
+                </label>
+              ))}
+            </fieldset>
+          )}
           <fieldset className="field">
             <legend>Formato</legend>
             {[

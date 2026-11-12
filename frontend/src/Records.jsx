@@ -20,6 +20,7 @@ import {
   Contact,
   Handshake,
   UserCheck,
+  FilePenLine,
 } from 'lucide-react';
 import { personRoles, intakeStatuses } from '../../app/legal-options.mjs';
 import { localDateTime } from './MessageComposer.jsx';
@@ -104,6 +105,7 @@ export default function Records({
   openDetail,
   embedded = false,
   headerExtra = null,
+  generateDocument,
 }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('Todos');
@@ -486,9 +488,16 @@ export default function Records({
       {!embedded && (
         <PageHeading title={cfg.title} count={all.length}>
           {kind === 'documents' ? (
-            <Button icon={Upload} onClick={() => setImportModal(true)}>
-              Importar documentos
-            </Button>
+            <>
+              {generateDocument && (
+                <Button tone="secondary" icon={FilePenLine} onClick={() => generateDocument({})}>
+                  Gerar documento
+                </Button>
+              )}
+              <Button icon={Upload} onClick={() => setImportModal(true)}>
+                Importar documentos
+              </Button>
+            </>
           ) : (
             <Button icon={Plus} onClick={() => create(kind)}>
               {newLabel}

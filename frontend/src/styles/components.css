@@ -120,6 +120,20 @@
 .conflict-alert small {
   font-size: var(--text-xs);
 }
+.lookup-note > div {
+  flex: 1;
+}
+.lookup-note > .text-link {
+  align-self: flex-start;
+  font-size: var(--text-xs);
+}
+.lookup-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  font-size: var(--text-xs);
+}
 .field-hint {
   font-size: var(--text-xs);
   line-height: 1.5;

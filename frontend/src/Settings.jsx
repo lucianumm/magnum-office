@@ -373,6 +373,11 @@ export default function Settings({ data, act, reload, initialTab = 'office' }) {
                             >
                               Instalar atualização
                             </Button>
+                            {data.platform === 'win32' && data.packaged && (
+                              <Button tone="ghost" onClick={() => act(() => window.advocacia.installUpdateManually())}>
+                                Instalar manualmente
+                              </Button>
+                            )}
                           </>
                         ) : (
                           <Button

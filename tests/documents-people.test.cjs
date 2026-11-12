@@ -79,6 +79,45 @@ test('rich template HTML keeps paragraphs, alignment and bold, and fills variabl
   assert.equal(values['processo.tribunal'], courts.find(c => c.id === 'tjgo').name);
 });
 
+test('generic questions are separate fields named by the text before them; named ones are shared', () => {
+  const blocks = htmlBlocks(
+    '<p>Telefone / WhatsApp: {?Pergunta}</p><p>Nº de Funcionários: <strong>{?Pergunta}</strong></p>' +
+      '<p>Nome: {?Pergunta}</p><p>Nome: {?Pergunta}</p><p>Status do contrato:</p><p>{?Pergunta}</p><p>{?}</p>' +
+      '<p>{?Nome do réu} e de novo {?Nome do réu}</p><p>Valor: {?Pergunta:moeda}</p>',
+  );
+  const questions = templateQuestions(blocks);
+  assert.deepEqual(
+    questions.map(q => [q.label, q.type, q.count]),
+    [
+      ['Telefone / WhatsApp', 'text', 1],
+      ['Nº de Funcionários', 'text', 1],
+      ['Nome', 'text', 1],
+      ['Nome (2)', 'text', 1],
+      ['Status do contrato', 'text', 1],
+      ['Pergunta 1', 'text', 1],
+      ['Nome do réu', 'text', 2],
+      ['Valor', 'money', 1],
+    ],
+  );
+  assert.equal(new Set(questions.map(q => q.key)).size, questions.length, 'every field has its own key');
+  const answers = Object.fromEntries(questions.map((q, i) => [q.key, q.type === 'money' ? '10,00' : `R${i}\nfim`]));
+  const text = blocksText(fillBlocks(blocks, {}, answers).blocks);
+  assert.equal(
+    text,
+    [
+      'Telefone / WhatsApp: R0 fim',
+      'Nº de Funcionários: R1 fim',
+      'Nome: R2 fim',
+      'Nome: R3 fim',
+      'Status do contrato:',
+      'R4 fim',
+      'R5 fim',
+      'R6 fim e de novo R6 fim',
+      'Valor: R$ 10,00 (dez reais)',
+    ].join('\n'),
+  );
+});
+
 test('DOCX opens in a Word reader and PDF is a valid A4 document', async () => {
   const blocks = htmlBlocks('<h1>TÍTULO</h1><p>Primeiro <strong>parágrafo</strong> com acentuação: ação, “aspas” e § 1º.</p><p>' + 'Texto longo. '.repeat(400) + '</p><p>Símbolo fora do padrão: ✓</p>');
   const word = docx(blocks, { title: 'Teste', author: 'Escritório' });
@@ -134,6 +173,23 @@ test('starting legal templates are added once, generate DOCX and PDF into the ca
   assert.match(word.value, /honorários de R\$ 3\.000,00 \(três mil reais\), da seguinte forma: à vista\./);
   assert.throws(() => store.remove('cases', caseItem.id), /vinculado/);
   assert.throws(() => generator.preview({ templateId: '', caseId: caseItem.id }), /modelo/);
+});
+
+test('a template generates without client or case: missing record data is typed and the file is unlinked', async t => {
+  const { store, settings } = await fixture(t);
+  settings.save({ officeName: 'Escritório Exemplo', officeCity: 'Goiânia', lawyers: [{ name: 'Marina Exemplo', oab: '12345', uf: 'GO' }] });
+  const library = new Library(store);
+  const receipt = library.list().find(x => x.kind === 'document' && x.title.startsWith('Recibo'));
+  const generator = new DocumentGenerator({ store, library, settings, documents: new Documents(store), courts });
+  const preview = generator.preview({ templateId: receipt.id });
+  assert.ok(preview.blanks.some(v => v.key === 'cliente.nome'), 'client name is asked when there is no client');
+  assert.ok(!preview.blanks.some(v => v.key === 'escritorio.cidade'), 'data from the settings is not asked');
+  const typed = generator.preview({ templateId: receipt.id, values: { 'cliente.nome': 'Bruno Avulso', 'cliente.cpf_cnpj': '529.982.247-25' } });
+  assert.match(blocksText(typed.blocks), /Recebi\(emos\) de Bruno Avulso, inscrito\(a\) no CPF\/CNPJ sob o nº 529\.982\.247-25/);
+  assert.ok(typed.blanks.some(v => v.key === 'cliente.nome'), 'typed fields stay editable');
+  assert.throws(() => generator.preview({ templateId: receipt.id, values: { 'sistema.senha': 'x' } }), /desconhecido/);
+  const saved = await generator.generate({ templateId: receipt.id, formats: ['docx'], values: { 'cliente.nome': 'Bruno Avulso' }, answers: {} });
+  assert.deepEqual(saved.map(d => [d.name, d.caseId, d.clientId]), [[`${receipt.title} - Bruno Avulso.docx`, '', '']]);
 });
 
 test('people are a record kind linked to cases, and conflicts of interest are detected', async t => {

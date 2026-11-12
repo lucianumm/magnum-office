@@ -11,6 +11,7 @@ import {
   AlignCenter,
   AlignRight,
   RemoveFormatting,
+  MessageCircleQuestionMark,
 } from 'lucide-react';
 import { Button, bytes } from './components.jsx';
 import EmailDesign, { PreviewFrame } from './EmailDesign.jsx';
@@ -21,6 +22,7 @@ export default function EmailEditor({
   attachments = [],
   onAttachments,
   template = false,
+  questions = false,
   design = {},
 }) {
   const editor = useRef(null),
@@ -28,7 +30,9 @@ export default function EmailEditor({
     last = useRef({ html: initialHTML, body: initialText });
   const [url, setURL] = useState(''),
     [error, setError] = useState(''),
-    [tab, setTab] = useState('edit');
+    [tab, setTab] = useState('edit'),
+    [question, setQuestion] = useState(''),
+    [money, setMoney] = useState(false);
   useEffect(() => {
     last.current = { html: initialHTML, body: initialText };
     if (initialHTML) editor.current.innerHTML = initialHTML;
@@ -162,6 +166,38 @@ export default function EmailEditor({
             </Button>
           )}
         </div>
+        {questions && (
+          <div className="email-link-row">
+            <input
+              aria-label="Pergunta a fazer ao gerar o documento"
+              placeholder="Pergunta, ex.: Nome do reclamante"
+              maxLength={100}
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+            />
+            <label className="check-row">
+              <input type="checkbox" checked={money} onChange={e => setMoney(e.target.checked)} />
+              Valor em reais
+            </label>
+            <Button
+              type="button"
+              tone="secondary"
+              icon={MessageCircleQuestionMark}
+              onClick={() => {
+                const label = question.trim();
+                if (!label || /[{}:]/.test(label)) {
+                  setError('Escreva a pergunta sem chaves nem dois-pontos, por exemplo: Nome do reclamante.');
+                  return;
+                }
+                setError('');
+                command('insertText', `{?${label}${money ? ':moeda' : ''}}`);
+                setQuestion('');
+              }}
+            >
+              Inserir pergunta
+            </Button>
+          </div>
+        )}
         {attachments.map((a, i) => (
           <div className="email-attachment" key={a.id}>
             <Paperclip size={14} />

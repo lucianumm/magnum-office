@@ -2,10 +2,10 @@ import { messageVariables } from '../../app/message-variables.mjs';
 import { documentVariables } from '../../app/document-template.mjs';
 import { EmailPreview } from './EmailDesign.jsx';
 import { useState } from 'react';
-import { FileText, Plus, Upload, FolderPlus } from 'lucide-react';
+import { FileText, Plus, Upload, FolderPlus, FilePenLine } from 'lucide-react';
 import { Button, Panel, Modal, PageHeading, SearchBox, Empty } from './components.jsx';
 import EmailEditor from './EmailEditor.jsx';
-export default function Templates({ data, act, reload, kind = 'document', headerExtra = null }) {
+export default function Templates({ data, act, reload, kind = 'document', headerExtra = null, generateDocument }) {
   const [group, setGroup] = useState(''),
     [query, setQuery] = useState(''),
     [draft, setDraft] = useState(null),
@@ -73,6 +73,11 @@ export default function Templates({ data, act, reload, kind = 'document', header
           <Button tone="secondary" icon={Upload} onClick={imported}>
             Importar modelo
           </Button>
+          {kind === 'document' && generateDocument && (
+            <Button tone="secondary" icon={FilePenLine} onClick={() => generateDocument({})}>
+              Gerar documento
+            </Button>
+          )}
           <Button icon={Plus} onClick={() => open()}>
             Redigir modelo
           </Button>
@@ -126,6 +131,11 @@ export default function Templates({ data, act, reload, kind = 'document', header
                 <h3>{t.title}</h3>
                 <p>{t.body.slice(0, 180)}</p>
                 <div>
+                  {kind === 'document' && generateDocument && (
+                    <Button icon={FilePenLine} onClick={() => generateDocument({ templateId: t.id })}>
+                      Gerar documento
+                    </Button>
+                  )}
                   {kind === 'email' && (
                     <Button tone="secondary" onClick={() => setPreview(t)}>
                       Visualizar e-mail
@@ -229,6 +239,7 @@ export default function Templates({ data, act, reload, kind = 'document', header
               ) : (
                 <EmailEditor
                   template
+                  questions={kind === 'document'}
                   design={content.emailDesign || data.settings.emailDesign}
                   initialHTML={draft.html}
                   initialText={draft.body}
@@ -255,7 +266,13 @@ export default function Templates({ data, act, reload, kind = 'document', header
                 <summary>Variáveis para gerar documentos com os dados do cadastro</summary>
                 <p>
                   Escreva a variável entre chaves no texto. Para perguntar algo na hora de gerar, use{' '}
-                  <code>{'{?Pergunta}'}</code>; para um valor em reais com extenso, <code>{'{?Valor:moeda}'}</code>.
+                  <strong>Inserir pergunta</strong> ou escreva, por exemplo, <code>{'{?Nome do reclamante}'}</code>;
+                  para um valor em reais com extenso, <code>{'{?Valor dos honorários:moeda}'}</code>.
+                </p>
+                <p>
+                  A mesma pergunta escrita em vários lugares é respondida uma vez só. Uma pergunta sem nome, como{' '}
+                  <code>{'{?Pergunta}'}</code>, vira um campo separado em cada lugar, com o nome do texto que vem antes
+                  dela (em “Telefone: {'{?Pergunta}'}”, o campo se chama Telefone).
                 </p>
                 <div className="birthday-variable-help">
                   {documentVariables.map(([token, label]) => (

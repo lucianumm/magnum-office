@@ -127,9 +127,8 @@ O instalador ainda não possui certificado de editor Windows, então o Windows p
 
 | Sua versão | Como atualizar |
 | --- | --- |
-| **1.3.0 ou mais nova** | O sistema procura e baixa sozinho e avisa quando estiver pronto. Você confirma a instalação, agora ou ao sair do programa. |
-| **1.2.0** | **Configurações → Atualizações → Forçar atualização agora** e depois **Instalar atualização**. |
-| **1.0.0 ou 1.1.0** | O atualizador dessas versões não conclui a instalação. Encerre por **Sair do sistema** na bandeja e use a [instalação rápida](#instalar) ou o instalador. |
+| **1.9.0 ou mais nova** | O sistema procura e baixa sozinho e avisa quando estiver pronto. Você confirma a instalação, agora ou ao sair do programa. Se ela não concluir, use **Configurações → Atualizações → Instalar manualmente**. |
+| **Versões anteriores** | Encerre por **Sair do sistema** na bandeja e use a [instalação rápida](#instalar) ou o instalador da última versão. |
 
 Seus cadastros são preservados e uma cópia de segurança é feita antes de atualizar. Não desinstale o programa nem apague a pasta `%APPDATA%\AdvocaciaGestao`.
 

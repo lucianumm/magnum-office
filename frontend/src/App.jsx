@@ -28,6 +28,7 @@ import {
   Wallet,
   Inbox,
   TrendingUp,
+  HandCoins,
   Handshake,
   ChartBar,
   FileSearch,
@@ -36,6 +37,7 @@ import Reports from './Reports.jsx';
 import Finance from './Finance.jsx';
 import Intimations from './Intimations.jsx';
 import DebtCalculator from './DebtCalculator.jsx';
+import LaborCalculator from './LaborCalculator.jsx';
 import DeadlineCalculator, { DeadlineModal } from './DeadlineCalculator.jsx';
 import ApplyWorkflow from './ApplyWorkflow.jsx';
 import TermsPrompt from './TermsPrompt.jsx';
@@ -78,6 +80,7 @@ const navGroups = [
     [
       ['deadlines', 'Prazos', Calculator],
       ['debts', 'Débitos', TrendingUp],
+      ['labor', 'Rescisão', HandCoins],
       ['reports', 'Relatórios', ChartBar],
       ['courts', 'Tribunais', Landmark],
       ['pdf', 'PDF', FileCog],
@@ -123,9 +126,11 @@ const searchFields = [
 ];
 const recoveryText = recovery => {
   if (recovery.reason === 'interrupted')
-    return `A atualização para a versão ${recovery.failedVersion} não terminou. O sistema continua na versão atual e seus dados estão preservados. A versão não será tentada de novo automaticamente.`;
+    return `A atualização para a versão ${recovery.failedVersion} não terminou. O sistema continua na versão atual e seus dados estão preservados. A versão não será tentada de novo automaticamente. Para instalar, em Configurações → Atualizações, use Forçar atualização agora e depois Instalar manualmente.`;
   const why = {
     installing: 'o instalador não terminou corretamente',
+    verifying:
+      'o instalador não substituiu o programa nesta pasta (permissão do Windows recusada ou antivírus). Em Configurações → Atualizações, use Forçar atualização agora e depois Instalar manualmente',
     starting: 'a nova versão não confirmou a inicialização',
   }[recovery.reason];
   return `Voltamos à versão ${recovery.restoredVersion}${recovery.failedVersion ? ` porque a atualização para a ${recovery.failedVersion} falhou` : ''}${why ? `: ${why}` : ''}. Seus dados foram restaurados da cópia criada antes da atualização.`;
@@ -854,6 +859,8 @@ export default function App() {
             <Intimations {...shared} />
           ) : page === 'debts' ? (
             <DebtCalculator {...shared} />
+          ) : page === 'labor' ? (
+            <LaborCalculator {...shared} />
           ) : page === 'reports' ? (
             <Reports {...shared} />
           ) : page === 'deadlines' ? (

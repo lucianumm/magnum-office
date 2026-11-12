@@ -330,6 +330,34 @@ class Updater {
       throw error;
     } finally { this.busy = false; }
   }
+  // Fallback when the automatic installation fails on this computer: the same verified installer
+  // runs with its screens, so the person sees the Windows permission and the folder. There is no
+  // guardian here; the data copy made first is the way back.
+  async installManually() {
+    if (this.busy || this.state.status !== 'downloaded') throw new Error('Baixe e valide a atualização antes de instalar.');
+    if (process.platform !== 'win32' || !this.app.isPackaged) throw new Error('A instalação manual pelo programa está disponível só no Windows, na versão instalada.');
+    const selected = this.assertSelection();
+    this.busy = true;
+    try {
+      return await this.operations.exclusive(async () => {
+        const file = this.targetFile(selected);
+        if (await digest(file) !== selected.file.sha256) throw new Error('O instalador foi alterado após o download.');
+        await this.verifyNative(file);
+        const snapshot = await this.backups.create('pre-update', null, selected.manifest.version);
+        this.store.audit('update.manual', { fromVersion: version, version: selected.manifest.version, id: snapshot.id, sha256: selected.file.sha256 });
+        const child = spawn(file, [], { detached: true, stdio: 'ignore' });
+        await new Promise((resolve, reject) => { child.once('spawn', resolve); child.once('error', reject); });
+        child.unref();
+        this.app.quitForUpdate = true;
+        this.app.quit();
+        return this.get();
+      });
+    } catch (cause) {
+      const error = friendly(cause);
+      this.update({ error: error.message });
+      throw error;
+    } finally { this.busy = false; }
+  }
   isCheckDue(cfg, now = Date.now()) {
     if (!cfg.lastCheck) return true;
     return now - Date.parse(cfg.lastCheck) >= (cfg.checkFrequency === 'weekly' ? 7 * DAY : DAY);
