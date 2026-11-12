@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Files, Image, Scissors, FolderOpen, FileCheck2, ShieldCheck, Monitor, Cpu, ArrowRight } from 'lucide-react';
 import { Button, Panel, PageHeading, bytes } from './components.jsx';
+import SignPDF from './SignPDF.jsx';
 export default function PDFTools({ data, act }) {
   const [limitMB, setLimit] = useState(5),
     [mode, setMode] = useState('size'),
@@ -109,6 +110,7 @@ export default function PDFTools({ data, act }) {
             </Button>
           </div>
         </Panel>
+        <SignPDF act={act} />
       </div>
       <div className="pdf-preservation-note">
         <ShieldCheck size={21} />

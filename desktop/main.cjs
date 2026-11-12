@@ -817,6 +817,7 @@ async function boot() {
     generator,
     courts: courts.courts,
   });
+  agentAPI.cnpj = cnpj;
   agentAPI.requireTerms = true;
   // While the program is locked the agents' API answers nothing.
   agentAPI.isLocked = () => Boolean(appLock?.locked);

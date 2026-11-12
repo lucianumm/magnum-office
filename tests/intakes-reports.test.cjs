@@ -273,6 +273,19 @@ test('new MCP tools are read-only and answer with the office data', async t => {
   assert.deepEqual((await api.execute('list_movements', { caseId: caseItem.id })).movements, []);
   assert.equal((await api.execute('list_intimations', {})).total, 0);
   assert.equal((await api.execute('list_records', { kind: 'intakes' })).total, 0);
+  const severance = await api.execute('calculate_severance', {
+    admission: '2022-03-10',
+    termination: '2025-08-20',
+    salary: '3.000,00',
+    vestedPeriods: 1,
+    fgtsBalance: '9.000,00',
+  });
+  assert.equal(severance.totals.total, 1899613, 'same hand-checked case as tests/labor.test.cjs');
+  const typed = await api.execute('preview_document', {
+    templateId: procuracao.id,
+    values: { 'cliente.nome': 'Bruno Avulso' },
+  });
+  assert.match(typed.text, /Bruno Avulso/);
   const catalog = api.tools().map(x => x.name);
   for (const name of [
     'get_case_summary',
@@ -282,6 +295,9 @@ test('new MCP tools are read-only and answer with the office data', async t => {
     'preview_document',
     'list_movements',
     'list_intimations',
+    'calculate_severance',
+    'lookup_case',
+    'lookup_cnpj',
   ])
     assert.ok(catalog.includes(name), name);
 });

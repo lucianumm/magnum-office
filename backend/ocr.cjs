@@ -46,17 +46,19 @@ function png(rgba, width, height) {
   ]);
 }
 
+// Portuguese model shipped with the program (npm package @tesseract.js-data/por, integer "best").
+// In the installed program it lives outside app.asar (asarUnpack), where the OCR worker can read it.
 const modelDir = () =>
-  process.resourcesPath && !process.defaultApp && require('node:fs').existsSync(path.join(process.resourcesPath, 'ocr'))
-    ? path.join(process.resourcesPath, 'ocr')
-    : path.join(__dirname, '..', 'app', 'ocr');
+  path
+    .join(path.dirname(require.resolve('@tesseract.js-data/por/package.json')), '4.0.0_best_int')
+    .replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 
 async function withWorker(task) {
   const { createWorker } = require('tesseract.js');
   const worker = await createWorker('por', 1, {
     langPath: modelDir(),
     cachePath: modelDir(),
-    gzip: false,
+    gzip: true,
     cacheMethod: 'none',
   });
   try {
@@ -82,14 +84,18 @@ async function ocrPdf(document) {
       const scale = Math.min(200 / 72, 4000 / Math.max(w, h));
       const image = await page.render({ scale, render: 'bitmap', transparent: false });
       const { data } = await worker.recognize(png(image.data, image.width, image.height));
-      parts.push(`[página ${index + 1}] ${data.text}`);
+      // Stamps, photos and blank pages give no words or low confidence: nothing is recorded for them.
+      if (/\p{L}{2}/u.test(data.text) && data.confidence >= 40) parts.push(`[página ${index + 1}] ${data.text.trim()}`);
     }
     return parts.join('\n');
   });
 }
 
 async function ocrImage(buffer) {
-  return withWorker(async worker => (await worker.recognize(buffer)).data.text);
+  return withWorker(async worker => {
+    const { data } = await worker.recognize(buffer);
+    return /\p{L}{2}/u.test(data.text) && data.confidence >= 40 ? data.text.trim() : '';
+  });
 }
 
 module.exports = { ocrPdf, ocrImage, png, crc32, MAX_OCR_PAGES };

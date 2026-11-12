@@ -40,7 +40,14 @@ async function extract({ bytes, ext }) {
           parts.push(page.getText());
           if (parts.reduce((n, p) => n + p.length, 0) > MAX_CHARS) break;
         }
-        return parts.join('\n');
+        // Pages without a text layer (scanned) are read by OCR, on this computer.
+        let scanned = '';
+        try {
+          scanned = await require('./ocr.cjs').ocrPdf(document);
+        } catch {
+          /* Without OCR the document keeps the text it has. */
+        }
+        return [...parts, scanned].filter(Boolean).join('\n');
       } finally {
         document.destroy();
       }
@@ -48,6 +55,7 @@ async function extract({ bytes, ext }) {
       library.destroy();
     }
   }
+  if (['.png', '.jpg', '.jpeg'].includes(ext)) return require('./ocr.cjs').ocrImage(buffer);
   return '';
 }
 

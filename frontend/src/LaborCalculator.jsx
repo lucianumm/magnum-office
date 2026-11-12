@@ -20,6 +20,9 @@ export default function LaborCalculator({ data, act, initialCaseId = '' }) {
     fgtsBalance: '',
     art477: false,
     thirteenthAdvance: '',
+    contractEnd: '',
+    taxes: false,
+    dependents: '0',
     caseId: initialCaseId,
   });
   const update = patch => setForm(f => ({ ...f, ...patch }));
@@ -159,6 +162,28 @@ export default function LaborCalculator({ data, act, initialCaseId = '' }) {
               />
               <small>A 1ª parcela paga no ano é abatida do 13º proporcional.</small>
             </label>
+            {form.kind.startsWith('antecipada') && (
+              <label className="field">
+                <span>Data em que o contrato a prazo terminaria</span>
+                <input type="date" value={form.contractEnd} onChange={e => update({ contractEnd: e.target.value })} />
+              </label>
+            )}
+            <label className="check-row">
+              <input type="checkbox" checked={form.taxes} onChange={e => update({ taxes: e.target.checked })} />
+              Descontar INSS e IRRF (saldo de salário e 13º)
+            </label>
+            {form.taxes && (
+              <label className="field">
+                <span>Dependentes para o IRRF</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={form.dependents}
+                  onChange={e => update({ dependents: e.target.value })}
+                />
+              </label>
+            )}
             <label className="check-row">
               <input type="checkbox" checked={form.art477} onChange={e => update({ art477: e.target.checked })} />
               Incluir multa do art. 477, § 8º (pagamento em atraso)
@@ -259,6 +284,17 @@ export default function LaborCalculator({ data, act, initialCaseId = '' }) {
                     }
                   >
                     Salvar PDF
+                  </Button>
+                  <Button
+                    tone="secondary"
+                    onClick={() =>
+                      act(
+                        () => window.advocacia.saveLaborReport({ ...form, format: 'docx' }),
+                        'Memória de cálculo da rescisão salva em Word nos documentos.',
+                      )
+                    }
+                  >
+                    Salvar Word
                   </Button>
                 </div>
                 <details className="deadline-basis" open>

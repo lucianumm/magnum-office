@@ -34,12 +34,13 @@ module.exports = function registerPublic(ctx) {
     ctx.operations.run('Memória de cálculo', async () => {
       const { blocks, caseId, title, calculation } = require('../../backend/labor-report.cjs').laborReport(input);
       const caseItem = caseId ? ctx.store.get('cases', caseId) : null;
-      const pdfBytes = await require('../../backend/document-files.cjs').pdf(blocks, {
-        title,
-        author: ctx.settings.get().officeName,
-      });
+      // Word (to edit and attach to a petition) or PDF.
+      const files = require('../../backend/document-files.cjs');
+      const word = input?.format === 'docx';
+      const meta = { title, author: ctx.settings.get().officeName };
+      const pdfBytes = word ? files.docx(blocks, meta) : await files.pdf(blocks, meta);
       return ctx.documents.save(
-        `${title}.pdf`,
+        `${title}.${word ? 'docx' : 'pdf'}`,
         pdfBytes,
         { caseId: caseItem?.id || '', clientId: caseItem?.clientId || '' },
         { calculation },

@@ -25,6 +25,9 @@ class WeeklyBackups {
       enabled: cfg.weeklyBackupEnabled !== false,
       mode: cfg.backupMode || 'local',
       recipient: cfg.backupRecipient || '',
+      folder: cfg.backupFolder || '',
+      lastFolder: cfg.lastFolderBackupAt || null,
+      folderError: cfg.folderBackupError || '',
       hasPassword: !!this.store.secret('backup-password'),
       lastLocal: cfg.lastAutoBackupAt || null,
       nextLocal: cfg.lastAutoBackupAt ? new Date(Date.parse(cfg.lastAutoBackupAt) + WEEK).toISOString() : null,
@@ -42,7 +45,7 @@ class WeeklyBackups {
     if (
       typeof input.enabled !== 'boolean' ||
       typeof input.dailyNotice !== 'boolean' ||
-      !['local', 'email'].includes(input.mode) ||
+      !['local', 'email', 'folder'].includes(input.mode) ||
       input.acknowledged !== true
     )
       throw new Error('Confirme as opções e o cuidado com os backups.');
@@ -57,6 +60,18 @@ class WeeklyBackups {
       if (!input.password && !this.store.secret('backup-password'))
         throw new Error('Defina uma senha para proteger o arquivo de backup.');
     }
+    // A synced folder (OneDrive, Google Drive, network): the protected portable copy is written there.
+    const folder = String(input.folder || '').trim();
+    if (input.mode === 'folder' && input.enabled) {
+      const fs = require('node:fs');
+      const path = require('node:path');
+      if (!folder || !path.isAbsolute(folder) || !fs.existsSync(folder) || !fs.statSync(folder).isDirectory())
+        throw new Error('Escolha a pasta onde a cópia protegida será gravada.');
+      if (path.resolve(folder).toLowerCase().startsWith(path.resolve(this.store.root).toLowerCase()))
+        throw new Error('Escolha uma pasta fora dos dados do programa.');
+      if (!input.password && !this.store.secret('backup-password'))
+        throw new Error('Defina uma senha para proteger o arquivo de backup.');
+    }
     if (input.password) this.store.secret('backup-password', password(input.password));
     const cfg = this.settings.get();
     const changed = cfg.backupRecipient !== recipient || cfg.backupMode !== input.mode;
@@ -65,11 +80,47 @@ class WeeklyBackups {
       dailyBackupNotice: input.dailyNotice,
       backupMode: input.mode,
       backupRecipient: recipient,
+      backupFolder: input.mode === 'folder' ? folder : this.settings.get().backupFolder || '',
+      ...(input.mode === 'folder' ? { lastFolderBackupAt: null, folderBackupError: '' } : {}),
       ...(changed ? { lastBackupEmailAt: null, backupEmailState: 'idle' } : {}),
     });
     this.lastAttempt = 0;
     this.store.audit('backup.schedule.configured');
     return this.get();
+  }
+  // Weekly protected copy in the chosen folder; the four most recent are kept there.
+  async writeFolder(cfg, now) {
+    if (!cfg.backupFolder) return;
+    if (cfg.lastFolderBackupAt && now - Date.parse(cfg.lastFolderBackupAt) < WEEK) return;
+    if (cfg.folderBackupError && cfg.lastFolderAttempt && now - Date.parse(cfg.lastFolderAttempt) < 3600000) return;
+    const fs = require('node:fs/promises');
+    const path = require('node:path');
+    this.settings.internal({ lastFolderAttempt: new Date(now).toISOString() });
+    try {
+      await this.operations.exclusive(async () => {
+        const pass = this.store.secret('backup-password');
+        if (!pass) throw new Error('Senha do backup não configurada.');
+        const bytes = await this.portable.create(pass);
+        const name = `Magnum-Office-backup-${day(now)}.magnumbackup`;
+        const temp = path.join(cfg.backupFolder, name + '.parcial');
+        await fs.writeFile(temp, bytes, { mode: 0o600 });
+        await fs.rename(temp, path.join(cfg.backupFolder, name));
+        const old = (await fs.readdir(cfg.backupFolder))
+          .filter(f => /^Magnum-Office-backup-\d{4}-\d{2}-\d{2}\.magnumbackup$/.test(f))
+          .sort()
+          .slice(0, -4);
+        for (const f of old) await fs.rm(path.join(cfg.backupFolder, f), { force: true });
+      });
+      this.settings.internal({ lastFolderBackupAt: new Date(now).toISOString(), folderBackupError: '' });
+      this.store.audit('backup.folder.saved');
+      this.status = { state: 'saved', error: '' };
+    } catch (error) {
+      const message = /ENOENT|EACCES|EPERM|EBUSY/.test(error.code || '')
+        ? 'Não foi possível gravar na pasta escolhida. Confira se ela existe e se a sincronização está ativa.'
+        : error.message;
+      this.settings.internal({ folderBackupError: message });
+      this.status = { state: 'error', error: message };
+    }
   }
   noticeSeen() {
     this.settings.internal({ lastBackupNoticeDay: day(Date.now()) });
@@ -99,6 +150,10 @@ class WeeklyBackups {
         this.status = { state: 'saved', error: '' };
       }
       const current = this.settings.get();
+      if (current.backupMode === 'folder') {
+        await this.writeFolder(current, now);
+        return;
+      }
       if (
         current.backupMode !== 'email' ||
         current.queuePaused ||

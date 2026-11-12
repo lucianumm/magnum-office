@@ -27,6 +27,10 @@ extraResources:
     to: RECUPERACAO.md
 asarUnpack:
   - node_modules/@whiskeysockets/baileys/**/*
+  # OCR runs Tesseract (WebAssembly) in its own worker, which reads these files from disk.
+  - node_modules/tesseract.js/**/*
+  - node_modules/tesseract.js-core/**/*
+  - node_modules/@tesseract.js-data/por/**/*
 win:
   target: nsis
   icon: desktop/assets/icon.ico

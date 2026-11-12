@@ -1,7 +1,8 @@
 // Simple severance calculation (verbas rescisórias) under the CLT. Amounts are whole cents, so
-// the screen, the PDF and the tests always agree. It is an estimate for the office: no INSS, IRRF,
-// overtime, interest or monetary correction.
+// the screen, the PDF and the tests always agree. It is an estimate for the office: INSS and IRRF are
+// optional, and there is no overtime, interest or monetary correction.
 import { parseMoney } from './money.mjs';
+import { inss, irrf } from './tax-tables.mjs';
 
 export const terminationKinds = {
   'sem-justa-causa': 'Dispensa sem justa causa',
@@ -9,6 +10,8 @@ export const terminationKinds = {
   'justa-causa': 'Dispensa por justa causa',
   acordo: 'Acordo entre as partes (art. 484-A da CLT)',
   'termino-prazo': 'Fim do contrato por prazo determinado ou de experiência',
+  'antecipada-empregador': 'Contrato a prazo encerrado antes pelo empregador (art. 479 da CLT)',
+  'antecipada-empregado': 'Contrato a prazo encerrado antes pelo empregado (art. 480 da CLT)',
 };
 export const noticeOptions = {
   'sem-justa-causa': { indenizado: 'Indenizado', trabalhado: 'Trabalhado' },
@@ -20,7 +23,10 @@ export const noticeOptions = {
   acordo: { indenizado: 'Indenizado (pela metade)', trabalhado: 'Trabalhado' },
   'justa-causa': {},
   'termino-prazo': {},
+  'antecipada-empregador': {},
+  'antecipada-empregado': {},
 };
+const early = kind => kind === 'antecipada-empregador' || kind === 'antecipada-empregado';
 
 const DAY = 86400000;
 const toDate = value => {
@@ -205,6 +211,27 @@ export function calculateSeverance(input) {
       'Na justa causa são devidos apenas o saldo de salário e as férias vencidas com 1/3 (Súmula 171 do TST).',
     );
   }
+  if (early(kind)) {
+    const contractEnd = toDate(input.contractEnd);
+    if (!contractEnd || contractEnd <= termination)
+      throw new Error('Informe a data em que o contrato a prazo terminaria, depois do desligamento.');
+    const remaining = Math.round((contractEnd - termination) / DAY);
+    const half = Math.round((remuneration / 30) * remaining * 0.5);
+    if (kind === 'antecipada-empregador') {
+      add('art-479', 'Indenização do art. 479 da CLT (metade dos dias restantes)', `${remaining} dia(s)`, half);
+      basis.push(
+        'Art. 479 da CLT: na dispensa antecipada sem justa causa, metade da remuneração a que o empregado teria direito até o fim do contrato.',
+      );
+    } else {
+      add('art-480', 'Indenização do art. 480 da CLT (limite)', `${remaining} dia(s)`, half, true);
+      warnings.push(
+        'Art. 480: o empregado indeniza só os prejuízos que o empregador comprovar, até esse limite. Retire o desconto se não houver prejuízo.',
+      );
+    }
+    warnings.push(
+      'Se o contrato tiver cláusula de rescisão antecipada (art. 481 da CLT), aplicam-se as regras do contrato por prazo indeterminado.',
+    );
+  }
   if (advance && kind !== 'justa-causa') {
     add('adiantamento-13', 'Adiantamento do 13º salário já pago', '', advance, true);
     basis.push('O adiantamento do 13º pago no ano (1ª parcela) é abatido do 13º proporcional.');
@@ -222,7 +249,8 @@ export function calculateSeverance(input) {
     .filter(i => i.key === 'saldo' || i.key === 'aviso' || i.key.startsWith('13-'))
     .reduce((n, i) => n + i.value, 0);
   const deposit = Math.round(fgtsBase * 0.08);
-  const finePercent = kind === 'sem-justa-causa' ? 40 : kind === 'acordo' ? 20 : 0;
+  // The early dismissal by the employer also pays the 40% (art. 14 do Decreto 99.684/1990).
+  const finePercent = ['sem-justa-causa', 'antecipada-empregador'].includes(kind) ? 40 : kind === 'acordo' ? 20 : 0;
   const months = Math.max(0, Math.round((termination - admission) / DAY / (365.25 / 12)));
   const estimated = balance === '';
   // Without the statement: 8% a month on the remuneration, the 13th and the vacation third.
@@ -239,20 +267,49 @@ export function calculateSeverance(input) {
     warnings.push(
       'Saldo do FGTS estimado pelo tempo de contrato e pela remuneração atual. Para a multa exata, informe o saldo do extrato da Caixa (com os saques, se houver).',
     );
-  if (kind === 'termino-prazo')
-    warnings.push(
-      'Na rescisão antecipada de contrato a prazo há indenização própria (arts. 479 e 480 da CLT), não incluída aqui.',
-    );
-  if (kind === 'pedido' || kind === 'justa-causa')
+  if (kind === 'pedido' || kind === 'justa-causa' || kind === 'antecipada-empregado')
     warnings.push('Não há multa do FGTS nem saque do saldo nesta modalidade.');
   // A full period completed by the termination date is easy to forget in "férias vencidas".
   if (!vested && years > 0)
     warnings.push(
       `O contrato completou ${years} período(s) aquisitivo(s) de férias. Informe em Férias vencidas os que não foram gozados; eles são devidos em qualquer modalidade.`,
     );
-  warnings.push(
-    'Estimativa sem descontos de INSS e IRRF, sem horas extras, adicionais ou médias não informados, e sem correção ou juros.',
-  );
+  if (input.taxes) {
+    const year = termination.getUTCFullYear();
+    const month = iso(termination).slice(0, 7);
+    const dependents = Math.max(0, Math.min(20, Number.parseInt(input.dependents, 10) || 0));
+    const saldo = items.find(i => i.key === 'saldo')?.value || 0;
+    const thirteenth = items.filter(i => i.key.startsWith('13-')).reduce((n, i) => n + i.value, 0);
+    const tables = new Set();
+    const exactYear = [];
+    if (saldo) {
+      const ci = inss(saldo, year);
+      const ir = irrf(saldo, ci.value, { month, dependents });
+      add('inss-saldo', 'INSS sobre o saldo de salário', `tabela ${ci.table}`, ci.value, true);
+      add('irrf-saldo', 'IRRF sobre o saldo de salário', `tabela ${ir.table}`, ir.value, true);
+      tables.add(ir.table);
+      exactYear.push(ci.exact);
+    }
+    if (thirteenth) {
+      // The 13th has its own INSS and an exclusive IRRF (separate from the month's pay).
+      const ci = inss(thirteenth, year);
+      const ir = irrf(thirteenth, ci.value, { month, dependents });
+      add('inss-13', 'INSS sobre o 13º salário', `tabela ${ci.table}`, ci.value, true);
+      add('irrf-13', 'IRRF sobre o 13º (tributação exclusiva)', `tabela ${ir.table}`, ir.value, true);
+      exactYear.push(ci.exact);
+    }
+    basis.push(
+      'INSS e IRRF sobre o saldo de salário e sobre o 13º (este com tributação exclusiva). Não incidem sobre aviso prévio indenizado, férias indenizadas com 1/3 e multas (art. 6º, V, da Lei 7.713/1988; Súmula 386 do STJ; art. 28, § 9º, da Lei 8.212/1991).',
+    );
+    if (exactYear.some(e => !e))
+      warnings.push(
+        `A tabela do INSS de ${year} não está cadastrada no programa; foi usada a mais recente disponível. Confira a tabela vigente.`,
+      );
+    warnings.push(
+      'Descontos de INSS e IRRF estimados pelas tabelas do programa. Confira a tabela vigente na data do pagamento.',
+    );
+  } else warnings.push('Estimativa sem descontos de INSS e IRRF. Marque a opção para incluí-los.');
+  warnings.push('Sem horas extras, adicionais ou médias não informados, e sem correção ou juros.');
 
   const gross = items.filter(i => !i.debit).reduce((n, i) => n + i.value, 0);
   const deductions = items.filter(i => i.debit).reduce((n, i) => n + i.value, 0);

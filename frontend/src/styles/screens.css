@@ -2905,7 +2905,7 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
 }
 .time-form .field {
   min-width: 110px;
@@ -2934,7 +2934,7 @@
 .time-summary {
   justify-content: space-between;
   align-items: center;
-  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
 }
 
 /* Document expiry in the list. */

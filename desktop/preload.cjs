@@ -51,6 +51,7 @@ const commands = [
   'legalText',
   'configureBackups',
   'backupNoticeSeen',
+  'chooseBackupFolder',
   'retryBackupEmail',
   'exportPortableBackup',
   'restorePortableBackup',
