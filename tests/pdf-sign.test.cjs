@@ -41,13 +41,15 @@ test('a PDF is signed in PAdES with an A1 certificate; wrong password and expire
   assert.match(text, /\/SubFilter\s*\/ETSI\.CAdES\.detached/);
   assert.match(text, /\/ByteRange\s*\[\s*0\s+\d+\s+\d+\s+\d+\s*\]/);
   // The signature is a non-empty CMS blob inside /Contents.
-  const contents = /\/Contents\s*<([0-9a-fA-F]+)>/.exec(text)[1].replace(/0+$/, '');
-  assert.ok(contents.length > 1000);
+  // /Contents is the CMS blob padded with zeros up to the reserved size. Zeros are not stripped by hand: the
+  // blob itself can end in a zero byte, so the ASN.1 parser reads the real length from the DER header.
+  const contents = /\/Contents\s*<([0-9a-fA-F]+)>/.exec(text)[1];
+  assert.ok(contents.replace(/0+$/, '').length > 1000);
   // The digest signed in the CMS is the SHA-256 of the bytes covered by /ByteRange.
   const [a, b, c, d] = /\/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]/.exec(text).slice(1).map(Number);
   const covered = Buffer.concat([bytes.subarray(a, a + b), bytes.subarray(c, c + d)]);
   const digest = require('node:crypto').createHash('sha256').update(covered).digest('binary');
-  const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(forge.util.hexToBytes(contents)));
+  const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(forge.util.hexToBytes(contents), { parseAllBytes: false }));
   const signedDigest = p7.rawCapture.authenticatedAttributes.find(
     attr => forge.asn1.derToOid(attr.value[0].value) === forge.pki.oids.messageDigest,
   ).value[1].value[0].value;
