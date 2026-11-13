@@ -4,6 +4,15 @@
 
 **Se a atualização automática não concluir, baixe o instalador e instale por cima, na mesma pasta. Seus cadastros são preservados.**
 
+**Também inclui o que seria a 1.10.0, que não chegou a ser publicada**
+
+- Atualização corrigida: o instalador recebe a pasta e o modo da instalação em uso, e o sistema confere a versão instalada antes de reabrir. Novo botão **Instalar manualmente** em Configurações → Atualizações.
+- Perguntas do modelo deixam de se misturar: cada `{?Pergunta}` vira um campo próprio, com o nome do texto que vem antes dela. Botão **Inserir pergunta** no editor.
+- **Gerar documento sem cadastro**, direto do modelo, com cliente e processo opcionais.
+- **Processo pelo número** (DataJud) e **empresa pelo CNPJ** (Receita Federal) no cadastro, só em campos vazios e desligado por padrão.
+- **Calculadora de verbas rescisórias** em Ferramentas → Rescisão, com memória em PDF.
+- O GitHub passa a manter só as duas últimas versões publicadas.
+
 **Segurança e dados**
 
 - **Lixeira**: o que é excluído fica 30 dias em Configurações → Lixeira e pode ser restaurado, com os vínculos. Logo depois de excluir, o aviso traz **Desfazer**.
@@ -46,9 +55,9 @@
 
 - **Resumo diário** por WhatsApp ou e-mail com os prazos do dia, atrasos, intimações e honorários vencidos (desligado por padrão).
 - Agentes (MCP): `calculate_severance`, `lookup_case`, `lookup_cnpj` e dados digitados em `preview_document`.
-- Versão para **Linux** (AppImage e .deb) publicada junto com a do Windows.
+- Versão para **Linux** (AppImage e .deb) publicada junto com a do Windows, ainda **experimental**: precisa de um chaveiro do sistema (GNOME Keyring ou KWallet) e o retorno automático da atualização não existe nela.
 
-## 1.10.0 — 12/11/2026
+## 1.10.0 — 12/11/2026 (não publicada; tudo está na 1.11.0)
 
 **Se a atualização automática não concluir no seu computador, baixe o instalador desta versão e instale por cima, na mesma pasta. Seus cadastros são preservados.** A partir desta versão o problema é detectado e corrigido pelo próprio programa.
 
