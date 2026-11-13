@@ -218,6 +218,7 @@ const readOnlyCommands = new Set([
   'waStatus',
   'inboxList',
   'previewEventNotice',
+  'intimationCourts',
   'campaignList',
   'previewCampaign',
   'campaignCalendar',
@@ -435,6 +436,7 @@ function state() {
     operations: operations.status(),
     audit: store.auditList(),
     intimations: djen ? djen.list() : [],
+    djenHealth: djen ? djen.health() : null,
     movementsNew: datajud ? datajud.newCounts() : {},
     documentIndex: docIndex ? docIndex.status() : null,
     indices: indices ? indices.status() : null,
@@ -879,6 +881,8 @@ async function boot() {
 
   digest = new Digest({ store, settings, messaging, djen: null });
   djen = new DJEN({ store, settings, fetch: publicFetch });
+  // Interface tests replace the network answer of the DJEN (only an unpackaged run with a test data folder).
+  if (testRoot) globalThis.__magnumTest = { djen };
   intakes = new Intakes({ store });
   docIndex = new DocumentIndex({ store, documents });
   imports = new Imports(store);

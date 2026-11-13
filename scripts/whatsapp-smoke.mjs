@@ -103,7 +103,109 @@ try {
   state = await page.evaluate(() => window.advocacia.campaignList());
   assert.equal(state.length, 1);
   assert.equal(state[0].status, 'active');
-  process.stdout.write('WhatsApp: aviso ao cliente na agenda, modelos por finalidade e campanhas verificados.\n');
+
+  await page.getByRole('dialog', { name: 'Campanhas de WhatsApp' }).getByRole('button', { name: 'Fechar' }).click();
+  // Intimações: agrupadas por processo, com destaque do prazo e criação de audiência na agenda
+  const published = {
+    count: 3,
+    items: [
+      {
+        id: 9001,
+        hash: 'h9001',
+        data_disponibilizacao: inDays(-1),
+        siglaTribunal: 'TJGO',
+        tipoComunicacao: 'Intimação',
+        nomeOrgao: '21ª Vara Cível',
+        nomeClasse: 'Procedimento Comum Cível',
+        numero_processo: '00000016320248090051',
+        numeroprocessocommascara: '0000001-63.2024.8.09.0051',
+        texto: `<p>Fica a parte intimada para, no prazo de 15 (quinze) dias úteis, apresentar réplica.</p><p>Designada audiência de instrução para o dia ${inDays(20).split('-').reverse().join('/')} às 14h30.</p>`,
+        link: 'https://comunicaapi.pje.jus.br/api/v1/comunicacao/h9001/certidao',
+        destinatarios: [
+          { nome: 'Ana Souza', polo: 'A' },
+          { nome: 'Empresa X', polo: 'P' },
+        ],
+      },
+      {
+        id: 9002,
+        hash: 'h9002',
+        data_disponibilizacao: inDays(-3),
+        siglaTribunal: 'TJGO',
+        tipoComunicacao: 'Citação',
+        nomeOrgao: '21ª Vara Cível',
+        nomeClasse: 'Procedimento Comum Cível',
+        numero_processo: '00000016320248090051',
+        numeroprocessocommascara: '0000001-63.2024.8.09.0051',
+        texto: '<p>Cite-se a parte ré para contestar.</p>',
+        link: '',
+      },
+      {
+        id: 9003,
+        hash: 'h9003',
+        data_disponibilizacao: inDays(-2),
+        siglaTribunal: 'TRT18',
+        tipoComunicacao: 'Edital',
+        nomeOrgao: '1ª Vara do Trabalho',
+        nomeClasse: 'Reclamação Trabalhista',
+        numero_processo: '00112223320245180001',
+        numeroprocessocommascara: '0011222-33.2024.5.18.0001',
+        texto: '<p>Edital de intimação.</p>',
+        link: '',
+      },
+    ],
+  };
+  await app.evaluate((_electron, body) => {
+    globalThis.__magnumTest.djen.fetch = async () => ({
+      status: 200,
+      ok: true,
+      headers: { get: () => null },
+      json: async () => body,
+    });
+    globalThis.__magnumTest.djen.pause = 0;
+  }, published);
+  await page.evaluate(() =>
+    window.advocacia.saveSettings({
+      djenEnabled: true,
+      lawyers: [{ name: 'Marina Exemplo', oab: '12345', uf: 'GO', email: '' }],
+    }),
+  );
+  const caseForIntimation = await page.evaluate(() =>
+    window.advocacia.save({
+      kind: 'cases',
+      entity: { title: 'Indenização', number: '00000016320248090051', status: 'Em andamento', area: 'Cível' },
+    }),
+  );
+  await page.evaluate(
+    id =>
+      window.advocacia.save({
+        kind: 'cases',
+        entity: {
+          id,
+          title: 'Indenização',
+          number: '00000016320248090051',
+          status: 'Em andamento',
+          area: 'Cível',
+          clientId: '',
+        },
+      }),
+    caseForIntimation.id,
+  );
+  await nav('Intimações');
+  await page.getByRole('button', { name: 'Verificar agora', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '0000001-63.2024.8.09.0051' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '0011222-33.2024.5.18.0001' })).toBeVisible();
+  await expect(page.locator('mark.hl-deadline').first()).toContainText('prazo de 15 (quinze) dias úteis');
+  await page.screenshot({ path: path.join(base, 'intimacoes.png') });
+  await page.getByRole('button', { name: /Criar audiência na agenda/ }).click();
+  await expect(page.getByLabel('Título do compromisso')).toHaveValue(/Audiência — 0000001-63\.2024/);
+  await expect(page.getByLabel('Data e horário')).toHaveValue(`${inDays(20)}T14:30`);
+  await page
+    .getByRole('button', { name: 'Cancelar', exact: true })
+    .click()
+    .catch(() => {});
+  process.stdout.write(
+    'WhatsApp: aviso ao cliente na agenda, modelos por finalidade, campanhas e intimações agrupadas verificados.\n',
+  );
 } finally {
   if (app) await app.close();
 }

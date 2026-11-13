@@ -1008,6 +1008,7 @@ export default function App() {
           caseId={deadlineFor.caseId}
           start={deadlineFor.start}
           mode={deadlineFor.mode}
+          days={deadlineFor.days}
           onClose={() => setDeadlineFor(null)}
         />
       )}

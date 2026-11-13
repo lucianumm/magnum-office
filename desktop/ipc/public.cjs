@@ -92,5 +92,21 @@ module.exports = function registerPublic(ctx) {
       throw new Error('Link inválido.');
     return ctx.shell.openExternal(link);
   });
+  ctx.register('searchIntimations', input => ctx.operations.run('Busca no DJEN', () => ctx.djen.search(input || {})));
+  ctx.register('keepIntimation', id => ctx.operations.run('Intimação', () => ctx.djen.keep(id)));
+  ctx.register('intimationCourts', () => ctx.djen.courts());
+  ctx.register('downloadCertificate', id =>
+    ctx.operations.run('Certidão do DJEN', async () => {
+      const { bytes, name } = await ctx.djen.certificate(id);
+      const result = await ctx.dialog.showSaveDialog(ctx.win, {
+        title: 'Salvar certidão',
+        defaultPath: name,
+        filters: [{ name: 'PDF', extensions: ['pdf'] }],
+      });
+      if (result.canceled || !result.filePath) return false;
+      await require('node:fs/promises').writeFile(result.filePath, bytes);
+      return true;
+    }),
+  );
   ctx.register('checkAllMovements', () => ctx.operations.run('Consulta ao DataJud', () => ctx.datajud.checkAll()));
 };

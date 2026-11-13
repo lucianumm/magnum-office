@@ -19,7 +19,15 @@ const kindLabels = {
   extended: 'Prorrogação',
 };
 
-function CalculatorBody({ data, act, initialCaseId = '', initialStart = '', initialMode = '', onDone }) {
+function CalculatorBody({
+  data,
+  act,
+  initialCaseId = '',
+  initialStart = '',
+  initialMode = '',
+  initialDays = 0,
+  onDone,
+}) {
   const courts = data.courts.courts;
   const [caseId, setCaseId] = useState(initialCaseId);
   const caseItem = data.entities.cases.find(c => c.id === caseId);
@@ -27,7 +35,7 @@ function CalculatorBody({ data, act, initialCaseId = '', initialStart = '', init
   const [form, setForm] = useState(() => ({
     start: initialStart || dayKey(new Date()),
     mode: initialMode || 'publicacao',
-    days: 15,
+    days: initialDays || 15,
     double: false,
     ...suggested,
     recess: rules[suggested.rule].recess,
@@ -281,7 +289,7 @@ export default function DeadlineCalculator({ data, act }) {
   );
 }
 
-export function DeadlineModal({ data, act, caseId, start, mode, onClose }) {
+export function DeadlineModal({ data, act, caseId, start, mode, days, onClose }) {
   return (
     <Modal wide title="Calcular prazo" subtitle="Confira sempre o calendário do tribunal." onClose={onClose}>
       <CalculatorBody
@@ -290,6 +298,7 @@ export function DeadlineModal({ data, act, caseId, start, mode, onClose }) {
         initialCaseId={caseId}
         initialStart={start}
         initialMode={mode}
+        initialDays={days}
         onDone={onClose}
       />
     </Modal>
