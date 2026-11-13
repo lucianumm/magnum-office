@@ -39,6 +39,8 @@ const { HearingReminders } = require('../backend/hearing-reminders.cjs');
 const { EventNotices } = require('../backend/event-notices.cjs');
 const { Campaigns } = require('../backend/campaigns.cjs');
 const { Flows } = require('../backend/wa-flows.cjs');
+const { Letterheads } = require('../backend/letterhead.cjs');
+const { SystemFonts } = require('../backend/system-fonts.cjs');
 const { WorkflowRunner } = require('../backend/workflow-runner.cjs');
 const { Finance } = require('../backend/finance.cjs');
 const { Indices } = require('../backend/indices.cjs');
@@ -113,6 +115,8 @@ let win,
   weeklyBackups,
   birthdays,
   generator,
+  letterheads,
+  systemFonts,
   reminders,
   eventNotices,
   campaigns,
@@ -219,6 +223,9 @@ const readOnlyCommands = new Set([
   'inboxList',
   'previewEventNotice',
   'intimationCourts',
+  'systemFonts',
+  'letterheadImage',
+  'chooseLetterheadImage',
   'campaignList',
   'previewCampaign',
   'campaignCalendar',
@@ -437,6 +444,7 @@ function state() {
     audit: store.auditList(),
     intimations: djen ? djen.list() : [],
     djenHealth: djen ? djen.health() : null,
+    letterheads: letterheads ? letterheads.list() : [],
     movementsNew: datajud ? datajud.newCounts() : {},
     documentIndex: docIndex ? docIndex.status() : null,
     indices: indices ? indices.status() : null,
@@ -533,6 +541,12 @@ function bindHandlers() {
     },
     get generator() {
       return generator;
+    },
+    get letterheads() {
+      return letterheads;
+    },
+    get systemFonts() {
+      return systemFonts;
     },
     get icon() {
       return icon;
@@ -852,7 +866,17 @@ async function boot() {
   messaging.canProcess = () => updateConfirmed && settings.get().termsAcceptedVersion === terms.version;
   pdfTools = new PDFTools();
   library = new Library(store);
-  generator = new DocumentGenerator({ store, library, settings, documents, courts: courts.courts });
+  letterheads = new Letterheads({ store });
+  systemFonts = new SystemFonts();
+  generator = new DocumentGenerator({
+    store,
+    library,
+    settings,
+    documents,
+    courts: courts.courts,
+    letterheads,
+    systemFonts,
+  });
   reminders = new HearingReminders({ store, settings, library, messaging });
   eventNotices = new EventNotices({ store, settings, library, messaging });
   workflowRunner = new WorkflowRunner({ store, settings });

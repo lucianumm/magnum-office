@@ -9,6 +9,7 @@ import {
   HardDriveDownload,
   ShieldCheck,
   Database,
+  FileImage,
   FolderOpen,
   RotateCcw,
   ArrowUpRight,
@@ -38,6 +39,7 @@ import PrivacySettings from './PrivacySettings.jsx';
 import AgentSettings from './AgentSettings.jsx';
 import Imports from './Imports.jsx';
 import Services from './Services.jsx';
+import LetterheadSettings from './LetterheadSettings.jsx';
 import LawyersSettings from './LawyersSettings.jsx';
 import DeadlineSettings from './DeadlineSettings.jsx';
 import PublicSettings from './PublicSettings.jsx';
@@ -56,6 +58,7 @@ const groups = [
       ['office', 'Escritório', Settings2],
       ['deadlines', 'Prazos e fluxos', Clock],
       ['appearance', 'Personalizar', Palette],
+      ['letterhead', 'Papel timbrado', FileImage],
       ['digest', 'Resumo diário', Sunrise],
     ],
   ],
@@ -300,6 +303,7 @@ export default function Settings({ data, act, reload, initialTab = 'office' }) {
             </form>
           )}
           {tab === 'appearance' && <AppearanceSettings data={data} act={act} reload={reload} />}
+          {tab === 'letterhead' && <LetterheadSettings data={data} act={act} reload={reload} />}
           {tab === 'privacy' && <PrivacySettings data={data} act={act} setLegal={setLegal} />}
           {tab === 'whatsapp' && <WhatsAppSettings data={data} act={act} reload={reload} />}
           {tab === 'lock' && <LockSettings act={act} />}

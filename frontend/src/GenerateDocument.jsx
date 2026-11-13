@@ -25,6 +25,43 @@ function AnswerField({ q, value, onChange }) {
   return <textarea {...common} rows={q.type === 'long' ? 4 : 1} maxLength={4000} />;
 }
 
+// Header or footer of the chosen letterhead, as it will look on the first page.
+function SheetBand({ lh, slot, source, images }) {
+  const band = lh[slot];
+  const ref = source?.[slot]?.image;
+  const image = ref ? images[ref.id] : null;
+  const hasText = band.cols.some(c => c.trim());
+  if (!image && !hasText && !(slot === 'footer' && lh.pageNumbers === 'all')) return null;
+  return (
+    <div className={'sheet-band sheet-' + slot}>
+      {image && (
+        <img
+          alt=""
+          src={`data:${image.mime};base64,${image.data}`}
+          style={{
+            height: `${ref.heightMm * 2.2}px`,
+            alignSelf: { left: 'flex-start', center: 'center', right: 'flex-end' }[ref.align],
+          }}
+        />
+      )}
+      {hasText && (
+        <div className="sheet-cols">
+          {band.cols.map((c, i) => (
+            <span key={i} style={{ textAlign: ['left', 'center', 'right'][i], whiteSpace: 'pre-line' }}>
+              {c}
+            </span>
+          ))}
+        </div>
+      )}
+      {slot === 'footer' && lh.pageNumbers === 'all' && (
+        <span className="sheet-number" style={{ textAlign: lh.pageNumberAlign }}>
+          Página 1
+        </span>
+      )}
+    </div>
+  );
+}
+
 // Fills a document template with the client/case data and saves DOCX/PDF in its encrypted documents.
 // Opened from a template (no record), the client and the case are optional and any data the
 // template needs can be typed here.
@@ -57,6 +94,23 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
   const [answers, setAnswers] = useState(() => initial.answers || {});
   const [values, setValues] = useState(() => initial.values || {});
   const [formats, setFormats] = useState({ docx: true, pdf: false });
+  // Page options: letterhead (the default one is chosen at first), font, size, spacing and indent.
+  const letterheads = useMemo(() => data.letterheads || [], [data.letterheads]);
+  const [look, setLook] = useState(() => ({
+    letterheadId: initial.layout ? initial.layout.letterheadId || '' : letterheads.find(l => l.isDefault)?.id || '',
+    family: initial.layout?.family || '',
+    size: initial.layout?.size || 12,
+    lineSpacing: initial.layout?.lineSpacing || 1.5,
+    firstLineIndent: initial.layout?.firstLineIndent || 0,
+  }));
+  const [fonts, setFonts] = useState([]);
+  const [images, setImages] = useState({});
+  useEffect(() => {
+    window.advocacia
+      .systemFonts()
+      .then(setFonts)
+      .catch(() => {});
+  }, []);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(null);
@@ -68,9 +122,27 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
       lawyers: chosen,
       answers,
       values,
+      // Without any choice the document keeps its usual look (Times New Roman 12, A4, ABNT margins).
+      ...(look.letterheadId || look.family || look.size !== 12 || look.lineSpacing !== 1.5 || look.firstLineIndent
+        ? { layout: { ...look, letterheadId: look.letterheadId || undefined } }
+        : {}),
     }),
-    [templateId, caseId, clientId, chosen, answers, values],
+    [templateId, caseId, clientId, chosen, answers, values, look],
   );
+  // The images of the chosen letterhead, for the preview only.
+  useEffect(() => {
+    const lh = preview?.letterhead;
+    if (!lh) return;
+    const source = letterheads.find(l => l.id === lh.id);
+    for (const slot of ['header', 'footer']) {
+      const ref = source?.[slot]?.image;
+      if (ref && !images[ref.id])
+        window.advocacia
+          .letterheadImage(ref.id)
+          .then(img => img && setImages(current => ({ ...current, [ref.id]: img })))
+          .catch(() => {});
+    }
+  }, [preview?.letterhead, letterheads, images]);
   useEffect(() => {
     if (!templateId) return;
     let current = true;
@@ -137,6 +209,12 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
             </li>
           ))}
         </ul>
+        {[...new Set(saved.flatMap(d => d.warnings || []))].map(w => (
+          <div key={w} className="conflict-alert info" role="status">
+            <AlertTriangle size={16} />
+            <small>{w}</small>
+          </div>
+        ))}
         <p className="help-text">
           Para editar no Word, use Salvar cópia e trabalhe no arquivo salvo. Abrir mostra uma cópia temporária.
         </p>
@@ -281,6 +359,68 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
               ))}
             </fieldset>
           )}
+          <fieldset className="field generate-look">
+            <legend>Aparência</legend>
+            <label className="field">
+              <span>Papel timbrado</span>
+              <select value={look.letterheadId} onChange={e => setLook(l => ({ ...l, letterheadId: e.target.value }))}>
+                <option value="">Sem papel timbrado</option>
+                {letterheads.map(l => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                    {l.isDefault ? ' (padrão)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>Fonte</span>
+              <select value={look.family} onChange={e => setLook(l => ({ ...l, family: e.target.value }))}>
+                <option value="">Padrão (Times New Roman)</option>
+                {fonts.map(f => (
+                  <option key={f.family} value={f.family}>
+                    {f.family}
+                    {f.embeddable ? '' : ' (não vai no PDF)'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="generate-look-row">
+              <label className="field">
+                <span>Tamanho (pt)</span>
+                <input
+                  type="number"
+                  min={8}
+                  max={72}
+                  value={look.size}
+                  onChange={e => setLook(l => ({ ...l, size: Number(e.target.value) || 12 }))}
+                />
+              </label>
+              <label className="field">
+                <span>Entrelinhas</span>
+                <select
+                  value={look.lineSpacing}
+                  onChange={e => setLook(l => ({ ...l, lineSpacing: Number(e.target.value) }))}
+                >
+                  <option value={1}>Simples</option>
+                  <option value={1.15}>1,15</option>
+                  <option value={1.5}>1,5</option>
+                  <option value={2}>Dupla</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>Recuo (cm)</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={5}
+                  step={0.25}
+                  value={look.firstLineIndent}
+                  onChange={e => setLook(l => ({ ...l, firstLineIndent: Number(e.target.value) || 0 }))}
+                />
+              </label>
+            </div>
+          </fieldset>
           <fieldset className="field">
             <legend>Formato</legend>
             {[
@@ -319,7 +459,29 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
               {error}
             </div>
           )}
-          <article className="document-preview" aria-label="Prévia do documento">
+          {preview?.warnings?.map(w => (
+            <div key={w} className="conflict-alert info" role="status">
+              <AlertTriangle size={16} />
+              <small>{w}</small>
+            </div>
+          ))}
+          <article
+            className="document-preview"
+            aria-label="Prévia do documento"
+            style={{
+              fontFamily: look.family ? `"${look.family}", "Times New Roman", serif` : undefined,
+              fontSize: `${look.size}pt`,
+              lineHeight: look.lineSpacing,
+            }}
+          >
+            {preview?.letterhead && (
+              <SheetBand
+                lh={preview.letterhead}
+                slot="header"
+                source={letterheads.find(l => l.id === preview.letterhead.id)}
+                images={images}
+              />
+            )}
             {preview?.blocks.map((b, i) => (
               <p key={i} className={b.heading ? 'heading' : ''} style={{ textAlign: b.align }}>
                 {b.runs.map((r, j) => {
@@ -350,6 +512,14 @@ export default function GenerateDocument({ data, initial, onClose, act, navigate
                 {!b.runs.some(r => r.text) && <br />}
               </p>
             ))}
+            {preview?.letterhead && (
+              <SheetBand
+                lh={preview.letterhead}
+                slot="footer"
+                source={letterheads.find(l => l.id === preview.letterhead.id)}
+                images={images}
+              />
+            )}
           </article>
         </div>
       </div>

@@ -492,6 +492,7 @@ export default function Records({
                     answers: d.generation.answers,
                     values: d.generation.values,
                     lawyers: d.generation.lawyers,
+                    layout: d.generation.layout,
                     ...(d.caseId ? { caseId: d.caseId } : d.clientId ? { clientId: d.clientId } : {}),
                   })
                 }
