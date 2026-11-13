@@ -6,6 +6,7 @@ import { parseCNJ, cnjProblem, cnjDigits, cnjStates } from '../../app/cnj.mjs';
 import { brDocument, documentKey } from '../../app/br-documents.mjs';
 import { caseFill, companyFill } from '../../app/lookup-fill.mjs';
 import { repeatOptions } from '../../app/task-series.mjs';
+import { eventKinds } from '../../app/message-defaults.mjs';
 import { limitationRules, suggestedRule, caseLimitation } from '../../app/prescription.mjs';
 import {
   caseAreas,
@@ -88,27 +89,20 @@ function documentHint(value) {
   const parsed = brDocument(value);
   return parsed.valid && parsed.type ? null : { tone: 'danger', text: 'CPF ou CNPJ inválido. Confira os números.' };
 }
-// Mirrors backend/hearing-reminders.cjs so the form says when (or why not) the reminder goes out.
-function reminderHint(form, data) {
+const eventTypes = ['Audiência', 'Perícia', 'Reunião', 'Diligência'];
+const confirmationLabels = {
+  awaiting: 'Aguardando resposta',
+  confirmed: 'Presença confirmada',
+  declined: 'Cliente pediu contato',
+};
+// Says whether the client can be reached before the notices are offered.
+function noticeHint(form, data) {
   const caseItem = data.entities.cases.find(c => c.id === form.caseId);
   const client = data.entities.clients.find(c => c.id === (form.clientId || caseItem?.clientId));
   if (!client) return { tone: 'danger', text: 'Vincule um cliente ou um processo com cliente.' };
   if (!/^\d{10,15}$/.test(String(client.phone || '').replace(/\D/g, '')))
     return { tone: 'danger', text: `${client.name} não tem WhatsApp válido no cadastro.` };
-  const [date] = String(form.due || '').split('T');
-  const [y, m, d] = (date || '').split('-').map(Number);
-  const [h, min] = String(form.reminderTime || '09:00')
-    .split(':')
-    .map(Number);
-  const when = new Date(y, m - 1, d - Number(form.reminderLead || 1), h, min);
-  if (!Number.isFinite(when.getTime())) return null;
-  const label = when.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-  if (when.getTime() <= Date.now() + 60000)
-    return { tone: 'danger', text: `O aviso seria em ${label}, que já passou. Ele não será enviado.` };
-  return {
-    tone: 'ok',
-    text: `Será enviado para ${client.name} em ${label}. Use {4} data, {5} horário e {6} título no modelo.`,
-  };
+  return { tone: 'ok', text: `Os avisos vão para ${client.name}.` };
 }
 function Hint({ hint }) {
   if (!hint) return null;
@@ -715,7 +709,7 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
               </Field>
               <Field label="Tipo">
                 <select {...props('type')}>
-                  {['Prazo', 'Audiência', 'Reunião', 'Tarefa'].map(a => (
+                  {['Prazo', 'Audiência', 'Perícia', 'Reunião', 'Diligência', 'Tarefa'].map(a => (
                     <option key={a}>{a}</option>
                   ))}
                 </select>
@@ -765,48 +759,62 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
               )}
               {process}
               {client}
-              {['Audiência', 'Reunião'].includes(form.type) && (
+              {eventTypes.includes(form.type) && (
                 <>
+                  <Section>Detalhes do compromisso</Section>
+                  <Field label="Espécie" optional>
+                    <select {...props('eventKind')}>
+                      <option value="">Não informar</option>
+                      {(eventKinds[form.type] || []).map(k => (
+                        <option key={k} value={k}>
+                          {k}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Modalidade" optional>
+                    <select {...props('modality')}>
+                      <option value="">Não informar</option>
+                      <option value="presencial">Presencial</option>
+                      <option value="virtual">Videoconferência</option>
+                    </select>
+                  </Field>
+                  <Field label="Local ou endereço" full optional>
+                    <input {...props('place')} maxLength={200} placeholder="Fórum, sala, endereço da perícia..." />
+                  </Field>
+                  {form.modality === 'virtual' && (
+                    <Field label="Link da sala virtual" full optional>
+                      <input {...props('roomLink')} type="url" maxLength={300} placeholder="https://..." />
+                    </Field>
+                  )}
+                  <Field
+                    label="Orientações ao cliente"
+                    full
+                    optional
+                    hint={{ tone: 'muted', text: 'Vão na mensagem: o que levar, chegar mais cedo, vestimenta...' }}
+                  >
+                    <input {...props('clientNotes')} maxLength={500} />
+                  </Field>
                   <Section>Aviso ao cliente</Section>
                   <div className="full">
                     <Toggle
                       checked={form.clientReminder === true}
                       onChange={v => setForm(current => ({ ...current, clientReminder: v }))}
                       title="Avisar o cliente por WhatsApp"
-                      description="Envia um lembrete com data e horário. Se o compromisso mudar ou for concluído, o aviso é refeito ou cancelado."
+                      description="Ao salvar, o programa mostra a confirmação e os lembretes para você conferir antes de agendar. Se o compromisso mudar ou for excluído, os avisos são refeitos ou cancelados."
                     />
                   </div>
                   {form.clientReminder && (
                     <>
-                      <Field label="Antecedência">
-                        <select {...props('reminderLead')}>
-                          {[
-                            ['1', '1 dia antes'],
-                            ['2', '2 dias antes'],
-                            ['3', '3 dias antes'],
-                            ['7', '1 semana antes'],
-                          ].map(([v, l]) => (
-                            <option key={v} value={v}>
-                              {l}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                      <Field label="Horário do aviso">
+                      <Field label="Horário dos lembretes de dias antes" hint={noticeHint(form, data)}>
                         <input {...props('reminderTime')} type="time" required />
                       </Field>
-                      <Field label="Modelo de mensagem" full optional hint={reminderHint(form, data)}>
-                        <select {...props('reminderTemplateId')}>
-                          <option value="">Mensagem padrão</option>
-                          {data.library.templates
-                            .filter(t => t.kind === 'whatsapp' && t.purpose !== 'birthday')
-                            .map(t => (
-                              <option key={t.id} value={t.id}>
-                                {t.title}
-                              </option>
-                            ))}
-                        </select>
-                      </Field>
+                      {item?.confirmationStatus && (
+                        <div className="field">
+                          <span>Confirmação do cliente</span>
+                          <strong>{confirmationLabels[item.confirmationStatus]}</strong>
+                        </div>
+                      )}
                     </>
                   )}
                 </>

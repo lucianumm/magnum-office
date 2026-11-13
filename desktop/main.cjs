@@ -36,6 +36,7 @@ const { Imports } = require('../backend/imports.cjs');
 const { AgentAPI } = require('../backend/agent-api.cjs');
 const { DocumentGenerator } = require('../backend/document-generator.cjs');
 const { HearingReminders } = require('../backend/hearing-reminders.cjs');
+const { EventNotices } = require('../backend/event-notices.cjs');
 const { WorkflowRunner } = require('../backend/workflow-runner.cjs');
 const { Finance } = require('../backend/finance.cjs');
 const { Indices } = require('../backend/indices.cjs');
@@ -111,6 +112,7 @@ let win,
   birthdays,
   generator,
   reminders,
+  eventNotices,
   workflowRunner,
   finance,
   indices,
@@ -211,6 +213,7 @@ const readOnlyCommands = new Set([
   'ready',
   'waStatus',
   'inboxList',
+  'previewEventNotice',
   'state',
   'trashList',
   'lockConfig',
@@ -570,6 +573,9 @@ function bindHandlers() {
     get reminders() {
       return reminders;
     },
+    get eventNotices() {
+      return eventNotices;
+    },
     get settings() {
       return settings;
     },
@@ -833,6 +839,7 @@ async function boot() {
   library = new Library(store);
   generator = new DocumentGenerator({ store, library, settings, documents, courts: courts.courts });
   reminders = new HearingReminders({ store, settings, library, messaging });
+  eventNotices = new EventNotices({ store, settings, library, messaging });
   workflowRunner = new WorkflowRunner({ store, settings });
   finance = new Finance({ store });
   // Public consultations use Chromium's network stack (Windows proxy and certificates).

@@ -27,10 +27,34 @@ module.exports = function registerRecords(ctx) {
     ctx.clipboard.writeText(token);
     return true;
   });
-  const saveTask = entity => {
-    const saved = ctx.store.save('tasks', entity);
-    const synced = ctx.reminders.sync(saved);
-    return { ...synced.task, reminderStatus: synced.status, reminderProblem: synced.reason || '' };
+  // legacy: the single reminder of earlier versions, still used for a series (one notice window per date would not fit).
+  const saveTask = (entity, { legacy = false } = {}) => {
+    // The links to the queued notices belong to the program, never to what the form sends.
+    const before = entity.id ? ctx.store.get('tasks', entity.id) : null;
+    const kept = {
+      noticeOffsets: before?.noticeOffsets || '',
+      noticeMessageIds: before?.noticeMessageIds || '',
+      confirmationStatus: before?.confirmationStatus || '',
+    };
+    const stored = ctx.store.save('tasks', { ...entity, ...kept });
+    const saved = ctx.eventNotices.afterSave(before, stored);
+    // Tasks that already use the old reminder keep it until the office moves them to the new notices.
+    const synced =
+      legacy || saved.reminderMessageId || !saved.clientReminder
+        ? ctx.reminders.sync(saved)
+        : { task: saved, status: 'none', reason: '' };
+    // Ask for the notices (confirmation + reminders) when the event asks for them and none were set up yet.
+    const noticeNeeded =
+      !legacy &&
+      synced.task.clientReminder === true &&
+      !synced.task.noticeMessageIds &&
+      (!before || !before.clientReminder || !!before.reminderMessageId);
+    return {
+      ...synced.task,
+      reminderStatus: synced.status,
+      reminderProblem: synced.reason || '',
+      noticeNeeded,
+    };
   };
   ctx.register('save', data =>
     ctx.operations.run('Gravação de cadastro', () => {
@@ -42,7 +66,7 @@ module.exports = function registerRecords(ctx) {
         const seriesId = require('node:crypto').randomUUID();
         ctx.store.db.exec('BEGIN');
         try {
-          const saved = dates.map(due => saveTask({ ...entity, due, seriesId }));
+          const saved = dates.map(due => saveTask({ ...entity, due, seriesId }, { legacy: true }));
           ctx.store.db.exec('COMMIT');
           return { ...saved[0], seriesCount: saved.length };
         } catch (error) {
@@ -90,9 +114,16 @@ module.exports = function registerRecords(ctx) {
       if (response.response !== 1) return false;
       const before = data.kind === 'tasks' ? ctx.store.get('tasks', data.id) : null;
       ctx.store.remove(data.kind, data.id);
-      if (before) ctx.reminders.cancel(before);
+      if (before) {
+        ctx.reminders.cancel(before);
+        ctx.eventNotices.afterRemove(before);
+      }
       return true;
     }),
+  );
+  ctx.register('previewEventNotice', id => ctx.eventNotices.preview(id));
+  ctx.register('applyEventNotice', ({ id, choice }) =>
+    ctx.operations.run('Aviso ao cliente', () => ctx.eventNotices.apply(id, choice)),
   );
   ctx.register('createInstallments', input =>
     ctx.operations.run('Parcelamento', () => ctx.finance.createInstallments(input)),

@@ -94,6 +94,16 @@ const fields = {
     reminderKey: 64,
     seriesId: 36,
     repeat: 20,
+    // Event details (hearing, expert exam, meeting, errand) and the notices sent to the client.
+    eventKind: 60,
+    modality: 12,
+    place: 200,
+    roomLink: 300,
+    clientNotes: 500,
+    court: 120,
+    noticeOffsets: 40,
+    noticeMessageIds: 400,
+    confirmationStatus: 12,
   },
   notes: { title: 200, content: 60000, caseId: 36 },
   // Hours worked on a case; billed holds the finance entry that charged them.
@@ -300,11 +310,27 @@ function entity(kind, data, { allowLegacyContact = false } = {}) {
       throw new Error('Data ou horário inválido.');
     if (!['Pendente', 'Concluída'].includes(result.status)) result.status = 'Pendente';
     if (!['Normal', 'Alta', 'Urgente'].includes(result.priority)) result.priority = 'Normal';
-    if (!['Prazo', 'Audiência', 'Reunião', 'Tarefa'].includes(result.type)) result.type = 'Tarefa';
+    if (!['Prazo', 'Audiência', 'Perícia', 'Reunião', 'Diligência', 'Tarefa'].includes(result.type))
+      result.type = 'Tarefa';
     // WhatsApp reminder to the client before a hearing or meeting (see hearing-reminders.cjs).
     if (data.clientReminder !== undefined && typeof data.clientReminder !== 'boolean')
       throw new Error('Opção de aviso ao cliente inválida.');
-    result.clientReminder = data.clientReminder === true && ['Audiência', 'Reunião'].includes(result.type);
+    result.clientReminder =
+      data.clientReminder === true && ['Audiência', 'Perícia', 'Reunião', 'Diligência'].includes(result.type);
+    if (!['', 'presencial', 'virtual'].includes(result.modality)) result.modality = '';
+    if (result.roomLink && !/^https?:\/\/\S+$/i.test(result.roomLink))
+      throw new Error('O link da sala virtual deve começar com http:// ou https://.');
+    const { reminderOffsets } = require('../app/message-defaults.mjs');
+    result.noticeOffsets = result.noticeOffsets
+      .split(',')
+      .map(s => s.trim())
+      .filter((s, i, all) => reminderOffsets[s] && all.indexOf(s) === i)
+      .join(',');
+    result.noticeMessageIds = result.noticeMessageIds
+      .split(',')
+      .filter(s => /^[a-z0-9]+:[a-f0-9-]{36}$/.test(s))
+      .join(',');
+    if (!['', 'awaiting', 'confirmed', 'declined'].includes(result.confirmationStatus)) result.confirmationStatus = '';
     if (!['1', '2', '3', '7'].includes(result.reminderLead)) result.reminderLead = '1';
     result.reminderTime = result.reminderTime || '09:00';
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.reminderTime)) throw new Error('Horário do aviso inválido.');

@@ -55,6 +55,8 @@ const commands = [
   'waStatus',
   'cleanWhatsApp',
   'inboxList',
+  'previewEventNotice',
+  'applyEventNotice',
   'setInboxStatus',
   'retryBackupEmail',
   'exportPortableBackup',
