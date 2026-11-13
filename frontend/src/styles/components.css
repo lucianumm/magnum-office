@@ -1085,3 +1085,54 @@ progress {
   background: var(--warning);
   border-radius: 50%;
 }
+.notice-body {
+  display: grid;
+  gap: var(--space-4);
+}
+.notice-reminders {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.notice-reminders legend {
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-3);
+}
+.campaign-preview {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  background: var(--surface-2, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.campaign-preview ul {
+  margin: var(--space-2) 0 0 var(--space-4);
+}
+.segment-values {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 180px;
+  overflow-y: auto;
+}
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.chip {
+  padding: 2px var(--space-3);
+  font-size: var(--text-sm);
+  background: var(--surface-2, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.campaign-day h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+}

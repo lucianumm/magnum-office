@@ -36,12 +36,19 @@ const { Imports } = require('../backend/imports.cjs');
 const { AgentAPI } = require('../backend/agent-api.cjs');
 const { DocumentGenerator } = require('../backend/document-generator.cjs');
 const { HearingReminders } = require('../backend/hearing-reminders.cjs');
+const { EventNotices } = require('../backend/event-notices.cjs');
+const { Campaigns } = require('../backend/campaigns.cjs');
+const { Flows } = require('../backend/wa-flows.cjs');
+const { Letterheads } = require('../backend/letterhead.cjs');
+const { SystemFonts } = require('../backend/system-fonts.cjs');
 const { WorkflowRunner } = require('../backend/workflow-runner.cjs');
 const { Finance } = require('../backend/finance.cjs');
 const { Indices } = require('../backend/indices.cjs');
 const { DataJud } = require('../backend/datajud.cjs');
 const { CNPJLookup } = require('../backend/cnpj.cjs');
 const { CEPLookup } = require('../backend/cep.cjs');
+const { Inbox } = require('../backend/wa-inbox.cjs');
+const logRotation = require('../backend/log-rotation.cjs');
 const { AppLock } = require('../backend/app-lock.cjs');
 const { Digest } = require('../backend/digest.cjs');
 const { DJEN } = require('../backend/djen.cjs');
@@ -108,7 +115,12 @@ let win,
   weeklyBackups,
   birthdays,
   generator,
+  letterheads,
+  systemFonts,
   reminders,
+  eventNotices,
+  campaigns,
+  flows,
   workflowRunner,
   finance,
   indices,
@@ -119,7 +131,8 @@ let win,
   cnpj,
   cep,
   appLock,
-  digest;
+  digest,
+  inbox;
 const operations = new Operations();
 let notificationTimer;
 let quitting = false;
@@ -206,6 +219,16 @@ function applyBranding() {
 // seconds. Commands that only read never announce a change (and "state" must not, or it would loop).
 const readOnlyCommands = new Set([
   'ready',
+  'waStatus',
+  'inboxList',
+  'previewEventNotice',
+  'intimationCourts',
+  'systemFonts',
+  'letterheadImage',
+  'chooseLetterheadImage',
+  'campaignList',
+  'previewCampaign',
+  'campaignCalendar',
   'state',
   'trashList',
   'lockConfig',
@@ -260,6 +283,9 @@ function startLockAndDailyTasks() {
       const day = new Date().toISOString().slice(0, 10);
       if (lastPurge !== day) {
         lastPurge = day;
+        // Daily housekeeping: logs and old audit rows, the inbox and the trash.
+        logRotation.maintain(store, { keepDays: settings.get().logRetentionDays || 365 });
+        inbox.purge();
         if (store.purgeTrash({ olderThanDays: 30 })) dataChanged();
       }
       if (settings.get().termsAcceptedVersion === terms.version && !operations.maintenance && digest.tick())
@@ -417,6 +443,8 @@ function state() {
     operations: operations.status(),
     audit: store.auditList(),
     intimations: djen ? djen.list() : [],
+    djenHealth: djen ? djen.health() : null,
+    letterheads: letterheads ? letterheads.list() : [],
     movementsNew: datajud ? datajud.newCounts() : {},
     documentIndex: docIndex ? docIndex.status() : null,
     indices: indices ? indices.status() : null,
@@ -435,6 +463,9 @@ function bindHandlers() {
     desktopDir: __dirname,
     get appLock() {
       return appLock;
+    },
+    get inbox() {
+      return inbox;
     },
     get cep() {
       return cep;
@@ -511,6 +542,12 @@ function bindHandlers() {
     get generator() {
       return generator;
     },
+    get letterheads() {
+      return letterheads;
+    },
+    get systemFonts() {
+      return systemFonts;
+    },
     get icon() {
       return icon;
     },
@@ -558,6 +595,15 @@ function bindHandlers() {
     },
     get reminders() {
       return reminders;
+    },
+    get eventNotices() {
+      return eventNotices;
+    },
+    get campaigns() {
+      return campaigns;
+    },
+    get flows() {
+      return flows;
     },
     get settings() {
       return settings;
@@ -820,8 +866,19 @@ async function boot() {
   messaging.canProcess = () => updateConfirmed && settings.get().termsAcceptedVersion === terms.version;
   pdfTools = new PDFTools();
   library = new Library(store);
-  generator = new DocumentGenerator({ store, library, settings, documents, courts: courts.courts });
+  letterheads = new Letterheads({ store });
+  systemFonts = new SystemFonts();
+  generator = new DocumentGenerator({
+    store,
+    library,
+    settings,
+    documents,
+    courts: courts.courts,
+    letterheads,
+    systemFonts,
+  });
   reminders = new HearingReminders({ store, settings, library, messaging });
+  eventNotices = new EventNotices({ store, settings, library, messaging });
   workflowRunner = new WorkflowRunner({ store, settings });
   finance = new Finance({ store });
   // Public consultations use Chromium's network stack (Windows proxy and certificates).
@@ -832,8 +889,24 @@ async function boot() {
   cnpj = new CNPJLookup({ store, fetch: publicFetch });
   cep = new CEPLookup({ store, fetch: publicFetch });
   appLock = new AppLock({ store, settings });
+  inbox = new Inbox({ store, settings });
+  messaging.inbox = inbox;
+  campaigns = new Campaigns({ store, settings, library, messaging });
+  messaging.campaigns = campaigns;
+  flows = new Flows({ store, settings, messaging, inbox, campaigns, eventNotices, datajud, library });
+  // A reply first stops campaigns if it says SAIR; otherwise the automatic answers look at it.
+  inbox.onMessage = async record => {
+    if (campaigns.handleReply(record)) {
+      inbox.setStatus(record.id, 'handled');
+      return;
+    }
+    await flows.handle(record);
+  };
+
   digest = new Digest({ store, settings, messaging, djen: null });
   djen = new DJEN({ store, settings, fetch: publicFetch });
+  // Interface tests replace the network answer of the DJEN (only an unpackaged run with a test data folder).
+  if (testRoot) globalThis.__magnumTest = { djen };
   intakes = new Intakes({ store });
   docIndex = new DocumentIndex({ store, documents });
   imports = new Imports(store);

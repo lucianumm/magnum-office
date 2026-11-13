@@ -13,7 +13,13 @@ class HearingReminders {
   }
   // What should be scheduled for this task right now: { message, key } or { reason }.
   plan(task) {
-    if (!task.clientReminder || task.status === 'Concluída' || !['Audiência', 'Reunião'].includes(task.type))
+    // Events with their own notices (confirmation + several reminders) do not use the single old reminder.
+    if (
+      !task.clientReminder ||
+      task.noticeMessageIds ||
+      task.status === 'Concluída' ||
+      !['Audiência', 'Perícia', 'Reunião', 'Diligência'].includes(task.type)
+    )
       return { reason: 'off' };
     const caseItem = task.caseId ? this.store.get('cases', task.caseId) : null;
     const clientId = task.clientId || caseItem?.clientId;
@@ -60,7 +66,8 @@ class HearingReminders {
     const current = this.row(task.reminderMessageId);
     if (current && task.reminderKey === plan.key && current.status !== 'cancelled')
       return { task, status: 'unchanged' };
-    this.store.db.exec('BEGIN IMMEDIATE');
+    const nested = this.store.db.isTransaction;
+    if (!nested) this.store.db.exec('BEGIN IMMEDIATE');
     try {
       if (current && open.includes(current.status)) this.messaging.change(current.id, 'cancel');
       let saved;
@@ -70,14 +77,14 @@ class HearingReminders {
         if (review) this.store.db.prepare("UPDATE queue SET status='needs_review' WHERE id=?").run(id);
         saved = this.remember(task, id, plan.key);
       }
-      this.store.db.exec('COMMIT');
+      if (!nested) this.store.db.exec('COMMIT');
       return {
         task: saved,
         status: plan.message ? (review ? 'needs_review' : 'pending') : 'none',
         reason: plan.reason === 'off' ? '' : plan.reason || '',
       };
     } catch (error) {
-      this.store.db.exec('ROLLBACK');
+      if (!nested) this.store.db.exec('ROLLBACK');
       throw error;
     }
   }

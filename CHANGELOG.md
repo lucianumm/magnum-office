@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.12.0 — ainda não publicada
+
+**WhatsApp**
+
+- **Só enviar e receber**: o Baileys passa a pedir só o necessário (sem histórico, sem grupos, sem pré-visualização de links). Há limpeza semanal da sessão, com botão **Limpar agora** e a lista do que ocupa espaço, e os registros técnicos são girados e apagados por idade (90 dias a 2 anos).
+- **Regras de envio** para tudo que sai: janela de horário (padrão 8h–19h, sem domingo), limite por hora (30) e por dia (200), pausa aleatória entre mensagens e pausa de 1 hora depois de 3 falhas seguidas. Configurações → WhatsApp.
+- **Caixa de entrada** (desligada por padrão): lê só texto de conversa individual, não baixa mídia, guarda cifrado por 30 dias.
+- **Audiência, perícia, reunião e diligência na agenda**, com espécie, modalidade, local, link da sala e orientações. Ao salvar, uma janela mostra a **confirmação** imediata e os **lembretes** (7 dias, 3 dias, 1 dia, 6 h, 2 h, 1 h antes) com o texto para editar. Se o compromisso for remarcado ou excluído, os lembretes são refeitos ou cancelados e o aviso ao cliente espera a sua aprovação.
+- **Modelos por finalidade** (confirmação, lembrete, reagendamento, cancelamento, andamento, cobrança, boas-vindas, resposta) com variáveis nomeadas, como `{primeiro_nome}`, `{evento}`, `{data}`, `{hora}` e `{detalhes}`. Variável com erro de digitação é recusada.
+- **Campanhas**: aniversário do cliente e de cliente do escritório, data fixa anual, datas comemorativas (Páscoa, Dia das Mães, Dia do Advogado...), datas específicas, repetição (dias úteis a anual), antes ou depois de um compromisso, processo cadastrado ou concluído e honorário vencido (no máximo 2 avisos). Público por área, fase, etiqueta, processos ou clientes escolhidos; contagem antes de ativar, amostra para o próprio número, calendário dos próximos 30 dias e **descadastro por SAIR**.
+- **Respostas automáticas** para cliente cadastrado: menu 1 (andamento), 2 (próxima audiência) e 3 (equipe), e **CONFIRMO** para confirmar presença. O andamento exige o número do cadastro, o **CPF**, e a opção de consulta ligada no cadastro; 3 erros bloqueiam por 24 h; processo em segredo de justiça nunca é respondido; limite de 5 consultas por dia. O padrão é **revisar antes de enviar** as respostas com dados do processo. O CPF digitado não fica guardado.
+
+**Intimações**
+
+- Tela agrupada **por processo**, com urgência, tipo em cores, polo do cliente, filtros e ordenação; texto em parágrafos com destaque de prazo, data e valores.
+- **Criar audiência ou perícia na agenda** a partir do texto, **avisar o cliente**, **baixar a certidão** em PDF e **cadastrar o processo** a partir da publicação.
+- **Buscar publicações** por OAB e UF, nome do advogado ou da parte, número do processo, tribunal, período e meio, sem misturar com a caixa de intimações; **Guardar** ou **Cadastrar o advogado do escritório**.
+- Respeito ao limite da API (espera de 1 minuto no 429), falha de um advogado sem esconder os outros e aviso quando a consulta falha por 3 dias.
+
+**Documentos**
+
+- **Papel timbrado**: cabeçalho e rodapé com imagem e texto em 3 colunas, numeração de página, primeira página diferente, marca d'água, papel A4 ou Ofício e margens. Vários papéis, um padrão.
+- **Fonte, tamanho, entrelinhas e recuo** ao gerar. As fontes são as **instaladas no Windows**: o PDF incorpora só os caracteres usados; fonte ausente ou que proíbe incorporar cai em fonte parecida, com aviso. Nenhuma fonte é empacotada.
+
 ## 1.11.0 — 12/11/2026
 
 **Se a atualização automática não concluir, baixe o instalador e instale por cima, na mesma pasta. Seus cadastros são preservados.**

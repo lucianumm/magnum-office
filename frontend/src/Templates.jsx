@@ -1,4 +1,6 @@
 import { messageVariables } from '../../app/message-variables.mjs';
+import { messageVariableList } from '../../app/message-vars.mjs';
+import { purposes, defaultBodies } from '../../app/message-defaults.mjs';
 import { documentVariables } from '../../app/document-template.mjs';
 import { EmailPreview } from './EmailDesign.jsx';
 import { useState } from 'react';
@@ -126,7 +128,9 @@ export default function Templates({ data, act, reload, kind = 'document', header
             {shown.map(t => (
               <article className="template-card" key={t.id}>
                 <FileText size={24} />
-                {t.purpose === 'birthday' && <span className="birthday-model-tag">Mensagem aniversário</span>}
+                {t.purpose && t.purpose !== 'general' && (
+                  <span className="birthday-model-tag">{purposes[t.purpose] || t.purpose}</span>
+                )}
                 <small>{groups.find(g => g.id === t.groupId)?.name}</small>
                 <h3>{t.title}</h3>
                 <p>{t.body.slice(0, 180)}</p>
@@ -205,12 +209,28 @@ export default function Templates({ data, act, reload, kind = 'document', header
                     value={draft.purpose || 'general'}
                     onChange={e => setDraft({ ...draft, purpose: e.target.value })}
                   >
-                    <option value="general">Mensagem geral</option>
-                    <option value="birthday">Mensagem aniversário</option>
+                    {Object.entries(purposes).map(([key, label]) => (
+                      <option key={key} value={key}>
+                        {label}
+                      </option>
+                    ))}
                   </select>
                   <small>
-                    Modelos de aniversário ficam disponíveis no cadastro de clientes para envio anual automático.
+                    {draft.purpose === 'birthday'
+                      ? 'Modelos de aniversário ficam disponíveis no cadastro de clientes para envio anual automático.'
+                      : draft.purpose && draft.purpose !== 'general'
+                        ? 'Este modelo é usado automaticamente nesta situação. Sem um modelo próprio, o programa usa o texto padrão.'
+                        : 'Mensagem para escolher na hora de enviar.'}
                   </small>
+                  {draft.purpose && defaultBodies[draft.purpose] && (
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => setContent({ body: defaultBodies[draft.purpose], html: '' })}
+                    >
+                      Usar o texto padrão como ponto de partida
+                    </button>
+                  )}
                 </label>
               )}
               {kind === 'email' && (
@@ -254,7 +274,10 @@ export default function Templates({ data, act, reload, kind = 'document', header
             )}
             {kind === 'whatsapp' && (
               <div className="birthday-variable-help">
-                {messageVariables.map(([token, label]) => (
+                {(draft.purpose && !['general', 'birthday'].includes(draft.purpose)
+                  ? messageVariableList
+                  : messageVariables
+                ).map(([token, label]) => (
                   <span key={token}>
                     <code>{token}</code> {label}
                   </span>

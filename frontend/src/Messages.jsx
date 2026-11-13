@@ -14,7 +14,10 @@ import {
   Pause,
   Play,
   CalendarX2,
+  Megaphone,
 } from 'lucide-react';
+import Campaigns from './Campaigns.jsx';
+import InboxPanel from './InboxPanel.jsx';
 import { PageHeading, Button, Panel, Empty, Badge, Modal, dateTime, plural } from './components.jsx';
 
 export const messageLabels = {
@@ -38,6 +41,7 @@ export default function Messages({ data, act, reload, composeMessage, navigateSe
   const [filter, setFilter] = useState('all');
   const [showQR, setShowQR] = useState(false);
   const [view, setView] = useState('all');
+  const [showCampaigns, setShowCampaigns] = useState(false);
   const messages = data.messages.filter(
     m =>
       (filter === 'all' || m.channel === filter) &&
@@ -53,6 +57,9 @@ export default function Messages({ data, act, reload, composeMessage, navigateSe
   return (
     <>
       <PageHeading title="Mensagens">
+        <Button tone="secondary" icon={Megaphone} onClick={() => setShowCampaigns(true)}>
+          Campanhas
+        </Button>
         <Button tone="secondary" icon={CalendarClock} onClick={() => composeMessage({ scheduleDate: '' }, true)}>
           Agendar WhatsApp
         </Button>
@@ -135,6 +142,7 @@ export default function Messages({ data, act, reload, composeMessage, navigateSe
           ou duplicadas.
         </div>
       )}
+      <InboxPanel data={data} act={act} reload={reload} composeMessage={composeMessage} />
       <Panel
         title={`Fila de mensagens · ${plural(queued, 'pendente')}`}
         aside={
@@ -356,6 +364,7 @@ export default function Messages({ data, act, reload, composeMessage, navigateSe
           </div>
         </Modal>
       )}
+      {showCampaigns && <Campaigns data={data} act={act} reload={reload} onClose={() => setShowCampaigns(false)} />}
     </>
   );
 }

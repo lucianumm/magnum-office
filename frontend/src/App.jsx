@@ -55,6 +55,7 @@ import Dashboard from './Dashboard.jsx';
 import Records, { Agenda } from './Records.jsx';
 import Detail from './Detail.jsx';
 import EntityForm from './EntityForm.jsx';
+import EventNotice from './EventNotice.jsx';
 import Messages from './Messages.jsx';
 import Settings from './Settings.jsx';
 import Courts from './Courts.jsx';
@@ -300,6 +301,7 @@ export default function App() {
   const [settingsVisit, setSettingsVisit] = useState(0);
   const [messageDraft, setMessageDraft] = useState(null);
   const [modal, setModal] = useState(null);
+  const [noticeFor, setNoticeFor] = useState(null);
   const [generateFor, setGenerateFor] = useState(null);
   const [deadlineFor, setDeadlineFor] = useState(null);
   const [workflowFor, setWorkflowFor] = useState(null);
@@ -500,6 +502,8 @@ export default function App() {
                 : 'Registro salvo.',
         !!item?.reminderProblem,
       );
+      // A new event for a client: show what will be sent before anything is queued.
+      if (item?.noticeNeeded) setNoticeFor(item.id);
       return item;
     },
     [reload, notify],
@@ -1004,6 +1008,7 @@ export default function App() {
           caseId={deadlineFor.caseId}
           start={deadlineFor.start}
           mode={deadlineFor.mode}
+          days={deadlineFor.days}
           onClose={() => setDeadlineFor(null)}
         />
       )}
@@ -1023,6 +1028,19 @@ export default function App() {
           act={act}
           navigateSettings={navigateSettings}
           onClose={() => setGenerateFor(null)}
+        />
+      )}
+      {noticeFor && (
+        <EventNotice
+          id={noticeFor}
+          onClose={() => setNoticeFor(null)}
+          onDone={async result => {
+            setNoticeFor(null);
+            await reload();
+            notify(
+              `Avisos agendados: ${result.confirmation ? 'confirmação' : 'sem confirmação'}${result.reminders.length ? ` e ${result.reminders.length} lembrete(s)` : ''}.`,
+            );
+          }}
         />
       )}
       {modal && (

@@ -96,7 +96,27 @@ module.exports = function registerDocuments(ctx) {
     ctx.operations.run('Grupo de modelos', () => ctx.library.saveGroup(input)),
   );
   ctx.register('saveTemplate', input => ctx.operations.run('Modelo', () => ctx.library.save(input)));
-  ctx.register('previewDocument', input => ctx.generator.preview(input));
+  ctx.register('systemFonts', () => ctx.systemFonts.names());
+  ctx.register('saveLetterhead', input => ctx.operations.run('Papel timbrado', () => ctx.letterheads.save(input)));
+  ctx.register('removeLetterhead', id => ctx.operations.run('Papel timbrado', () => ctx.letterheads.remove(id)));
+  ctx.register('setDefaultLetterhead', id => ctx.letterheads.setDefault(id));
+  // The person picks an image; it is checked here and handed back to the form as base64 until saved.
+  ctx.register('chooseLetterheadImage', async () => {
+    const result = await ctx.dialog.showOpenDialog(ctx.win, {
+      title: 'Escolher imagem do papel timbrado',
+      properties: ['openFile'],
+      filters: [{ name: 'Imagens PNG ou JPG', extensions: ['png', 'jpg', 'jpeg'] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    const bytes = await require('node:fs/promises').readFile(result.filePaths[0]);
+    const info = await ctx.letterheads.inspect(bytes.toString('base64'));
+    return { data: info.bytes.toString('base64'), mime: info.mime, width: info.width, height: info.height };
+  });
+  ctx.register('previewDocument', input => ctx.generator.previewPage(input));
+  ctx.register('letterheadImage', id => {
+    const image = ctx.letterheads.image(String(id));
+    return image ? { mime: image.mime, data: image.bytes.toString('base64') } : null;
+  });
   ctx.register('generateDocument', input =>
     ctx.operations.run('Geração de documento', () => ctx.generator.generate(input)),
   );

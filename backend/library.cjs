@@ -77,10 +77,17 @@ class Library {
     if (!['document', 'whatsapp', 'email'].includes(kind)) throw new Error('Tipo de modelo inválido.');
     if (kind !== 'document' && body.length > 30000) throw new Error('Mensagens devem ter até 30 mil caracteres.');
     const purpose = input.purpose || (input.id ? this.list().find(t => t.id === id)?.purpose : 'general') || 'general';
-    if (!['general', 'birthday'].includes(purpose) || (purpose === 'birthday' && kind !== 'whatsapp'))
-      throw new Error('Mensagem aniversário deve ser um modelo de WhatsApp.');
+    const { purposeKeys } = require('../app/message-defaults.mjs');
+    if (!purposeKeys.includes(purpose)) throw new Error('Finalidade do modelo inválida.');
+    if (purpose !== 'general' && kind !== 'whatsapp')
+      throw new Error('Esta finalidade só existe para modelos de WhatsApp.');
     if (purpose === 'birthday' && [...body.matchAll(/\{(\d+)\}/g)].some(m => !['1', '2', '3'].includes(m[1])))
       throw new Error('Use as variáveis {1}, {2} e {3} no aniversário.');
+    // A typo like {nome_cliente} would reach the client as written: refuse it for the purposes that fill variables.
+    if (purpose !== 'general' && purpose !== 'birthday') {
+      const unknown = require('../app/message-vars.mjs').unknownVariables(body);
+      if (unknown.length) throw new Error(`Variável desconhecida: ${unknown.join(', ')}. Use as variáveis da lista.`);
+    }
     const subject = text(input.subject || '', 300);
     const emailDesign = kind === 'email' ? require('./email-design.cjs').normalize(input.emailDesign || {}) : null;
     const payload = {

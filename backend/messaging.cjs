@@ -3,6 +3,9 @@ const { text, uuid } = require('./validation.cjs');
 const { sender } = require('./email-policy.cjs');
 const version = require('../app/version.cjs');
 const { cleanHTML } = require('./email-content.cjs');
+const limits = require('../app/send-limits.mjs');
+const hygiene = require('./wa-hygiene.cjs');
+const { isIndividualJid } = require('../app/phone-match.mjs');
 class Messaging {
   constructor(store, settings, operations) {
     this.store = store;
@@ -16,6 +19,13 @@ class Messaging {
     this.manualDisconnect = false;
     this.reconnectTimer = null;
     this.reconnectAttempts = 0;
+    // Pace of the WhatsApp sending (see app/send-limits.mjs) and automatic pause after repeated failures.
+    this.nextSendAt = 0;
+    this.failStreak = 0;
+    this.pausedUntil = 0;
+    // Tests only: run without the window, the caps and the pause (they depend on the real clock).
+    this.skipSendRules = false;
+    this.inbox = null; // set by the main process (backend/wa-inbox.cjs)
     // A crash can leave a provider request with an unknown outcome. Never automatically resend it.
     this.store.db
       .prepare("UPDATE queue SET status='uncertain',last_error='OUTCOME_UNKNOWN' WHERE status='sending'")
@@ -87,6 +97,7 @@ class Messaging {
       };
       const write = (id, data) =>
         this.store.secret('wa:' + id, data === null ? null : JSON.stringify(data, BufferJSON.replacer));
+      this.cleanSessionIfDue();
       const state = {
         creds: read('creds') || initAuthCreds(),
         keys: {
@@ -117,10 +128,28 @@ class Messaging {
         browser: [this.settings.get().appName || 'Advocacia Gestão', 'Desktop', version],
         markOnlineOnConnect: false,
         syncFullHistory: false,
+        // The program only sends and receives text with clients: no history, no groups, status, broadcast
+        // lists or channels, no link previews, no echo of its own messages.
+        shouldSyncHistoryMessage: () => false,
+        shouldIgnoreJid: jid => !isIndividualJid(jid),
+        generateHighQualityLinkPreview: false,
+        emitOwnEvents: false,
       });
       this.socket = socket;
       socket.ev.on('creds.update', () => {
         if (!this.stopping) write('creds', state.creds);
+      });
+      // The only content listener. With the inbox off nothing is read or stored.
+      socket.ev.on('messages.upsert', ({ messages, type }) => {
+        if (this.stopping || this.socket !== socket || type !== 'notify' || !this.inbox) return;
+        for (const item of messages || []) {
+          try {
+            const record = this.inbox.receive(item);
+            if (record && this.inbox.onMessage) void Promise.resolve(this.inbox.onMessage(record)).catch(() => {});
+          } catch {
+            /* One unreadable message must not stop the others. */
+          }
+        }
       });
       socket.ev.on('connection.update', async ({ connection, qr, lastDisconnect }) => {
         if (this.stopping || this.socket !== socket) return;
@@ -149,6 +178,31 @@ class Messaging {
     } finally {
       this.connecting = false;
     }
+  }
+  // Weekly housekeeping of the session keys. Runs only while the socket is closed.
+  cleanSessionIfDue(force = false) {
+    const last = Date.parse(this.settings.get().lastWaCleanup || '') || 0;
+    if (!force && Date.now() - last < 7 * 86400000) return null;
+    const result = hygiene.clean(this.store);
+    this.settings.internal({ lastWaCleanup: new Date().toISOString(), lastWaCleanupRemoved: result.removed });
+    return result;
+  }
+  // "Limpar agora": closes the connection without logging out, cleans and reconnects.
+  async cleanSessionNow() {
+    const socket = this.socket;
+    this.socket = null;
+    clearTimeout(this.reconnectTimer);
+    if (socket) {
+      try {
+        socket.end(undefined);
+      } catch {
+        /* Already closed. */
+      }
+    }
+    const result = this.cleanSessionIfDue(true);
+    this.wa = { status: 'disconnected', qr: null };
+    if (this.store.secret('wa:creds')) void this.connectWhatsApp().catch(() => this.reconnect());
+    return result;
   }
   async disconnectWhatsApp() {
     this.manualDisconnect = true;
@@ -413,6 +467,39 @@ class Messaging {
       .run(action === 'retry' ? 'pending' : 'cancelled', new Date().toISOString(), new Date().toISOString(), id);
     this.store.audit('message.' + action, { id });
   }
+  // Whether one more WhatsApp message may go out now, by the window, the hourly and daily caps and the pause
+  // between messages. The counters come from what was really sent, so they survive a restart.
+  rulesConfig() {
+    const config = this.settings.get();
+    return this.skipSendRules
+      ? { ...config, sendWindowStart: 0, sendWindowEnd: 24, sendOnSaturday: true, sendOnSunday: true }
+      : config;
+  }
+  sendVerdict(now = Date.now()) {
+    if (this.skipSendRules) return { allowed: true, reason: '', retryAt: now };
+    if (now < this.pausedUntil) return { allowed: false, reason: 'paused', retryAt: this.pausedUntil };
+    const sent = since =>
+      this.store.db
+        .prepare("SELECT COUNT(*) AS n FROM queue WHERE channel='whatsapp' AND status='sent' AND sent_at >= ?")
+        .get(new Date(since).toISOString()).n;
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    return limits.decide(now, this.settings.get(), {
+      lastHour: sent(now - 3600000),
+      today: sent(startOfDay.getTime()),
+      nextAt: this.nextSendAt,
+    });
+  }
+  // What the screen shows about the sending rules.
+  sendRules() {
+    const verdict = this.sendVerdict();
+    return {
+      ...limits.validateLimits(this.settings.get()),
+      allowed: verdict.allowed,
+      reason: verdict.reason,
+      retryAt: verdict.retryAt ? new Date(verdict.retryAt).toISOString() : null,
+    };
+  }
   async process() {
     if (this.canProcess && !this.canProcess()) return;
     if (this.running || this.operations.maintenance || this.stopping) return;
@@ -422,12 +509,29 @@ class Messaging {
       } catch {
         this.store.audit('birthday.schedule.failed', { code: 'BIRTHDAY_CONFIG' });
       }
+    if (this.campaigns)
+      try {
+        this.campaigns.tick();
+      } catch {
+        this.store.audit('campaign.plan.failed', { code: 'CAMPAIGN_CONFIG' });
+      }
     const config = this.settings.get();
     const expired = new Date(Date.now() - config.scheduleGraceMinutes * 60000).toISOString();
     const missed = this.store.db
-      .prepare("SELECT id,payload FROM queue WHERE status='pending' AND scheduled_for IS NOT NULL AND scheduled_for<?")
+      .prepare(
+        "SELECT id,channel,scheduled_for,payload FROM queue WHERE status='pending' AND scheduled_for IS NOT NULL AND scheduled_for<?",
+      )
       .all(expired);
+    const waPending = this.store.db
+      .prepare("SELECT COUNT(*) AS n FROM queue WHERE channel='whatsapp' AND status='pending'")
+      .get().n;
     for (const item of missed) {
+      // A WhatsApp message only waits "too long" while the sending window is open, and a long queue
+      // draining at the hourly cap is not forgotten: the grace period grows with the queue.
+      if (item.channel === 'whatsapp') {
+        const waited = limits.openMinutes(Date.parse(item.scheduled_for), Date.now(), this.rulesConfig());
+        if (waited <= config.scheduleGraceMinutes + limits.drainMinutes(waPending, config)) continue;
+      }
       const data = this.store.vault.unseal(item.payload);
       if (data.autoBirthday && data.birthdayDate === require('./birthdays.cjs').dayKey(new Date())) continue;
       this.store.db
@@ -439,8 +543,11 @@ class Messaging {
     const ready = this.store.db
       .prepare("SELECT * FROM queue WHERE status='pending' AND available_at<=? ORDER BY available_at,created_at")
       .all(new Date().toISOString());
+    const verdict = this.sendVerdict();
     const row = ready.find(item =>
-      item.channel === 'whatsapp' ? this.wa.status === 'connected' : this.emailReady() === 'configured',
+      item.channel === 'whatsapp'
+        ? this.wa.status === 'connected' && verdict.allowed
+        : this.emailReady() === 'configured',
     );
     if (!row) return;
     this.running = true;
@@ -456,6 +563,15 @@ class Messaging {
             return;
           }
           this.store.db.prepare('UPDATE queue SET payload=? WHERE id=?').run(this.store.vault.seal(data), row.id);
+        }
+        if (data.campaignId && this.campaigns) {
+          const checked = this.campaigns.prepare(data);
+          if (!checked) {
+            this.store.db
+              .prepare("UPDATE queue SET status='cancelled',last_error='CAMPAIGN_OFF',updated_at=? WHERE id=?")
+              .run(new Date().toISOString(), row.id);
+            return;
+          }
         }
         if (
           row.channel === 'email' &&
@@ -545,6 +661,10 @@ class Messaging {
             .prepare("UPDATE queue SET status='sent',sent_at=?,last_error=NULL,updated_at=? WHERE id=?")
             .run(now, now, row.id);
           this.store.audit('message.sent', { id: row.id, channel: row.channel });
+          if (row.channel === 'whatsapp') {
+            this.failStreak = 0;
+            this.nextSendAt = Date.now() + limits.nextDelayMs(this.settings.get());
+          }
         } catch (error) {
           this.store.db
             .prepare('UPDATE queue SET status=?,last_error=?,updated_at=? WHERE id=?')
@@ -558,6 +678,12 @@ class Messaging {
             id: row.id,
             code: error.definite ? 'PROVIDER_REJECTED' : 'OUTCOME_UNKNOWN',
           });
+          // Three failures in a row: pause the WhatsApp sending for an hour instead of insisting.
+          if (row.channel === 'whatsapp' && ++this.failStreak >= 3) {
+            this.pausedUntil = Date.now() + 3600000;
+            this.failStreak = 0;
+            this.store.audit('whatsapp.paused', { code: 'FAILURES' });
+          }
         }
       });
     } catch {
