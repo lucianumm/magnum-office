@@ -747,17 +747,50 @@ async function boot() {
         !destination.toLowerCase().startsWith(path.resolve(dataRoot).toLowerCase()) &&
         path.basename(restored.installedExecutable) === restored.runtime
       ) {
-        try {
-          const originalFs = require('original-fs').promises;
-          await originalFs.cp(sourceRuntime, destination, { recursive: true, force: true });
-          // Files that only exist in the failed version must not stay mixed with the restored one.
-          const keep = new Set((await walk(sourceRuntime)).map(file => file.toLowerCase()));
-          for (const file of await walk(destination))
-            if (!keep.has(file.toLowerCase()) && !file.toLowerCase().startsWith('uninstall '))
-              await originalFs.rm(path.join(destination, file), { force: true });
-        } catch {
-          /* The preserved runtime remains runnable if replacing the original install is denied. */
+        // Antivirus software and the helper processes of the failed version can hold files for a few
+        // seconds, so the copy is retried. What happens is written to logs/recovery.jsonl: this step used to
+        // fail without a trace, and the person was left with the failed version in the folder.
+        const logRecovery = (event, detail) =>
+          fsp
+            .mkdir(path.join(dataRoot, 'logs'), { recursive: true })
+            .then(() =>
+              fsp.appendFile(
+                path.join(dataRoot, 'logs', 'recovery.jsonl'),
+                JSON.stringify({
+                  at: new Date().toISOString(),
+                  event,
+                  version: failed || undefined,
+                  ...(detail ? { detail } : {}),
+                }) + '\n',
+              ),
+            )
+            .catch(() => {});
+        const originalFs = require('original-fs').promises;
+        let failure = null;
+        let attempts = 0;
+        await logRecovery('update.recovery.program-restore.started', { dir: destination });
+        for (attempts = 1; attempts <= 8; attempts++) {
+          try {
+            await originalFs.cp(sourceRuntime, destination, { recursive: true, force: true });
+            // Files that only exist in the failed version must not stay mixed with the restored one.
+            const keep = new Set((await walk(sourceRuntime)).map(file => file.toLowerCase()));
+            for (const file of await walk(destination))
+              if (!keep.has(file.toLowerCase()) && !file.toLowerCase().startsWith('uninstall '))
+                await originalFs.rm(path.join(destination, file), { force: true });
+            failure = null;
+            break;
+          } catch (error) {
+            failure = error;
+            if (!['EBUSY', 'EPERM', 'EACCES', 'ENOTEMPTY'].includes(error.code)) break;
+            await new Promise(resolve => setTimeout(resolve, Math.min(500 * 2 ** attempts, 8000)));
+          }
         }
+        await logRecovery(
+          failure ? 'update.recovery.program-restore.failed' : 'update.recovery.program-restored',
+          failure
+            ? { code: String(failure.code || ''), message: String(failure.message).slice(0, 240), attempts }
+            : { attempts },
+        );
       }
     }
   }

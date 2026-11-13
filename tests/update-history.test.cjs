@@ -32,6 +32,11 @@ test('the last guardian attempt is summarised from recovery.jsonl', async t => {
       }),
       'linha corrompida',
       line('update.guardian.rollback', '1.10.0'),
+      line('update.recovery.program-restore.failed', '1.10.0', {
+        code: 'EBUSY',
+        message: 'resource busy or locked',
+        attempts: 8,
+      }),
     ].join('\n'),
   );
   const attempt = await lastAttempt(root);
@@ -42,9 +47,11 @@ test('the last guardian attempt is summarised from recovery.jsonl', async t => {
   assert.equal(attempt.mode, '/allusers');
   assert.equal(attempt.installerCode, 0);
   assert.equal(attempt.foundVersion, '1.9.2');
-  assert.equal(attempt.lines.length, 6, 'only the last attempt, without the broken line');
+  assert.equal(attempt.lines.length, 7, 'only the last attempt, without the broken line');
+  assert.equal(attempt.restoreError, 'resource busy or locked');
   const text = attemptText(attempt, '1.9.2');
   assert.match(text, /Resultado: failed/);
   assert.match(text, /Versão encontrada na pasta: 1\.9\.2/);
+  assert.match(text, /não pôde ser copiada de volta: resource busy or locked/);
   assert.match(attemptText(null, '1.9.2'), /nenhuma tentativa/);
 });

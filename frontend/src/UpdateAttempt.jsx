@@ -48,6 +48,12 @@ export default function UpdateAttempt({ act, refreshKey }) {
             </li>
           )}
           {attempt.installerCode !== null && <li>Código de saída do instalador: {attempt.installerCode}</li>}
+          {attempt.restoreError && (
+            <li className="danger-text">
+              A versão anterior não pôde ser copiada de volta para a pasta ({attempt.restoreError}). Use o instalador
+              oficial na mesma pasta para concluir.
+            </li>
+          )}
         </ul>
         {attempt.outcome === 'failed' && (
           <small>

@@ -566,9 +566,18 @@ try {
     // recovery earlier leaves the broken version in place (it happened on a slower CI disk), so wait for the
     // installed executable to be the previous version again.
     await waitFor(
-      () => installedProductVersion().startsWith(`${second}.`) || installedProductVersion() === second,
+      () =>
+        log().includes('update.recovery.program-restored') || log().includes('update.recovery.program-restore.failed'),
       240000,
-      'programa anterior restaurado na pasta',
+      'fim da cópia da versão anterior para a pasta',
+    );
+    assert.ok(
+      !log().includes('update.recovery.program-restore.failed'),
+      'A cópia da versão anterior falhou:\n' + log(),
+    );
+    assert.ok(
+      installedProductVersion().startsWith(`${second}.`) || installedProductVersion() === second,
+      `A pasta deveria ter a versão ${second}, mas tem ${installedProductVersion()}`,
     );
     await new Promise(r => setTimeout(r, 4000));
     stopProgram();

@@ -40,6 +40,7 @@ async function lastAttempt(root) {
   const exited = find('update.guardian.installer.exited');
   const notReplaced = find('update.guardian.not-replaced');
   const failed = find('update.guardian.failed');
+  const restoreFailed = find('update.recovery.program-restore.failed');
   const outcome = find('update.guardian.success')
     ? 'success'
     : failed
@@ -60,6 +61,9 @@ async function lastAttempt(root) {
     mode: started?.detail?.mode || '',
     installerCode: exited?.detail?.code ?? null,
     foundVersion: notReplaced?.detail?.found || '',
+    restoreError: restoreFailed
+      ? restoreFailed.detail?.message || restoreFailed.detail?.code || 'erro desconhecido'
+      : '',
     lines: attempt.map(e => JSON.stringify(e)),
   };
 }
@@ -74,6 +78,7 @@ function attemptText(attempt, version) {
     attempt.folder ? `Pasta: ${attempt.folder} · Modo: ${attempt.mode || 'não informado'}` : '',
     attempt.installerCode !== null ? `Código do instalador: ${attempt.installerCode}` : '',
     attempt.foundVersion ? `Versão encontrada na pasta: ${attempt.foundVersion}` : '',
+    attempt.restoreError ? `A versão anterior não pôde ser copiada de volta: ${attempt.restoreError}` : '',
     '',
     ...attempt.lines,
   ]
