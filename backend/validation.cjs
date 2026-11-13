@@ -37,6 +37,7 @@ const fields = {
     birthDate: 10,
     birthdayTemplateId: 36,
     birthdayTime: 5,
+    campaignOptOutAt: 30,
     personType: 20,
     nationality: 60,
     maritalStatus: 40,
@@ -194,6 +195,11 @@ function entity(kind, data, { allowLegacyContact = false } = {}) {
     if (data.birthdayEnabled !== undefined && typeof data.birthdayEnabled !== 'boolean')
       throw new Error('Opção de aniversário inválida.');
     result.birthdayEnabled = data.birthdayEnabled === true;
+    // "Não receber campanhas": set by the client's reply (SAIR) or by the office; messages about the case continue.
+    if (data.campaignOptOut !== undefined && typeof data.campaignOptOut !== 'boolean')
+      throw new Error('Opção de campanhas inválida.');
+    result.campaignOptOut = data.campaignOptOut === true;
+    if (!result.campaignOptOut) result.campaignOptOutAt = '';
     result.birthdayTime = result.birthdayTime || '09:00';
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(result.birthdayTime)) throw new Error('Horário de aniversário inválido.');
     if (result.birthDate) {

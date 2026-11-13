@@ -537,6 +537,14 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
                   <option>Não receber</option>
                 </select>
               </Field>
+              <div className="full">
+                <Toggle
+                  checked={form.campaignOptOut === true}
+                  onChange={v => setForm(current => ({ ...current, campaignOptOut: v }))}
+                  title="Não receber campanhas por WhatsApp"
+                  description="Marcado quando o cliente responde SAIR. Avisos sobre o processo, como audiências, continuam."
+                />
+              </div>
             </>
           )}
           {kind === 'clients' && <BirthdayFields form={form} setForm={setForm} data={data} />}

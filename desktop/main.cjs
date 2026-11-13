@@ -37,6 +37,7 @@ const { AgentAPI } = require('../backend/agent-api.cjs');
 const { DocumentGenerator } = require('../backend/document-generator.cjs');
 const { HearingReminders } = require('../backend/hearing-reminders.cjs');
 const { EventNotices } = require('../backend/event-notices.cjs');
+const { Campaigns } = require('../backend/campaigns.cjs');
 const { WorkflowRunner } = require('../backend/workflow-runner.cjs');
 const { Finance } = require('../backend/finance.cjs');
 const { Indices } = require('../backend/indices.cjs');
@@ -113,6 +114,7 @@ let win,
   generator,
   reminders,
   eventNotices,
+  campaigns,
   workflowRunner,
   finance,
   indices,
@@ -214,6 +216,9 @@ const readOnlyCommands = new Set([
   'waStatus',
   'inboxList',
   'previewEventNotice',
+  'campaignList',
+  'previewCampaign',
+  'campaignCalendar',
   'state',
   'trashList',
   'lockConfig',
@@ -576,6 +581,9 @@ function bindHandlers() {
     get eventNotices() {
       return eventNotices;
     },
+    get campaigns() {
+      return campaigns;
+    },
     get settings() {
       return settings;
     },
@@ -852,6 +860,9 @@ async function boot() {
   appLock = new AppLock({ store, settings });
   inbox = new Inbox({ store, settings });
   messaging.inbox = inbox;
+  campaigns = new Campaigns({ store, settings, library, messaging });
+  messaging.campaigns = campaigns;
+  inbox.onMessage = record => campaigns.handleReply(record);
   digest = new Digest({ store, settings, messaging, djen: null });
   djen = new DJEN({ store, settings, fetch: publicFetch });
   intakes = new Intakes({ store });

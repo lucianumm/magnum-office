@@ -59,7 +59,7 @@ export default function EventNotice({ id, onClose, onDone }) {
       )}
       {preview && !preview.eligible && (
         <>
-          <p className="help-text">{preview.reason}</p>
+          <p className="help-text settings-body">{preview.reason}</p>
           <div className="form-footer">
             <span />
             <Button onClick={onClose}>Entendi</Button>
@@ -68,61 +68,63 @@ export default function EventNotice({ id, onClose, onDone }) {
       )}
       {preview?.eligible && choice && (
         <>
-          <p className="help-text">
-            Mensagens para <strong>{preview.client.name}</strong> ({preview.client.phone}). Elas entram na fila de
-            Mensagens e seguem as regras de envio: só saem no horário e nos limites definidos em WhatsApp.
-          </p>
-          <Toggle
-            checked={choice.confirmation}
-            onChange={v => setChoice(c => ({ ...c, confirmation: v }))}
-            title={preview.confirmationSent ? 'Enviar a confirmação de novo' : 'Enviar a confirmação agora'}
-            description={
-              preview.confirmationSent
-                ? 'A confirmação já foi enviada antes.'
-                : 'O cliente recebe a data, o horário e o local e pode responder para confirmar a presença.'
-            }
-          />
-          {choice.confirmation && (
-            <label className="field full">
-              <span>Texto da confirmação</span>
-              <textarea
-                rows={6}
-                maxLength={4000}
-                value={choice.confirmationBody}
-                onChange={e => setChoice(c => ({ ...c, confirmationBody: e.target.value }))}
-              />
-            </label>
-          )}
-          <fieldset className="notice-reminders">
-            <legend>Lembretes antes do compromisso</legend>
-            {preview.reminders.map(r => (
-              <label key={r.key} className={'check-row' + (r.past ? ' muted' : '')}>
-                <input
-                  type="checkbox"
-                  checked={choice.offsets.includes(r.key)}
-                  disabled={r.past}
-                  onChange={() => toggleOffset(r.key)}
+          <div className="settings-body notice-body">
+            <p className="help-text">
+              Mensagens para <strong>{preview.client.name}</strong> ({preview.client.phone}). Elas entram na fila de
+              Mensagens e seguem as regras de envio: só saem no horário e nos limites definidos em WhatsApp.
+            </p>
+            <Toggle
+              checked={choice.confirmation}
+              onChange={v => setChoice(c => ({ ...c, confirmation: v }))}
+              title={preview.confirmationSent ? 'Enviar a confirmação de novo' : 'Enviar a confirmação agora'}
+              description={
+                preview.confirmationSent
+                  ? 'A confirmação já foi enviada antes.'
+                  : 'O cliente recebe a data, o horário e o local e pode responder para confirmar a presença.'
+              }
+            />
+            {choice.confirmation && (
+              <label className="field full">
+                <span>Texto da confirmação</span>
+                <textarea
+                  rows={6}
+                  maxLength={4000}
+                  value={choice.confirmationBody}
+                  onChange={e => setChoice(c => ({ ...c, confirmationBody: e.target.value }))}
                 />
-                {r.label}
-                {r.past ? ' (já passou)' : ` — ${dateTime(r.scheduledFor)}`}
               </label>
-            ))}
-          </fieldset>
-          {choice.offsets.length > 0 && (
-            <label className="field full">
-              <span>Texto dos lembretes</span>
-              <textarea
-                rows={5}
-                maxLength={4000}
-                value={choice.reminderBody}
-                onChange={e => setChoice(c => ({ ...c, reminderBody: e.target.value }))}
-              />
-            </label>
-          )}
-          <small className="field-hint muted">
-            Se o compromisso for remarcado ou excluído, os lembretes são refeitos ou cancelados e o aviso ao cliente
-            fica esperando a sua aprovação em Mensagens.
-          </small>
+            )}
+            <fieldset className="notice-reminders">
+              <legend>Lembretes antes do compromisso</legend>
+              {preview.reminders.map(r => (
+                <label key={r.key} className={'check-row' + (r.past ? ' muted' : '')}>
+                  <input
+                    type="checkbox"
+                    checked={choice.offsets.includes(r.key)}
+                    disabled={r.past}
+                    onChange={() => toggleOffset(r.key)}
+                  />
+                  {r.label}
+                  {r.past ? ' (já passou)' : ` — ${dateTime(r.scheduledFor)}`}
+                </label>
+              ))}
+            </fieldset>
+            {choice.offsets.length > 0 && (
+              <label className="field full">
+                <span>Texto dos lembretes</span>
+                <textarea
+                  rows={5}
+                  maxLength={4000}
+                  value={choice.reminderBody}
+                  onChange={e => setChoice(c => ({ ...c, reminderBody: e.target.value }))}
+                />
+              </label>
+            )}
+            <small className="field-hint muted">
+              Se o compromisso for remarcado ou excluído, os lembretes são refeitos ou cancelados e o aviso ao cliente
+              fica esperando a sua aprovação em Mensagens.
+            </small>
+          </div>
           <div className="form-footer">
             <Button tone="ghost" onClick={onClose}>
               Agora não

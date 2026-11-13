@@ -509,6 +509,12 @@ class Messaging {
       } catch {
         this.store.audit('birthday.schedule.failed', { code: 'BIRTHDAY_CONFIG' });
       }
+    if (this.campaigns)
+      try {
+        this.campaigns.tick();
+      } catch {
+        this.store.audit('campaign.plan.failed', { code: 'CAMPAIGN_CONFIG' });
+      }
     const config = this.settings.get();
     const expired = new Date(Date.now() - config.scheduleGraceMinutes * 60000).toISOString();
     const missed = this.store.db
@@ -557,6 +563,15 @@ class Messaging {
             return;
           }
           this.store.db.prepare('UPDATE queue SET payload=? WHERE id=?').run(this.store.vault.seal(data), row.id);
+        }
+        if (data.campaignId && this.campaigns) {
+          const checked = this.campaigns.prepare(data);
+          if (!checked) {
+            this.store.db
+              .prepare("UPDATE queue SET status='cancelled',last_error='CAMPAIGN_OFF',updated_at=? WHERE id=?")
+              .run(new Date().toISOString(), row.id);
+            return;
+          }
         }
         if (
           row.channel === 'email' &&

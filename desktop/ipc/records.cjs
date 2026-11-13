@@ -121,6 +121,20 @@ module.exports = function registerRecords(ctx) {
       return true;
     }),
   );
+  ctx.register('campaignList', () => ctx.campaigns.list());
+  ctx.register('saveCampaign', input => ctx.operations.run('Campanha', () => ctx.campaigns.save(input)));
+  ctx.register('setCampaignStatus', ({ id, status }) =>
+    ctx.operations.run('Campanha', () => ctx.campaigns.setStatus(id, status)),
+  );
+  ctx.register('removeCampaign', id => ctx.operations.run('Campanha', () => ctx.campaigns.remove(id)));
+  ctx.register('previewCampaign', input => ctx.campaigns.preview(input));
+  ctx.register('sampleCampaign', ({ campaign, phone }) =>
+    ctx.operations.run('Amostra de campanha', () => ctx.campaigns.sendSample(campaign, phone)),
+  );
+  ctx.register('campaignCalendar', () => ctx.campaigns.calendar());
+  ctx.register('setCampaignOptOut', ({ id, value }) =>
+    ctx.operations.run('Campanha', () => ctx.campaigns.optOut(id, value === true)),
+  );
   ctx.register('previewEventNotice', id => ctx.eventNotices.preview(id));
   ctx.register('applyEventNotice', ({ id, choice }) =>
     ctx.operations.run('Aviso ao cliente', () => ctx.eventNotices.apply(id, choice)),
