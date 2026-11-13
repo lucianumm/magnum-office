@@ -232,7 +232,11 @@ class Campaigns {
     if (rules.dateTriggers.includes(t.type)) {
       for (const at of rules.occurrences(t, from, to)) for (const c of clients) add(c, at, [dateKeys(at)]);
     } else if (t.type === 'client-birthday' || t.type === 'client-since') {
-      for (const c of clients) for (const at of rules.clientOccurrences(t, c, from, to)) add(c, at, [dateKeys(at)]);
+      // Clients with the automatic birthday message on (in their record) already get it from there.
+      for (const c of clients) {
+        if (t.type === 'client-birthday' && c.birthdayEnabled === true) continue;
+        for (const at of rules.clientOccurrences(t, c, from, to)) add(c, at, [dateKeys(at)]);
+      }
     } else if (t.type === 'before-event') {
       const byId = new Map(clients.map(c => [c.id, c]));
       for (const task of this.store.list('tasks')) {

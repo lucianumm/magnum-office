@@ -50,13 +50,13 @@ Sem servidor, sem assinatura, sem mensalidade.
 | **Clientes** | Qualificação completa, pronta para copiar, CPF e CNPJ conferidos (inclusive o alfanumérico) e aviso de conflito de interesses. |
 | **Atendimentos** | Ficha de quem ainda não é cliente, com retorno agendado, e conversão em cliente e processo com um clique. |
 | **Prazos** | Calculadora para CPC, CLT, Juizados e CPP, com feriados, recesso, prazo em dobro e memória de cálculo dia a dia. Calendário próprio do escritório por tribunal. |
-| **Agenda** | Calendário e lista, aviso de audiência ao cliente por WhatsApp, fluxos de tarefas por tipo de ação e exportação para Google Agenda, Outlook ou celular. |
-| **Documentos** | Procurações, contratos, declarações e recibos gerados em Word e PDF com os dados do cadastro. Arquivos criptografados e busca dentro do texto dos documentos. Documentos digitalizados são lidos por OCR no próprio computador; perguntas com tipo e documento sem cadastro. |
+| **Agenda** | Calendário e lista, audiência, perícia, reunião e diligência com confirmação e lembretes ao cliente por WhatsApp, fluxos de tarefas por tipo de ação e exportação para Google Agenda, Outlook ou celular. |
+| **Documentos** | Procurações, contratos, declarações e recibos gerados em Word e PDF com os dados do cadastro, papel timbrado, fontes do Windows e numeração de páginas. Arquivos criptografados e busca dentro do texto dos documentos. Documentos digitalizados são lidos por OCR no próprio computador; perguntas com tipo e documento sem cadastro. |
 | **Financeiro** | Honorários, parcelas, êxito, despesas reembolsáveis, recibo com valor por extenso, cobrança por WhatsApp e planilha. |
 | **Cálculos** | Atualização de débitos por IPCA, INPC, IGP-M, IPCA-E, Selic e Taxa Legal (Lei 14.905/2024), com índices do Banco Central e memória em PDF. Rescisão com INSS e IRRF opcionais e liquidação trabalhista (horas extras, reflexos e ADC 58). |
-| **Acompanhamento** | Andamentos pelo DataJud e intimações do Diário de Justiça Eletrônico Nacional, com atalho para calcular o prazo. Desligados por padrão. |
+| **Acompanhamento** | Andamentos pelo DataJud e intimações do Diário de Justiça Eletrônico Nacional, agrupadas por processo, com busca avulsa, certidão e atalho para calcular o prazo ou criar a audiência. Desligados por padrão. |
 | **Relatórios** | Relatório ao cliente em linguagem simples e painel do escritório: processos, prazos, atendimentos e dinheiro. |
-| **Comunicação** | WhatsApp por QR Code com modelos, agendamento e recorrência; e-mail com domínio próprio e campanhas; aniversários automáticos. |
+| **Comunicação** | WhatsApp por QR Code com modelos por finalidade, campanhas por data ou evento, regras de envio, respostas automáticas e andamento por CPF; e-mail com domínio próprio e campanhas; aniversários automáticos. |
 | **Ferramentas** | PDF/A, união e divisão de PDF, diretório oficial de tribunais e importação de planilhas. Assinatura digital de PDF com certificado A1 (PAdES). |
 | **Segurança** | Dados e documentos em AES-256-GCM, chave no cofre do Windows, backups semanais e portáteis, atualizações assinadas com retorno automático se algo falhar. Senha opcional do programa e lixeira de 30 dias. |
 | **Agentes** | API local e servidor MCP, desligados por padrão, para usar o escritório com assistentes de IA de sua confiança. |

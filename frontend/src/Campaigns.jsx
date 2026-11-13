@@ -386,6 +386,12 @@ function CampaignEditor({ data, initial, onClose, onSaved }) {
             <span>Horário</span>
             <input type="time" required value={t.time} onChange={e => setTrigger({ time: e.target.value })} />
           </label>
+          {t.type === 'client-birthday' && (
+            <small className="field-hint muted full">
+              Clientes que já têm a mensagem de aniversário automática ligada no cadastro continuam recebendo por lá e
+              não são repetidos aqui.
+            </small>
+          )}
           {t.type === 'yearly' && (
             <>
               <label className="field">

@@ -9,6 +9,28 @@ Origem: lista de melhorias enviada pelo escritório, com 7 pedidos. Cada item ab
 no código**, **o que muda**, **como fica a segurança** (quando há dados de clientes), **arquivos** e
 **como será testado**. Esforço: P = até 1 dia, M = 2 a 4 dias, G = 1 a 2 semanas.
 
+## Situação da implementação (branch `melhorias-1.12`)
+
+As seis fases foram implementadas e verificadas (testes automáticos, testes de interface e verificação visual).
+O que ficou diferente do plano, para você decidir:
+
+- **Aniversário**: o aniversário automático por cliente (cadastro) **continua como era**, em vez de migrar para o motor de
+  campanhas, para não arriscar quem já usa. A campanha "Aniversário do cliente" existe e **pula** os clientes que já têm o
+  automático ligado, para ninguém receber duas mensagens.
+- **Editor de modelos**: fonte, tamanho, entrelinhas e recuo valem para o **documento inteiro**, escolhidos ao gerar.
+  Fonte por trecho dentro do modelo, tabelas, imagens no corpo, quebra de página manual e estilos salvos **não foram feitos**.
+- **Prévia do documento**: mostra cabeçalho, rodapé e a aparência escolhida, mas a divisão em páginas **só é exata no
+  arquivo gerado** (a contagem de páginas do PDF é a real).
+- **Marca d'água no Word** usa o formato padrão do Word (VML) e foi verificada só como XML válido, **não aberta no Word**.
+  O DOCX também foi verificado só por leitor e por XML; vale abrir um documento gerado no Word uma vez.
+- **Andamento por WhatsApp**: a atualização pelo DataJud antes de responder (D4) segue a regra do plano, mas não tem teste
+  automático próprio. Fora do horário, só a resposta "falar com a equipe" muda de texto; as demais respostas esperam a
+  janela de envio, como toda mensagem.
+- **Agentes (MCP)**: a busca avulsa de publicações não foi exposta como ferramenta.
+- **Limpeza da sessão do WhatsApp**: roda semanalmente e sob demanda; o efeito real depende do uso e só aparece ao longo das semanas.
+
+---
+
 ## Resumo e ordem
 
 | Fase | Entrega | Pedidos | Versão | Esforço |

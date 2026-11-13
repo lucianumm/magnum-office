@@ -273,3 +273,30 @@ test('a sample goes to the typed number only and is marked as a sample', async t
   assert.equal(m.campaignId, undefined);
   assert.throws(() => f.campaigns.sendSample(base2(), 'abc'), /WhatsApp/);
 });
+
+test('client birthday: clients with the automatic birthday on in their record are not repeated', async t => {
+  const f = await fixture(t);
+  const model = f.library.save({
+    kind: 'whatsapp',
+    purpose: 'birthday',
+    groupId: f.library.groups()[0].id,
+    title: 'Aniversário',
+    body: 'Feliz aniversário, {1}!',
+  });
+  f.store.save('clients', { name: 'Ana Souza', phone: '5564999990000', status: 'Ativo', birthDate: '1990-11-20' });
+  f.store.save('clients', {
+    name: 'Bia Lima',
+    phone: '5511988887777',
+    status: 'Ativo',
+    birthDate: '1985-11-21',
+    birthdayEnabled: true,
+    birthdayTemplateId: model.id,
+  });
+  const campaign = f.campaigns.save(base2({ trigger: { type: 'client-birthday', time: '09:00' } }));
+  f.campaigns.setStatus(campaign.id, 'active');
+  const queued = f.messaging.list().filter(m => m.campaignId === campaign.id);
+  assert.deepEqual(
+    queued.map(m => m.body),
+    ['Olá, Ana! Aqui é do Escritório Exemplo.'],
+  );
+});

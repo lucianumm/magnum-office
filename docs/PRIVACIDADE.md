@@ -50,6 +50,20 @@ O aceite registra versão e data no computador. Disparos, mensagens, lembretes e
 Fontes oficiais de referência: [LGPD — texto atualizado](https://www2.camara.leg.br/legin/fed/lei/2018/lei-13709-14-agosto-2018-787077-normaatualizada-pl.html) e [Guia de segurança da informação da ANPD](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes/guia-orientativo-sobre-seguranca-da-informacao-para-agentes-de-tratamento-de-pequeno-porte).
 
 
+## WhatsApp: mensagens recebidas, respostas e campanhas
+
+- **Mensagens recebidas** (desligado por padrão): o programa lê só texto de conversas individuais, ignora grupos, status e canais, não baixa fotos, áudios nem documentos e guarda cada mensagem cifrada por 30 dias.
+- **Respostas automáticas**: só respondem a número cadastrado a um cliente; a número desconhecido vai uma linha fixa por dia. O **andamento** exige o número do cadastro, o CPF do cliente (conferido e **não guardado**; o texto digitado é apagado da caixa de entrada), o consentimento marcado no cadastro (desligado por padrão), não vale para segredo de justiça e tem limite de 5 consultas por dia. O que a resposta contém é só a última movimentação pública e a data. Cada resposta vai para a auditoria sem o CPF nem o texto da movimentação.
+- **Campanhas**: o cliente que responde SAIR deixa de receber campanhas (os avisos sobre o processo continuam), e a marca fica no cadastro. Todas as mensagens seguem a janela de horário e os limites de envio. Recomenda-se um número de WhatsApp só do escritório.
+
+## Intimações e busca avulsa
+
+A busca no Diário de Justiça Eletrônico Nacional envia ao CNJ apenas os critérios digitados (OAB e UF, nome, número do processo, tribunal e datas). O resultado de uma busca avulsa só é guardado se você escolher **Guardar**.
+
+## Papel timbrado e fontes
+
+Imagens de cabeçalho e rodapé (PNG ou JPG, até 2 MB) são validadas, guardadas cifradas e nunca buscadas na internet. As fontes são apenas lidas do próprio computador para montar o PDF; nada é copiado para fora, e o PDF leva só os caracteres usados.
+
 ## Felicitações de aniversário
 
 A data de nascimento é opcional e permanece no cadastro criptografado. O escritório decide se pode usar esse dado para felicitações e ativa o envio por cliente. Modelos podem utilizar nome completo, primeiro nome e nome do escritório. Ao ativar, o WhatsApp recebe a mensagem personalizada na data programada; desative a opção para interromper envios automáticos futuros. A cópia portátil restaura a automação desativada e preserva o histórico de prevenção de duplicatas.
