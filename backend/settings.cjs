@@ -46,6 +46,7 @@ const defaults = {
   minDelaySec: 8,
   maxDelaySec: 25,
   waInboxEnabled: false,
+  waFlowMode: 'review',
   lastWaCleanup: null,
   lastWaCleanupRemoved: 0,
   logRetentionDays: 365,
@@ -321,6 +322,10 @@ class Settings {
     if ('waInboxEnabled' in data) {
       if (typeof data.waInboxEnabled !== 'boolean') throw new Error('Configuração inválida.');
       next.waInboxEnabled = data.waInboxEnabled;
+    }
+    if ('waFlowMode' in data) {
+      if (!['off', 'review', 'auto'].includes(data.waFlowMode)) throw new Error('Modo de resposta inválido.');
+      next.waFlowMode = data.waFlowMode;
     }
     if ('logRetentionDays' in data) {
       if (![90, 180, 365, 730].includes(data.logRetentionDays))

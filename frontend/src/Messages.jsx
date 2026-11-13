@@ -17,6 +17,7 @@ import {
   Megaphone,
 } from 'lucide-react';
 import Campaigns from './Campaigns.jsx';
+import InboxPanel from './InboxPanel.jsx';
 import { PageHeading, Button, Panel, Empty, Badge, Modal, dateTime, plural } from './components.jsx';
 
 export const messageLabels = {
@@ -141,6 +142,7 @@ export default function Messages({ data, act, reload, composeMessage, navigateSe
           ou duplicadas.
         </div>
       )}
+      <InboxPanel data={data} act={act} reload={reload} composeMessage={composeMessage} />
       <Panel
         title={`Fila de mensagens · ${plural(queued, 'pendente')}`}
         aside={

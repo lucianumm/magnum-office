@@ -38,6 +38,7 @@ const { DocumentGenerator } = require('../backend/document-generator.cjs');
 const { HearingReminders } = require('../backend/hearing-reminders.cjs');
 const { EventNotices } = require('../backend/event-notices.cjs');
 const { Campaigns } = require('../backend/campaigns.cjs');
+const { Flows } = require('../backend/wa-flows.cjs');
 const { WorkflowRunner } = require('../backend/workflow-runner.cjs');
 const { Finance } = require('../backend/finance.cjs');
 const { Indices } = require('../backend/indices.cjs');
@@ -115,6 +116,7 @@ let win,
   reminders,
   eventNotices,
   campaigns,
+  flows,
   workflowRunner,
   finance,
   indices,
@@ -584,6 +586,9 @@ function bindHandlers() {
     get campaigns() {
       return campaigns;
     },
+    get flows() {
+      return flows;
+    },
     get settings() {
       return settings;
     },
@@ -862,7 +867,16 @@ async function boot() {
   messaging.inbox = inbox;
   campaigns = new Campaigns({ store, settings, library, messaging });
   messaging.campaigns = campaigns;
-  inbox.onMessage = record => campaigns.handleReply(record);
+  flows = new Flows({ store, settings, messaging, inbox, campaigns, eventNotices, datajud, library });
+  // A reply first stops campaigns if it says SAIR; otherwise the automatic answers look at it.
+  inbox.onMessage = async record => {
+    if (campaigns.handleReply(record)) {
+      inbox.setStatus(record.id, 'handled');
+      return;
+    }
+    await flows.handle(record);
+  };
+
   digest = new Digest({ store, settings, messaging, djen: null });
   djen = new DJEN({ store, settings, fetch: publicFetch });
   intakes = new Intakes({ store });

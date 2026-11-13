@@ -539,6 +539,14 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
               </Field>
               <div className="full">
                 <Toggle
+                  checked={form.whatsappProgressConsent === true}
+                  onChange={v => setForm(current => ({ ...current, whatsappProgressConsent: v }))}
+                  title="Autoriza consultar o andamento pelo WhatsApp"
+                  description="O cliente poderá pedir o andamento do processo por mensagem, depois de informar o CPF. Só vale para o número cadastrado."
+                />
+              </div>
+              <div className="full">
+                <Toggle
                   checked={form.campaignOptOut === true}
                   onChange={v => setForm(current => ({ ...current, campaignOptOut: v }))}
                   title="Não receber campanhas por WhatsApp"

@@ -18,11 +18,11 @@ export const purposeKeys = Object.keys(purposes);
 
 export const defaultBodies = {
   'event-confirmation':
-    'Olá, {primeiro_nome}! Aqui é da equipe do {escritorio}. Confirmamos a sua {evento}{processo_ref}: {dia_semana}, {data}, às {hora}.\n{detalhes}\nResponda *1* para confirmar a sua presença ou *2* para falar com a equipe.',
+    'Olá, {primeiro_nome}! Aqui é da equipe do {escritorio}. Confirmamos a sua {evento}{processo_ref}: {dia_semana}, {data}, às {hora}.\n{detalhes}\nResponda *CONFIRMO* para confirmar a sua presença ou *EQUIPE* para falar com a equipe.',
   'event-reminder':
     'Olá, {primeiro_nome}! Lembrando da sua {evento}: {dia_semana}, {data}, às {hora}.\n{detalhes}\nQualquer dúvida, fale com a equipe do {escritorio}.',
   'event-reschedule':
-    'Olá, {primeiro_nome}! A sua {evento} foi remarcada para {dia_semana}, {data}, às {hora}.\n{detalhes}\nResponda *1* para confirmar a sua presença ou *2* para falar com a equipe.',
+    'Olá, {primeiro_nome}! A sua {evento} foi remarcada para {dia_semana}, {data}, às {hora}.\n{detalhes}\nResponda *CONFIRMO* para confirmar a sua presença ou *EQUIPE* para falar com a equipe.',
   'event-cancel':
     'Olá, {primeiro_nome}! A sua {evento} marcada para {data}, às {hora}, foi cancelada. A equipe do {escritorio} entrará em contato para combinar uma nova data.',
   'case-update':

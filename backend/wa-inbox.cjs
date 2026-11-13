@@ -62,6 +62,15 @@ class Inbox {
       .all(limit)
       .map(row => ({ ...this.store.vault.unseal(row.payload), status: row.status, clientId: row.client_id || '' }));
   }
+  // Replaces the text of a stored message (used so a CPF typed by the client does not stay in the inbox).
+  redact(id, text) {
+    const row = this.store.db.prepare('SELECT payload FROM inbox WHERE id=?').get(String(id));
+    if (!row) return false;
+    this.store.db
+      .prepare('UPDATE inbox SET payload=? WHERE id=?')
+      .run(this.store.vault.seal({ ...this.store.vault.unseal(row.payload), text }), String(id));
+    return true;
+  }
   setStatus(id, status) {
     if (!['new', 'handled', 'ignored'].includes(status)) throw new Error('Situação inválida.');
     const changes = this.store.db.prepare('UPDATE inbox SET status=? WHERE id=?').run(status, String(id)).changes;

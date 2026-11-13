@@ -198,6 +198,10 @@ function entity(kind, data, { allowLegacyContact = false } = {}) {
     // "Não receber campanhas": set by the client's reply (SAIR) or by the office; messages about the case continue.
     if (data.campaignOptOut !== undefined && typeof data.campaignOptOut !== 'boolean')
       throw new Error('Opção de campanhas inválida.');
+    // Opt-in to ask about the case by WhatsApp (after confirming the CPF): off unless the office turns it on.
+    if (data.whatsappProgressConsent !== undefined && typeof data.whatsappProgressConsent !== 'boolean')
+      throw new Error('Opção de consulta de andamento inválida.');
+    result.whatsappProgressConsent = data.whatsappProgressConsent === true;
     result.campaignOptOut = data.campaignOptOut === true;
     if (!result.campaignOptOut) result.campaignOptOutAt = '';
     result.birthdayTime = result.birthdayTime || '09:00';

@@ -152,6 +152,28 @@ export default function WhatsAppSettings({ data, act, reload }) {
           {status?.inbox.enabled && (
             <small className="field-hint muted">Mensagens novas na caixa: {status.inbox.newCount}.</small>
           )}
+          <label className="field">
+            <span>Respostas automáticas</span>
+            <select
+              value={s.waFlowMode}
+              disabled={s.waInboxEnabled !== true}
+              onChange={async e => {
+                await act(() => window.advocacia.saveSettings({ waFlowMode: e.target.value }), 'Modo salvo.');
+                await reload();
+              }}
+            >
+              <option value="review">Revisar antes de enviar (recomendado)</option>
+              <option value="auto">Responder sozinho</option>
+              <option value="off">Desligadas</option>
+            </select>
+            <small>
+              O cliente cadastrado pode escrever 1 (andamento), 2 (próxima audiência) ou 3 (falar com a equipe), e
+              CONFIRMO depois de um aviso de audiência. Para o andamento, o número tem de ser o do cadastro, o cliente
+              informa o CPF e o cadastro precisa ter a consulta de andamento pelo WhatsApp ligada. Respostas com dados
+              do processo esperam o seu clique em Mensagens, a menos que você escolha Responder sozinho. Processos em
+              segredo de justiça nunca são respondidos. O CPF digitado não fica guardado.
+            </small>
+          </label>
         </div>
       </Panel>
       <Panel title="Limpeza da sessão" icon={Eraser}>
