@@ -167,6 +167,18 @@ function auditEvents(name) {
   }
 }
 // Titles of windows the person can actually see, for programs running from the test folders.
+// Product version of the executable in the installation folder, read from its file properties.
+const installedProductVersion = () =>
+  spawnSync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      `(Get-Item -LiteralPath '${exe.replace(/'/g, "''")}').VersionInfo.ProductVersion`,
+    ],
+    { encoding: 'utf8' },
+  ).stdout.trim();
 const visibleWindows = () =>
   spawnSync(
     'powershell.exe',
@@ -550,6 +562,15 @@ try {
     assert.equal(notice.reason, 'starting');
     assert.ok(log().includes('update.guardian.installed'), 'A instalação deveria ter sido conferida:\n' + log());
     await waitFor(() => visibleWindows().length > 0, 60000, 'janela depois da reversão');
+    // The notice is written before the preserved program is copied back over the folder. Stopping the
+    // recovery earlier leaves the broken version in place (it happened on a slower CI disk), so wait for the
+    // installed executable to be the previous version again.
+    await waitFor(
+      () => installedProductVersion().startsWith(`${second}.`) || installedProductVersion() === second,
+      240000,
+      'programa anterior restaurado na pasta',
+    );
+    await new Promise(r => setTimeout(r, 4000));
     stopProgram();
     await new Promise(r => setTimeout(r, 2500));
     session = await launch();
