@@ -31,6 +31,7 @@ import {
   Globe,
   Lock,
   Sunrise,
+  MessageCircle,
 } from 'lucide-react';
 import BackupPreferences from './BackupPreferences.jsx';
 import PrivacySettings from './PrivacySettings.jsx';
@@ -42,6 +43,7 @@ import DeadlineSettings from './DeadlineSettings.jsx';
 import PublicSettings from './PublicSettings.jsx';
 import UpdateAttempt from './UpdateAttempt.jsx';
 import LockSettings from './LockSettings.jsx';
+import WhatsAppSettings from './WhatsAppSettings.jsx';
 import Trash from './Trash.jsx';
 import DigestSettings from './DigestSettings.jsx';
 import { AppearanceSettings, EmailSettings, SupportSettings } from './Personalization.jsx';
@@ -60,6 +62,7 @@ const groups = [
   [
     'Comunicação',
     [
+      ['whatsapp', 'WhatsApp', MessageCircle],
       ['email', 'E-mail', Mail],
       ['integrations', 'Consultas públicas', Globe],
     ],
@@ -298,6 +301,7 @@ export default function Settings({ data, act, reload, initialTab = 'office' }) {
           )}
           {tab === 'appearance' && <AppearanceSettings data={data} act={act} reload={reload} />}
           {tab === 'privacy' && <PrivacySettings data={data} act={act} setLegal={setLegal} />}
+          {tab === 'whatsapp' && <WhatsAppSettings data={data} act={act} reload={reload} />}
           {tab === 'lock' && <LockSettings act={act} />}
           {tab === 'trash' && <Trash act={act} reload={reload} />}
           {tab === 'digest' && <DigestSettings act={act} />}

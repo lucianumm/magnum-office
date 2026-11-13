@@ -5,6 +5,18 @@ module.exports = function registerMessaging(ctx) {
   ctx.register('disconnectWhatsApp', () =>
     ctx.operations.run('Desconexão WhatsApp', () => ctx.messaging.disconnectWhatsApp()),
   );
+  // WhatsApp settings screen: session housekeeping, sending rules and the inbox.
+  ctx.register('waStatus', () => ({
+    hygiene: require('../../backend/wa-hygiene.cjs').report(ctx.store),
+    rules: ctx.messaging.sendRules(),
+    inbox: { enabled: ctx.inbox.enabled(), newCount: ctx.inbox.newCount() },
+    lastCleanup: ctx.settings.get().lastWaCleanup,
+    lastCleanupRemoved: ctx.settings.get().lastWaCleanupRemoved || 0,
+    whatsapp: ctx.messaging.wa.status,
+  }));
+  ctx.register('cleanWhatsApp', () => ctx.operations.run('Limpeza do WhatsApp', () => ctx.messaging.cleanSessionNow()));
+  ctx.register('inboxList', () => ctx.inbox.list());
+  ctx.register('setInboxStatus', input => ctx.inbox.setStatus(input?.id, input?.status));
   ctx.register('configureEmail', key =>
     ctx.operations.run('Configuração do e-mail', () => ctx.messaging.configureEmail(key)),
   );

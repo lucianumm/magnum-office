@@ -19,6 +19,7 @@ async function setup(t) {
   const settings = new Settings(root),
     operations = new Operations();
   const messaging = new Messaging(store, settings, operations);
+  messaging.skipSendRules = true;
   const sends = [];
   messaging.wa = { status: 'connected', qr: null };
   messaging.socket = {
@@ -183,6 +184,7 @@ test('version 0.1 data and encrypted pending messages survive the scheduling mig
   await store.migrate();
   assert.equal(store.get('clients', client.id).name, 'Cliente preservado');
   const messaging = new Messaging(store, new Settings(root), new Operations());
+  messaging.skipSendRules = true;
   assert.equal(messaging.list()[0].body, 'Conteúdo preservado');
   assert.equal(messaging.list()[0].scheduledFor, null);
   messaging.stop();

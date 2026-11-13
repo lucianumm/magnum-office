@@ -25,6 +25,7 @@ async function fixture(t) {
   const library = new Library(store);
   const operations = new Operations();
   const messaging = new Messaging(store, settings, operations);
+  messaging.skipSendRules = true;
   const birthdays = new Birthdays({ store, settings, library, messaging });
   messaging.birthdays = birthdays;
   const model = library.list().find(m => m.purpose === 'birthday');

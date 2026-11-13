@@ -36,6 +36,19 @@ const defaults = {
   caseLookupEnabled: false,
   cnpjLookupEnabled: false,
   cepLookupEnabled: false,
+  // WhatsApp: sending rules (app/send-limits.mjs), inbox and housekeeping.
+  sendWindowStart: 8,
+  sendWindowEnd: 19,
+  sendOnSaturday: true,
+  sendOnSunday: false,
+  hourlyLimit: 30,
+  dailyLimit: 200,
+  minDelaySec: 8,
+  maxDelaySec: 25,
+  waInboxEnabled: false,
+  lastWaCleanup: null,
+  lastWaCleanupRemoved: 0,
+  logRetentionDays: 365,
   lockIdleMinutes: 0,
   lockOnHide: false,
   digestEnabled: false,
@@ -285,6 +298,35 @@ class Settings {
         if (typeof data[key] !== 'boolean') throw new Error('Configuração inválida.');
         next[key] = data[key];
       }
+    // WhatsApp sending rules: validated together, so the combination is always coherent.
+    const ruleKeys = [
+      'sendWindowStart',
+      'sendWindowEnd',
+      'sendOnSaturday',
+      'sendOnSunday',
+      'hourlyLimit',
+      'dailyLimit',
+      'minDelaySec',
+      'maxDelaySec',
+    ];
+    if (ruleKeys.some(k => k in data)) {
+      Object.assign(
+        next,
+        require('../app/send-limits.mjs').validateLimits({
+          ...next,
+          ...Object.fromEntries(ruleKeys.filter(k => k in data).map(k => [k, data[k]])),
+        }),
+      );
+    }
+    if ('waInboxEnabled' in data) {
+      if (typeof data.waInboxEnabled !== 'boolean') throw new Error('Configuração inválida.');
+      next.waInboxEnabled = data.waInboxEnabled;
+    }
+    if ('logRetentionDays' in data) {
+      if (![90, 180, 365, 730].includes(data.logRetentionDays))
+        throw new Error('Prazo de guarda dos registros inválido.');
+      next.logRetentionDays = data.logRetentionDays;
+    }
     if ('scheduleGraceMinutes' in data) {
       if (![15, 60, 240, 1440].includes(data.scheduleGraceMinutes))
         throw new Error('Tolerância de agendamento inválida.');

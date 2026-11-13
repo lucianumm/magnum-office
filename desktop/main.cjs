@@ -42,6 +42,8 @@ const { Indices } = require('../backend/indices.cjs');
 const { DataJud } = require('../backend/datajud.cjs');
 const { CNPJLookup } = require('../backend/cnpj.cjs');
 const { CEPLookup } = require('../backend/cep.cjs');
+const { Inbox } = require('../backend/wa-inbox.cjs');
+const logRotation = require('../backend/log-rotation.cjs');
 const { AppLock } = require('../backend/app-lock.cjs');
 const { Digest } = require('../backend/digest.cjs');
 const { DJEN } = require('../backend/djen.cjs');
@@ -119,7 +121,8 @@ let win,
   cnpj,
   cep,
   appLock,
-  digest;
+  digest,
+  inbox;
 const operations = new Operations();
 let notificationTimer;
 let quitting = false;
@@ -206,6 +209,8 @@ function applyBranding() {
 // seconds. Commands that only read never announce a change (and "state" must not, or it would loop).
 const readOnlyCommands = new Set([
   'ready',
+  'waStatus',
+  'inboxList',
   'state',
   'trashList',
   'lockConfig',
@@ -260,6 +265,9 @@ function startLockAndDailyTasks() {
       const day = new Date().toISOString().slice(0, 10);
       if (lastPurge !== day) {
         lastPurge = day;
+        // Daily housekeeping: logs and old audit rows, the inbox and the trash.
+        logRotation.maintain(store, { keepDays: settings.get().logRetentionDays || 365 });
+        inbox.purge();
         if (store.purgeTrash({ olderThanDays: 30 })) dataChanged();
       }
       if (settings.get().termsAcceptedVersion === terms.version && !operations.maintenance && digest.tick())
@@ -435,6 +443,9 @@ function bindHandlers() {
     desktopDir: __dirname,
     get appLock() {
       return appLock;
+    },
+    get inbox() {
+      return inbox;
     },
     get cep() {
       return cep;
@@ -832,6 +843,8 @@ async function boot() {
   cnpj = new CNPJLookup({ store, fetch: publicFetch });
   cep = new CEPLookup({ store, fetch: publicFetch });
   appLock = new AppLock({ store, settings });
+  inbox = new Inbox({ store, settings });
+  messaging.inbox = inbox;
   digest = new Digest({ store, settings, messaging, djen: null });
   djen = new DJEN({ store, settings, fetch: publicFetch });
   intakes = new Intakes({ store });
