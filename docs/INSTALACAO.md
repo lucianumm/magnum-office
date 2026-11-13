@@ -8,6 +8,16 @@ Execute o instalador, escolha a pasta e conclua. Abra pelo atalho **Magnum Offic
 
 O [README](../README.md#instalação-rápida-no-windows) inclui um bloco para colar no PowerShell: baixa a última versão oficial, confere o SHA-256 do GitHub e abre o assistente. O bloco exige que o repositório esteja público. Não é preciso instalar ferramentas de desenvolvimento.
 
+## Linux (experimental)
+
+Cada versão traz um **AppImage** e um pacote **.deb** em [Releases](https://github.com/lucianumm/magnum-office/releases/latest).
+
+- **AppImage:** `chmod +x advocacia-gestao-*.AppImage` e execute.
+- **.deb:** `sudo apt install ./advocacia-gestao-*.deb`.
+- O programa guarda a chave dos dados no **chaveiro do sistema** (GNOME Keyring ou KWallet). Sem um chaveiro ativo ele não abre, para não deixar a chave em texto simples.
+- A atualização automática do AppImage abre a nova versão ao lado da antiga, que fica preservada. Não há retorno automático como no Windows; em caso de problema, volte ao AppImage anterior. Os dados ficam em `~/.config/AdvocaciaGestao` e não são apagados.
+- Esta versão não foi testada em várias distribuições. Se algo falhar, abra uma [issue](https://github.com/lucianumm/magnum-office/issues).
+
 ## Primeiros passos
 
 - Configurações → Personalizar: nome, descrição, logo e temas.

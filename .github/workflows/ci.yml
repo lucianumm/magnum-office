@@ -6,6 +6,24 @@ on:
 permissions:
   contents: read
 jobs:
+  # The Linux packages are built on every change, so the release never meets a broken Linux build.
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - name: Gerar AppImage e .deb
+        run: npx electron-builder --linux AppImage deb --x64 --publish never
+      - name: Conferir os pacotes
+        run: |
+          ls -la installers/artifacts
+          test -n "$(ls installers/artifacts/*.AppImage)" && test -n "$(ls installers/artifacts/*.deb)"
   verify:
     runs-on: windows-latest
     timeout-minutes: 15
