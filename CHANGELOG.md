@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.12.0 — ainda não publicada
+## 1.12.0 — 13/11/2026
 
 **WhatsApp**
 
