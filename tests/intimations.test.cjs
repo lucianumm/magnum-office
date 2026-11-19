@@ -267,3 +267,60 @@ test('certificate: downloads the PDF of a stored publication and refuses anythin
   await assert.rejects(new DJEN({ store, settings, fetch: html.fetch, pause: 0 }).certificate('1'), /não é um PDF/);
   await assert.rejects(djen.certificate('inexistente'), /não encontrada/);
 });
+
+test('paging: a page of groups at a time, grouped as chosen, with filters; texts come apart; status changes update the cache', async t => {
+  const { store, settings } = await fixture(t);
+  const caseItem = store.save('cases', {
+    title: 'Indenização',
+    status: 'Em andamento',
+    number: '00000016320248090051',
+  });
+  const rows = [];
+  for (let i = 0; i < 60; i++)
+    rows.push(
+      item(2000 + i, {
+        numero_processo: '100000000000000000' + String(i % 40).padStart(2, '0'),
+        numeroprocessocommascara: `P${i % 40}`,
+        data_disponibilizacao: `2026-11-${String(1 + (i % 9)).padStart(2, '0')}`,
+        siglaTribunal: i % 2 ? 'TJGO' : 'TRT18',
+        tipoComunicacao: i % 5 === 0 ? 'Citação' : 'Intimação',
+        texto: '<p>' + 'Texto muito longo da publicação. '.repeat(60) + '</p>',
+      }),
+    );
+  rows.push(item(9, { numero_processo: '00000016320248090051' }));
+  const { fetch } = fakeFetch(() => ({ body: { count: rows.length, items: rows.slice(0, 100) } }));
+  const djen = new DJEN({ store, settings, fetch, clock: () => Date.parse('2026-11-10T12:00:00Z'), pause: 0 });
+  await djen.check();
+  assert.deepEqual(djen.summary().counts, { new: 61, done: 0, dismissed: 0 });
+  assert.equal(djen.summary().newest.tipo, 'Intimação');
+  const first = djen.pageOf({ status: 'new', group: 'process', limit: 15 });
+  assert.equal(first.groups.length, 15);
+  assert.equal(first.total, 41, '40 processes plus the registered one');
+  assert.equal(first.totalItems, 61);
+  assert.ok(
+    first.groups.every(g => g.items.every(i => i.texto.length <= 600)),
+    'only the beginning of each text',
+  );
+  assert.ok(JSON.stringify(first).length < 120000, 'a page stays small');
+  const second = djen.pageOf({ status: 'new', group: 'process', limit: 15, offset: 15 });
+  assert.ok(!second.groups.some(g => first.groups.some(f => f.key === g.key)), 'no group repeated across pages');
+  assert.equal(djen.pageOf({ group: 'court' }).total, 2);
+  assert.equal(djen.pageOf({ group: 'type' }).groups.length, 2);
+  assert.ok(djen.pageOf({ group: 'day' }).total <= 9);
+  assert.equal(djen.pageOf({ court: 'TRT18' }).totalItems, 30);
+  assert.equal(djen.pageOf({ type: 'citation' }).totalItems, 12);
+  assert.equal(djen.pageOf({ linked: 'yes' }).totalItems, 1);
+  assert.equal(djen.pageOf({ linked: 'yes' }).groups[0].caseId, caseItem.id);
+  assert.equal(djen.pageOf({ query: 'P7' }).total, 1);
+  assert.equal(djen.pageOf({ lawyer: '12345/GO' }).totalItems, 61);
+  assert.equal(djen.pageOf({}).facets.courts.TJGO, 31);
+  assert.ok(djen.fullText('2000').length > 600, 'the whole text on request');
+  assert.throws(() => djen.fullText('nao-existe'), /não encontrada/);
+  // Handling a whole group at once, and the filters following the new status.
+  const ids = first.groups[0].items.map(i => i.id);
+  djen.setStatusMany(ids, 'done');
+  assert.equal(djen.summary().counts.done, ids.length);
+  assert.equal(djen.pageOf({ status: 'done' }).totalItems, ids.length);
+  assert.equal(djen.pageOf({ status: 'new' }).totalItems, 61 - ids.length);
+  assert.throws(() => djen.setStatusMany('x', 'done'), /inválidas/);
+});

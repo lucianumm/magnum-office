@@ -81,7 +81,10 @@ class Inbox {
     return this.store.db.prepare("SELECT COUNT(*) AS n FROM inbox WHERE status='new'").get().n;
   }
   purge() {
-    const cutoff = new Date(this.clock() - KEEP_DAYS * 86400000).toISOString();
+    const days = [1, 7, 30].includes(this.settings.get().waInboxKeepDays)
+      ? this.settings.get().waInboxKeepDays
+      : KEEP_DAYS;
+    const cutoff = new Date(this.clock() - days * 86400000).toISOString();
     return Number(this.store.db.prepare('DELETE FROM inbox WHERE created_at < ?').run(cutoff).changes);
   }
 }

@@ -33,9 +33,9 @@ const defaults = {
   courtCalendar: [],
   workflows: null,
   datajudEnabled: false,
-  caseLookupEnabled: false,
-  cnpjLookupEnabled: false,
-  cepLookupEnabled: false,
+  caseLookupEnabled: true,
+  cnpjLookupEnabled: true,
+  cepLookupEnabled: true,
   // WhatsApp: sending rules (app/send-limits.mjs), inbox and housekeeping.
   sendWindowStart: 8,
   sendWindowEnd: 19,
@@ -46,7 +46,14 @@ const defaults = {
   minDelaySec: 8,
   maxDelaySec: 25,
   waInboxEnabled: false,
+  waInboxKeepDays: 30,
   waFlowMode: 'review',
+  aiEnabled: false,
+  aiProvider: 'anthropic',
+  aiModel: '',
+  aiBaseUrl: '',
+  aiGuidelines: '',
+  aiMode: 'review',
   lastWaCleanup: null,
   lastWaCleanupRemoved: 0,
   logRetentionDays: 365,
@@ -58,7 +65,7 @@ const defaults = {
   digestTime: '08:00',
   lastDigestDate: '',
   datajudKey: '',
-  djenEnabled: false,
+  djenEnabled: true,
   lastDatajudCheck: null,
   lastDjenCheck: null,
   datajudError: '',
@@ -170,7 +177,19 @@ class Settings {
     const policy =
       (stored.updatePolicyVersion || 0) < 1 ? { automatic: true, autoDownload: true, updatePolicyVersion: 1 } : {};
     if (stored.appDescription === 'SEU ESCRITÓRIO, CONECTADO.') stored.appDescription = defaults.appDescription;
-    this.value = { ...defaults, ...stored, ...policy, repository: build.repository, version };
+    // From 1.13 the lookups by CEP, CNPJ and case number and the intimations (DJEN) start turned on. Installations
+    // that already existed get them once; after that each choice is kept as the office left it.
+    const lookups =
+      (stored.lookupDefaultsVersion || 0) < 1
+        ? {
+            caseLookupEnabled: true,
+            cnpjLookupEnabled: true,
+            cepLookupEnabled: true,
+            djenEnabled: true,
+            lookupDefaultsVersion: 1,
+          }
+        : {};
+    this.value = { ...defaults, ...stored, ...policy, ...lookups, repository: build.repository, version };
     // Standard workflows are offered once; after that the office's list (even empty) is kept.
     if (!Array.isArray(this.value.workflows)) this.value.workflows = require('../app/workflows.mjs').defaultWorkflows;
     this.persist();
@@ -322,9 +341,40 @@ class Settings {
         }),
       );
     }
+    if ('waInboxKeepDays' in data) {
+      if (![1, 7, 30].includes(data.waInboxKeepDays)) throw new Error('Prazo da caixa de entrada inválido.');
+      next.waInboxKeepDays = data.waInboxKeepDays;
+    }
     if ('waInboxEnabled' in data) {
       if (typeof data.waInboxEnabled !== 'boolean') throw new Error('Configuração inválida.');
       next.waInboxEnabled = data.waInboxEnabled;
+    }
+    // AI assistant for answering clients (off by default; the key is kept apart, encrypted).
+    if ('aiEnabled' in data) {
+      if (typeof data.aiEnabled !== 'boolean') throw new Error('Configuração da IA inválida.');
+      next.aiEnabled = data.aiEnabled;
+    }
+    if ('aiProvider' in data) {
+      if (!['anthropic', 'openai'].includes(data.aiProvider)) throw new Error('Escolha o serviço de IA.');
+      next.aiProvider = data.aiProvider;
+    }
+    if ('aiModel' in data) next.aiModel = limited(data.aiModel, 80);
+    if ('aiBaseUrl' in data) {
+      const url = limited(data.aiBaseUrl, 200);
+      if (url && !/^https:\/\/[^\s]+$|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s]*)?$/.test(url))
+        throw new Error(
+          'O endereço da IA deve começar com https:// (ou http://localhost para um modelo neste computador).',
+        );
+      next.aiBaseUrl = url;
+    }
+    if ('aiGuidelines' in data) {
+      if (typeof data.aiGuidelines !== 'string' || data.aiGuidelines.length > 8000 || data.aiGuidelines.includes('\0'))
+        throw new Error('As diretrizes da IA devem ter até 8.000 caracteres.');
+      next.aiGuidelines = data.aiGuidelines.trim();
+    }
+    if ('aiMode' in data) {
+      if (!['review', 'auto'].includes(data.aiMode)) throw new Error('Modo de resposta da IA inválido.');
+      next.aiMode = data.aiMode;
     }
     if ('waFlowMode' in data) {
       if (!['off', 'review', 'auto'].includes(data.waFlowMode)) throw new Error('Modo de resposta inválido.');

@@ -14,8 +14,8 @@ const rules = require('../app/campaign-rules.mjs');
 
 const base = path.resolve('work', 'tests');
 fs.mkdirSync(base, { recursive: true });
-// 2026-11-12 10:00, a Thursday.
-const NOW = new Date(2026, 10, 12, 10, 0).getTime();
+// 2030-11-12 10:00: far enough ahead that the real clock (used to refuse past dates) never gets in the way.
+const NOW = new Date(2030, 10, 12, 10, 0).getTime();
 async function fixture(t) {
   const root = fs.mkdtempSync(path.join(base, 'camp-'));
   const store = new Store(root, new Vault(randomBytes(32)));
@@ -41,7 +41,7 @@ const keys = list => list.map(rules.dayKey).join(' ');
 const base2 = (over = {}) => ({
   name: 'Campanha',
   body: 'Olá, {primeiro_nome}! Aqui é do {escritorio}.',
-  trigger: { type: 'dates', dates: ['2026-11-20'], time: '09:00' },
+  trigger: { type: 'dates', dates: ['2030-11-20'], time: '09:00' },
   segment: { mode: 'all' },
   ...over,
 });
@@ -161,7 +161,7 @@ test('activating queues one message per client and date, never twice, and respec
   f.campaigns.setStatus(campaign.id, 'active');
   const queued = f.messaging.list();
   assert.equal(queued.length, 2);
-  assert.ok(queued.every(m => m.campaignId === campaign.id && m.scheduledFor === d(2026, 11, 20, 9).toISOString()));
+  assert.ok(queued.every(m => m.campaignId === campaign.id && m.scheduledFor === d(2030, 11, 20, 9).toISOString()));
   assert.ok(!queued.some(m => m.clientId === out.id));
   f.campaigns.tick(true);
   f.campaigns.tick(true);
@@ -206,8 +206,8 @@ test('relative to an event and system events: a reminder before a hearing, welco
   const f = await fixture(t);
   const ana = f.store.save('clients', { name: 'Ana Souza', phone: '5564999990000', status: 'Ativo' });
   const caseItem = f.store.save('cases', { title: 'Indenização', status: 'Em andamento', clientId: ana.id });
-  f.store.save('tasks', { title: 'Audiência', type: 'Audiência', due: '2026-11-25T14:00', caseId: caseItem.id });
-  f.store.save('tasks', { title: 'Perícia', type: 'Perícia', due: '2026-11-26T14:00', caseId: caseItem.id });
+  f.store.save('tasks', { title: 'Audiência', type: 'Audiência', due: '2030-11-25T14:00', caseId: caseItem.id });
+  f.store.save('tasks', { title: 'Perícia', type: 'Perícia', due: '2030-11-26T14:00', caseId: caseItem.id });
   const before = f.campaigns.save(
     base2({
       body: 'Sua {evento} é dia {data}, às {hora}.',
@@ -217,25 +217,25 @@ test('relative to an event and system events: a reminder before a hearing, welco
   f.campaigns.setStatus(before.id, 'active');
   let [m] = f.messaging.list();
   assert.equal(f.messaging.list().length, 1, 'only the hearing, not the expert exam');
-  assert.equal(m.body, 'Sua audiência é dia 25/11/2026, às 14:00.');
-  assert.equal(m.scheduledFor, d(2026, 11, 22, 10, 30).toISOString());
+  assert.equal(m.body, 'Sua audiência é dia 25/11/2030, às 14:00.');
+  assert.equal(m.scheduledFor, d(2030, 11, 22, 10, 30).toISOString());
   // The hearing moves: the waiting message follows it and is not duplicated.
   const task = f.store.list('tasks').find(x => x.type === 'Audiência');
   const { id, createdAt, updatedAt, ...rest } = task;
   void createdAt;
   void updatedAt;
-  f.store.put('tasks', id, { ...rest, due: '2026-11-27T09:00' });
+  f.store.put('tasks', id, { ...rest, due: '2030-11-27T09:00' });
   f.campaigns.tick(true);
   const moved = f.messaging.list();
   assert.equal(moved.filter(x => x.status === 'pending').length, 1);
-  assert.equal(moved.find(x => x.status === 'pending').body, 'Sua audiência é dia 27/11/2026, às 09:00.');
+  assert.equal(moved.find(x => x.status === 'pending').body, 'Sua audiência é dia 27/11/2030, às 09:00.');
   // Gentle billing: at most two reminders, a week apart, only while unpaid.
   f.store.save('finance', {
     description: 'Honorários',
     direction: 'Receita',
     category: 'Honorários',
     amount: '1000',
-    dueDate: '2026-11-05',
+    dueDate: '2030-11-05',
     clientId: ana.id,
   });
   const bill = f.campaigns.save(
@@ -248,18 +248,8 @@ test('relative to an event and system events: a reminder before a hearing, welco
   f.campaigns.setStatus(bill.id, 'active');
   const bills = f.messaging.list().filter(x => x.campaignId === bill.id);
   assert.equal(bills.length, 1, 'the first notice (08/11) is in the past; the second (15/11) is ahead');
-  assert.match(bills[0].body, /^Valor R\$\s1\.000,00, vencido em 05\/11\/2026\.$/);
-  assert.equal(bills[0].scheduledFor, d(2026, 11, 15, 9).toISOString());
-  // Welcome for a case registered today.
-  const welcome = f.campaigns.save(
-    base2({
-      name: 'Boas-vindas',
-      body: 'Bem-vinda, {primeiro_nome}{processo_ref}!',
-      trigger: { type: 'case-created', delayDays: 0, time: '23:00' },
-    }),
-  );
-  f.campaigns.setStatus(welcome.id, 'active');
-  assert.ok(f.messaging.list().some(x => x.campaignId === welcome.id && x.body === 'Bem-vinda, Ana!'));
+  assert.match(bills[0].body, /^Valor R\$\s1\.000,00, vencido em 05\/11\/2030\.$/);
+  assert.equal(bills[0].scheduledFor, d(2030, 11, 15, 9).toISOString());
   void m;
 });
 
@@ -299,4 +289,22 @@ test('client birthday: clients with the automatic birthday on in their record ar
     queued.map(m => m.body),
     ['Olá, Ana! Aqui é do Escritório Exemplo.'],
   );
+});
+
+test('welcome: a case registered today gets one message the next morning', async t => {
+  const f = await fixture(t);
+  f.setNow(Date.now());
+  const ana = f.store.save('clients', { name: 'Ana Souza', phone: '5564999990000', status: 'Ativo' });
+  const welcome = f.campaigns.save(
+    base2({
+      name: 'Boas-vindas',
+      body: 'Bem-vinda, {primeiro_nome}{processo_ref}!',
+      trigger: { type: 'case-created', delayDays: 1, time: '09:00' },
+    }),
+  );
+  f.store.save('cases', { title: 'Indenização', status: 'Em andamento', clientId: ana.id, number: '' });
+  f.campaigns.setStatus(welcome.id, 'active');
+  const [m] = f.messaging.list().filter(x => x.campaignId === welcome.id);
+  assert.equal(m.body, 'Bem-vinda, Ana!');
+  assert.equal(new Date(m.scheduledFor).getHours(), 9);
 });

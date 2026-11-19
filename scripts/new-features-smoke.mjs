@@ -140,9 +140,9 @@ try {
     await click(page.getByRole('tab', { name: 'Lixeira' }));
     await expect(page.getByText('A lixeira está vazia')).toBeVisible();
     await click(page.getByRole('tab', { name: 'Senha do programa' }));
-    await page.getByLabel('Senha', { exact: true }).fill('segredo1');
-    await page.getByLabel('Confirme a senha', { exact: true }).fill('segredo1');
-    await click(page.getByRole('button', { name: 'Ativar senha' }));
+    await page.getByLabel('Senha', { exact: true }).first().fill('segredo1');
+    await page.getByLabel('Confirme a senha', { exact: true }).first().fill('segredo1');
+    await click(page.getByRole('button', { name: 'Ativar senha', exact: true }));
     await expect(page.getByRole('button', { name: 'Bloquear agora' })).toBeVisible();
   });
   await step('bloqueio e desbloqueio', async () => {

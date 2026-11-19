@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, FileText, MessageCircle, Pencil, Plus, Trash2, Download, Wallet } from 'lucide-react';
+import { Check, FileText, Lock, LockOpen, MessageCircle, Pencil, Plus, Trash2, Download, Wallet } from 'lucide-react';
 import { Badge, Button, DataTable, Empty, PageHeading, Panel, date, dayKey } from './components.jsx';
 import { entryStatus, statusLabels, summarize } from '../../app/finance.mjs';
 import { formatBRL } from '../../app/money.mjs';
@@ -15,6 +15,37 @@ const addDaysKey = (key, n) => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
+
+// Asks for the financial password; until it is typed the program does not hand the money to the window.
+export function FinanceGate({ act }) {
+  const [password, setPassword] = useState('');
+  return (
+    <form
+      className="finance-gate"
+      onSubmit={async e => {
+        e.preventDefault();
+        const result = await act(() => window.advocacia.unlockFinance(password), 'Financeiro aberto.');
+        if (result) setPassword('');
+      }}
+    >
+      <Lock size={22} />
+      <h3>Financeiro protegido por senha</h3>
+      <p className="help-text">
+        Digite a senha do financeiro para ver os valores. Ele fecha de novo 30 minutos depois de aberto.
+      </p>
+      <input
+        type="password"
+        aria-label="Senha do financeiro"
+        autoComplete="current-password"
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+      />
+      <Button type="submit" icon={LockOpen} disabled={!password}>
+        Abrir financeiro
+      </Button>
+    </form>
+  );
+}
 
 // Fees and expenses: the whole office (page) or one client/case (tab inside its page).
 export default function Finance({
@@ -32,6 +63,7 @@ export default function Finance({
   const [period, setPeriod] = useState(filter ? 'all' : 'month');
   const [status, setStatus] = useState('Todos');
   const [direction, setDirection] = useState('Todos');
+  const lock = data.financeLock || { enabled: false, locked: false };
   const clients = new Map(data.entities.clients.map(c => [c.id, c]));
   const cases = new Map(data.entities.cases.map(c => [c.id, c]));
   const scoped = (data.entities.finance || []).filter(
@@ -255,6 +287,19 @@ export default function Finance({
       )}
     </>
   );
+  if (lock.locked)
+    return filter ? (
+      <Panel title="Financeiro">
+        <FinanceGate act={act} />
+      </Panel>
+    ) : (
+      <>
+        <PageHeading title="Financeiro" />
+        <Panel>
+          <FinanceGate act={act} />
+        </Panel>
+      </>
+    );
   if (filter)
     return (
       <Panel
@@ -271,6 +316,15 @@ export default function Finance({
   return (
     <>
       <PageHeading title="Financeiro">
+        {lock.enabled && (
+          <Button
+            tone="ghost"
+            icon={Lock}
+            onClick={() => act(() => window.advocacia.lockFinance(), 'Financeiro bloqueado.')}
+          >
+            Bloquear financeiro
+          </Button>
+        )}
         <Button
           tone="secondary"
           icon={Download}

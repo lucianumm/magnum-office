@@ -189,7 +189,7 @@ try {
     ['Processos', 'processos'],
     ['Documentos', 'documentos'],
     ['Anotações', 'anotacoes'],
-    ['Mensagens', 'mensagens'],
+    ['WhatsApp', 'mensagens'],
     ['Tribunais', 'tribunais'],
     ['PDF', 'pdf'],
   ]) {
@@ -238,7 +238,7 @@ try {
     ['Início', 'inicio'],
     ['Clientes', 'clientes'],
     ['Agenda', 'agenda'],
-    ['Mensagens', 'mensagens'],
+    ['WhatsApp', 'mensagens'],
   ]) {
     await nav(n);
     await shot('m-' + f);
@@ -248,7 +248,7 @@ try {
   await page.waitForTimeout(4500);
   for (const [n, f] of [
     ['Início', 'inicio'],
-    ['Mensagens', 'mensagens'],
+    ['WhatsApp', 'mensagens'],
     ['Clientes', 'clientes'],
   ]) {
     await nav(n);

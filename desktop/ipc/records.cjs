@@ -59,6 +59,7 @@ module.exports = function registerRecords(ctx) {
   ctx.register('save', data =>
     ctx.operations.run('Gravação de cadastro', () => {
       const entity = data.entity || {};
+      if (data.kind === 'finance') ctx.financeLock.assertOpen();
       // A new repeating appointment becomes one appointment per date, linked by seriesId.
       if (data.kind === 'tasks' && !entity.id && entity.repeat) {
         const { seriesDates } = require('../../app/task-series.mjs');
@@ -100,6 +101,7 @@ module.exports = function registerRecords(ctx) {
   );
   ctx.register('remove', data =>
     ctx.operations.run('Exclusão de registro', async () => {
+      if (data.kind === 'finance') ctx.financeLock.assertOpen();
       const response = await ctx.dialog.showMessageBox(ctx.win, {
         type: 'warning',
         title: 'Excluir registro',
@@ -135,15 +137,21 @@ module.exports = function registerRecords(ctx) {
   ctx.register('setCampaignOptOut', ({ id, value }) =>
     ctx.operations.run('Campanha', () => ctx.campaigns.optOut(id, value === true)),
   );
-  ctx.register('previewEventNotice', id => ctx.eventNotices.preview(id));
+  ctx.register('previewEventNotice', input =>
+    typeof input === 'string' ? ctx.eventNotices.preview(input) : ctx.eventNotices.preview(input.id, input),
+  );
   ctx.register('applyEventNotice', ({ id, choice }) =>
     ctx.operations.run('Aviso ao cliente', () => ctx.eventNotices.apply(id, choice)),
   );
   ctx.register('createInstallments', input =>
-    ctx.operations.run('Parcelamento', () => ctx.finance.createInstallments(input)),
+    ctx.operations.run('Parcelamento', () => {
+      ctx.financeLock.assertOpen();
+      return ctx.finance.createInstallments(input);
+    }),
   );
   ctx.register('exportFinance', () =>
     ctx.operations.run('Exportação financeira', async () => {
+      ctx.financeLock.assertOpen();
       const result = await ctx.dialog.showSaveDialog(ctx.win, {
         title: 'Exportar lançamentos',
         defaultPath: `financeiro-${new Date().toISOString().slice(0, 10)}.xlsx`,

@@ -33,7 +33,10 @@ try {
   await nav('Clientes');
   await page.getByRole('button', { name: 'Novo cliente', exact: true }).click();
   await page.getByLabel('Nome completo ou razão social').fill('Cliente de teste');
-  await page.getByLabel(/^E-mail/).fill('teste@example.test');
+  await page
+    .getByRole('dialog')
+    .getByLabel(/^E-mail/)
+    .fill('teste@example.test');
   await page.getByLabel('WhatsApp (com DDD)', { exact: false }).fill('64999990000');
   await page.getByRole('button', { name: 'Salvar cliente', exact: true }).click();
   await expect(page.getByRole('table')).toContainText('Cliente de teste');
@@ -77,7 +80,7 @@ try {
   await page.getByLabel('Buscar em todo o escritório').fill('Atendimento inicial');
   await expect(page.getByRole('main')).toContainText('1 registro');
   await page.getByRole('button', { name: 'Limpar busca' }).click();
-  await nav('Mensagens');
+  await nav('WhatsApp');
   await page.getByRole('button', { name: 'Nova mensagem', exact: true }).click();
   await page.getByLabel('Destinatário', { exact: true }).fill('5562999990000');
   await page.getByLabel('Mensagem', { exact: true }).fill('Mensagem local de teste. Não enviar.');

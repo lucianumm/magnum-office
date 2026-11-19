@@ -29,6 +29,16 @@ export default function EventNotice({ id, onClose, onDone }) {
       live = false;
     };
   }, [id]);
+  // Another confirmation template: only the confirmation text changes, nothing else the person edited.
+  async function pickTemplate(templateId) {
+    try {
+      const p = await window.advocacia.previewEventNotice({ id, confirmationTemplateId: templateId });
+      setPreview(p);
+      setChoice(c => ({ ...c, confirmationBody: p.confirmationBody }));
+    } catch (e) {
+      setError(e.message);
+    }
+  }
   const toggleOffset = key =>
     setChoice(c => ({
       ...c,
@@ -70,8 +80,8 @@ export default function EventNotice({ id, onClose, onDone }) {
         <>
           <div className="settings-body notice-body">
             <p className="help-text">
-              Mensagens para <strong>{preview.client.name}</strong> ({preview.client.phone}). Elas entram na fila de
-              Mensagens e seguem as regras de envio: só saem no horário e nos limites definidos em WhatsApp.
+              Mensagens para <strong>{preview.client.name}</strong> ({preview.client.phone}). Elas entram na fila do
+              WhatsApp e seguem as regras de envio: só saem no horário e nos limites definidos em WhatsApp.
             </p>
             <Toggle
               checked={choice.confirmation}
@@ -83,6 +93,20 @@ export default function EventNotice({ id, onClose, onDone }) {
                   : 'O cliente recebe a data, o horário e o local e pode responder para confirmar a presença.'
               }
             />
+            {choice.confirmation && preview.confirmationTemplates?.length > 0 && (
+              <label className="field full">
+                <span>Modelo da confirmação</span>
+                <select value={preview.confirmationTemplateId} onChange={e => pickTemplate(e.target.value)}>
+                  <option value="">Texto padrão</option>
+                  {preview.confirmationTemplates.map(t => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+                <small>O programa escolhe o modelo da espécie e da modalidade; troque aqui se quiser outro.</small>
+              </label>
+            )}
             {choice.confirmation && (
               <label className="field full">
                 <span>Texto da confirmação</span>
@@ -122,7 +146,7 @@ export default function EventNotice({ id, onClose, onDone }) {
             )}
             <small className="field-hint muted">
               Se o compromisso for remarcado ou excluído, os lembretes são refeitos ou cancelados e o aviso ao cliente
-              fica esperando a sua aprovação em Mensagens.
+              fica esperando a sua aprovação em WhatsApp.
             </small>
           </div>
           <div className="form-footer">

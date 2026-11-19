@@ -208,6 +208,12 @@ export default function EntityForm({ kind, item, data, onClose, onSave }) {
     },
     [],
   );
+  // A new case that arrives with its number already filled (from an intimation) looks it up right away.
+  useEffect(() => {
+    if (kind === 'cases' && !item?.id && settings.caseLookupEnabled && parseCNJ(form.number)?.valid)
+      void lookupCase(form.number);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when the form opens
+  }, []);
   async function lookupCase(number, manual = false) {
     const parsed = parseCNJ(number);
     if (!parsed?.valid || (!manual && looked.current.case === parsed.formatted)) return;

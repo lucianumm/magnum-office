@@ -134,6 +134,8 @@ class Messaging {
         shouldIgnoreJid: jid => !isIndividualJid(jid),
         generateHighQualityLinkPreview: false,
         emitOwnEvents: false,
+        // WhatsApp asks for a message again when a phone shows "Aguardando mensagem": answer from the 24-hour store.
+        getMessage: async key => this.outbox?.find(key?.id),
       });
       this.socket = socket;
       socket.ev.on('creds.update', () => {
@@ -161,6 +163,7 @@ class Messaging {
           this.wa = { status: 'connected', qr: null };
           this.reconnectAttempts = 0;
           this.store.audit('whatsapp.connected');
+          if (this.onConnected) void Promise.resolve(this.onConnected()).catch(() => {});
         }
         if (connection === 'close') {
           this.socket = null;
@@ -650,12 +653,12 @@ class Messaging {
               error.definite = true;
               throw error;
             }
-          } else
-            await this.socket.sendMessage(
-              data.recipient + '@s.whatsapp.net',
-              { text: data.body },
-              { messageId: row.id.replaceAll('-', '').toUpperCase() },
-            );
+          } else {
+            const messageId = row.id.replaceAll('-', '').toUpperCase();
+            // Kept before sending: if the retry request comes right away the text is already there.
+            this.outbox?.remember(messageId, data.recipient + '@s.whatsapp.net', data.body);
+            await this.socket.sendMessage(data.recipient + '@s.whatsapp.net', { text: data.body }, { messageId });
+          }
           const now = new Date().toISOString();
           this.store.db
             .prepare("UPDATE queue SET status='sent',sent_at=?,last_error=NULL,updated_at=? WHERE id=?")

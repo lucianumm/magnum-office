@@ -20,10 +20,13 @@ try {
   await prepareTestApp(page);
   await page.evaluate(() => window.advocacia.saveSettings({ queuePaused: true, officeName: 'Escritório de teste' }));
   const nav = async name => page.getByRole('navigation').getByRole('button', { name, exact: true }).click();
-  await nav('Documentos');
+  await nav('WhatsApp');
   await page.getByRole('tab', { name: 'Modelos de WhatsApp', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Mensagem aniversário', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Abrir e editar', exact: true }).click();
+  await page
+    .locator('.template-card', { hasText: 'Mensagem aniversário' })
+    .getByRole('button', { name: 'Abrir e editar', exact: true })
+    .click();
   await expect(page.getByLabel('Finalidade do modelo')).toHaveValue('birthday');
   await page.getByLabel('Texto do modelo de WhatsApp').fill('Feliz aniversário, {1}! Um abraço da equipe {3}.');
   await page.getByRole('button', { name: 'Salvar modelo', exact: true }).click();

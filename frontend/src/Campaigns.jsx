@@ -579,7 +579,7 @@ function CampaignEditor({ data, initial, onClose, onSaved }) {
             checked={form.review}
             onChange={v => setForm({ ...form, review: v })}
             title="Revisar antes de enviar"
-            description="Cada mensagem fica esperando a sua aprovação em Mensagens."
+            description="Cada mensagem fica esperando a sua aprovação em WhatsApp."
           />
           <Toggle
             checked={form.optOutFooter}
@@ -647,7 +647,7 @@ function CampaignEditor({ data, initial, onClose, onSaved }) {
               onClick={() =>
                 run(
                   () => window.advocacia.sampleCampaign({ campaign: payload(), phone }),
-                  () => setNotice('Amostra na fila de Mensagens. Ela segue as regras de envio.'),
+                  () => setNotice('Amostra na fila do WhatsApp. Ela segue as regras de envio.'),
                 )
               }
             >

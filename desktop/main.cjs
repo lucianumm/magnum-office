@@ -40,6 +40,9 @@ const { EventNotices } = require('../backend/event-notices.cjs');
 const { Campaigns } = require('../backend/campaigns.cjs');
 const { Flows } = require('../backend/wa-flows.cjs');
 const { Letterheads } = require('../backend/letterhead.cjs');
+const { FinanceLock } = require('../backend/finance-lock.cjs');
+const { Outbox, Journal } = require('../backend/wa-retry.cjs');
+const { AiReply } = require('../backend/ai-reply.cjs');
 const { SystemFonts } = require('../backend/system-fonts.cjs');
 const { WorkflowRunner } = require('../backend/workflow-runner.cjs');
 const { Finance } = require('../backend/finance.cjs');
@@ -115,6 +118,10 @@ let win,
   weeklyBackups,
   birthdays,
   generator,
+  outbox,
+  journal,
+  aiReply,
+  financeLock,
   letterheads,
   systemFonts,
   reminders,
@@ -222,6 +229,8 @@ const readOnlyCommands = new Set([
   'waStatus',
   'inboxList',
   'previewEventNotice',
+  'intimationsPage',
+  'intimationText',
   'intimationCourts',
   'systemFonts',
   'letterheadImage',
@@ -271,7 +280,10 @@ let changeTimer = null;
 // Locking (idle time, Windows session lock), the morning summary and the trash cleanup.
 function startLockAndDailyTasks() {
   const lockNow = () => {
-    if (appLock?.lock()) dataChanged();
+    if (appLock?.lock()) {
+      financeLock?.lock();
+      dataChanged();
+    }
   };
   powerMonitor.on('lock-screen', () => {
     if (appLock?.config().onHide) lockNow();
@@ -280,6 +292,10 @@ function startLockAndDailyTasks() {
   const tick = () => {
     try {
       if (appLock?.idle(powerMonitor.getSystemIdleTime())) dataChanged();
+      // Sent texts and the received-message journal live 24 hours.
+      outbox?.purge();
+      inbox?.purge();
+      journal?.purge();
       const day = new Date().toISOString().slice(0, 10);
       if (lastPurge !== day) {
         lastPurge = day;
@@ -430,10 +446,12 @@ function state() {
     courts,
     settings: settings.get(),
     counts: store.counts(),
+    financeLock: financeLock.config(),
+    // While the financial password is not typed, the money is not handed to the window at all.
     entities: Object.fromEntries(
       ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes', 'time'].map(kind => [
         kind,
-        store.list(kind),
+        kind === 'finance' && financeLock.locked() ? [] : store.list(kind),
       ]),
     ),
     services: messaging.status(),
@@ -442,7 +460,8 @@ function state() {
     updates: updater.get(),
     operations: operations.status(),
     audit: store.auditList(),
-    intimations: djen ? djen.list() : [],
+    // Only counts and the newest one: the screen asks for pages (a long list made every refresh heavy).
+    intimationSummary: djen ? djen.summary() : { counts: { new: 0, done: 0, dismissed: 0 }, newest: null },
     djenHealth: djen ? djen.health() : null,
     letterheads: letterheads ? letterheads.list() : [],
     movementsNew: datajud ? datajud.newCounts() : {},
@@ -544,6 +563,18 @@ function bindHandlers() {
     },
     get letterheads() {
       return letterheads;
+    },
+    get financeLock() {
+      return financeLock;
+    },
+    get aiReply() {
+      return aiReply;
+    },
+    get journal() {
+      return journal;
+    },
+    get outbox() {
+      return outbox;
     },
     get systemFonts() {
       return systemFonts;
@@ -889,24 +920,52 @@ async function boot() {
   cnpj = new CNPJLookup({ store, fetch: publicFetch });
   cep = new CEPLookup({ store, fetch: publicFetch });
   appLock = new AppLock({ store, settings });
+  financeLock = new FinanceLock({ store });
   inbox = new Inbox({ store, settings });
   messaging.inbox = inbox;
   campaigns = new Campaigns({ store, settings, library, messaging });
   messaging.campaigns = campaigns;
-  flows = new Flows({ store, settings, messaging, inbox, campaigns, eventNotices, datajud, library });
+  outbox = new Outbox({ store });
+  journal = new Journal({ store });
+  messaging.outbox = outbox;
+  aiReply = new AiReply({ store, settings, fetch: publicFetch });
+  if (testRoot) globalThis.__magnumTest = { ...globalThis.__magnumTest, aiReply };
+  flows = new Flows({ store, settings, messaging, inbox, campaigns, eventNotices, datajud, library, ai: aiReply });
   // A reply first stops campaigns if it says SAIR; otherwise the automatic answers look at it.
-  inbox.onMessage = async record => {
+  const handleRecord = async record => {
     if (campaigns.handleReply(record)) {
       inbox.setStatus(record.id, 'handled');
       return;
     }
     await flows.handle(record);
   };
+  // Each received message is written in the 24-hour journal first: delivered twice, it is handled once; if the
+  // program stops in the middle, the answer is picked up again (when less than 10 minutes old); the text is erased
+  // as soon as the conversation is handled.
+  inbox.onMessage = async record => {
+    if (!journal.begin(record)) return;
+    try {
+      await handleRecord(record);
+    } finally {
+      journal.finish(record.id);
+    }
+  };
+  const resumeInterrupted = async () => {
+    for (const { record } of journal.interrupted()) {
+      try {
+        await handleRecord(record);
+      } finally {
+        journal.finish(record.id);
+      }
+    }
+  };
+  messaging.onConnected = resumeInterrupted;
+  setTimeout(() => void resumeInterrupted().catch(() => {}), 20000).unref();
 
   digest = new Digest({ store, settings, messaging, djen: null });
   djen = new DJEN({ store, settings, fetch: publicFetch });
   // Interface tests replace the network answer of the DJEN (only an unpackaged run with a test data folder).
-  if (testRoot) globalThis.__magnumTest = { djen };
+  if (testRoot) globalThis.__magnumTest = { ...globalThis.__magnumTest, djen };
   intakes = new Intakes({ store });
   docIndex = new DocumentIndex({ store, documents });
   imports = new Imports(store);

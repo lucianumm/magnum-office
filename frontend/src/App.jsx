@@ -8,6 +8,7 @@ import {
   FileCog,
   NotebookPen,
   MessageCircle,
+  Mail,
   Landmark,
   Settings2,
   Search,
@@ -77,7 +78,8 @@ const navGroups = [
       ['intimations', 'Intimações', Inbox],
       ['documents', 'Documentos', FileText],
       ['notes', 'Anotações', NotebookPen],
-      ['messages', 'Mensagens', MessageCircle],
+      ['whatsapp', 'WhatsApp', MessageCircle],
+      ['email', 'E-mail', Mail],
     ],
   ],
   [
@@ -188,14 +190,15 @@ function buildNotices(data, today) {
       go: first.kind === 'case' ? ['cases', first.id] : ['documents'],
     });
   }
-  const intimations = (data.intimations || []).filter(i => i.status === 'new');
-  if (intimations.length)
+  const newest = data.intimationSummary?.newest;
+  const intimationCount = data.intimationSummary?.counts.new || 0;
+  if (intimationCount)
     list.push({
       id: 'intimations',
       tone: 'danger',
       icon: AlertCircle,
-      title: plural(intimations.length, 'intimação nova', 'intimações novas'),
-      detail: `${intimations[0].tipo} · ${intimations[0].tribunal} · ${intimations[0].processoMascara || intimations[0].processo}`,
+      title: plural(intimationCount, 'intimação nova', 'intimações novas'),
+      detail: newest ? `${newest.tipo} · ${newest.tribunal} · ${newest.processoMascara || newest.processo}` : '',
       go: ['intimations'],
     });
   const moved = Object.keys(data.movementsNew || {});
@@ -224,7 +227,7 @@ function buildNotices(data, today) {
       icon: AlertCircle,
       title: plural(failed.length, 'envio precisa', 'envios precisam') + ' de atenção',
       detail: 'Falhou, ficou incerto ou perdeu o horário.',
-      go: ['messages'],
+      go: [failed.some(m => m.channel === 'whatsapp') ? 'whatsapp' : 'email'],
     });
   if (update.available?.mandatory)
     list.push({
@@ -242,7 +245,7 @@ function buildNotices(data, today) {
       icon: AlertTriangle,
       title: 'WhatsApp desconectado',
       detail: `${plural(waiting.length, 'envio aguarda', 'envios aguardam')} a conexão.`,
-      go: ['messages'],
+      go: ['whatsapp'],
     });
   if (data.settings.queuePaused)
     list.push({
@@ -251,7 +254,7 @@ function buildNotices(data, today) {
       icon: AlertTriangle,
       title: 'Fila de envios pausada',
       detail: 'Nenhum novo envio será iniciado até você retomar.',
-      go: ['messages'],
+      go: ['whatsapp'],
     });
   if (!data.backups.length)
     list.push({
@@ -441,7 +444,8 @@ export default function App() {
   }, [back]);
   const navigate = useCallback(
     value => {
-      if (value === 'tasks') go({ page: 'calendar', view: 'list' });
+      if (value === 'messages') go({ page: 'whatsapp' });
+      else if (value === 'tasks') go({ page: 'calendar', view: 'list' });
       else if (value === 'settings') {
         setSettingsVisit(v => v + 1);
         go({ page: 'settings', tab: 'office' });
@@ -639,7 +643,7 @@ export default function App() {
   const page = route.page;
   const attention = notices.filter(n => !n.quiet);
   const overdueCount = data.entities.tasks.filter(t => t.status !== 'Concluída' && t.due < today + 'T00:00').length;
-  const newIntimations = (data.intimations || []).filter(i => i.status === 'new').length;
+  const newIntimations = data.intimationSummary?.counts.new || 0;
   const followNotice = notice => {
     const [target, tab] = notice.go;
     if (target === 'agenda-list') go({ page: 'calendar', view: 'list' });
@@ -679,7 +683,11 @@ export default function App() {
                   >
                     <Icon size={16} strokeWidth={1.8} />
                     <span>{label}</span>
-                    {key === 'messages' && data.services.pending > 0 && <small>{data.services.pending}</small>}
+                    {(key === 'whatsapp' || key === 'email') &&
+                      (() => {
+                        const n = data.messages.filter(m => m.status === 'pending' && m.channel === key).length;
+                        return n > 0 ? <small>{n}</small> : null;
+                      })()}
                     {key === 'calendar' && overdueCount > 0 && <small className="urgent">{overdueCount}</small>}
                     {key === 'intimations' && newIntimations > 0 && <small className="urgent">{newIntimations}</small>}
                   </button>
@@ -903,8 +911,8 @@ export default function App() {
             <Dashboard {...shared} />
           ) : page === 'calendar' ? (
             <Agenda key={route.view || 'calendar'} initialView={route.view} {...shared} />
-          ) : page === 'messages' ? (
-            <Messages {...shared} />
+          ) : page === 'whatsapp' || page === 'email' ? (
+            <Messages key={page} channel={page} {...shared} />
           ) : page === 'pdf' ? (
             <PDFTools {...shared} />
           ) : page === 'documents' ? (

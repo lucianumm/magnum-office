@@ -53,12 +53,35 @@ class EventNotices {
       return { reason: 'O cliente não tem WhatsApp válido no cadastro.', client, caseItem };
     return { client, caseItem, phone };
   }
-  template(purpose) {
-    return this.library.list().find(t => t.kind === 'whatsapp' && t.purpose === purpose) || null;
+  // The best template for this event: one made for its kind and modality beats one for the kind only, then the
+  // modality only, then a general one. A template made for another kind or modality is never used.
+  template(purpose, task = {}, templateId = '') {
+    const list = this.library.list().filter(t => t.kind === 'whatsapp' && t.purpose === purpose);
+    if (templateId) {
+      const chosen = list.find(t => t.id === templateId);
+      if (chosen) return chosen;
+    }
+    let best = null;
+    let bestScore = -1;
+    for (const t of list) {
+      const m = t.match || {};
+      if (
+        (m.eventType && m.eventType !== task.type) ||
+        (m.eventKind && m.eventKind !== task.eventKind) ||
+        (m.modality && m.modality !== task.modality)
+      )
+        continue;
+      const score = (m.eventKind ? 2 : 0) + (m.modality ? 1 : 0) + (m.eventType ? 0.5 : 0);
+      if (score > bestScore) {
+        best = t;
+        bestScore = score;
+      }
+    }
+    return best;
   }
-  render(task, purpose, audience) {
+  render(task, purpose, audience, templateId = '') {
     const settings = this.settings.get();
-    const model = this.template(purpose);
+    const model = this.template(purpose, task, templateId);
     const context = messageContext({
       client: audience.client,
       settings,
@@ -86,7 +109,7 @@ class EventNotices {
     return !!date && date.getTime() > this.clock() + 60000;
   }
   // What the confirmation window shows: texts already filled in, with the times, ready to edit.
-  preview(taskId) {
+  preview(taskId, { confirmationTemplateId = '' } = {}) {
     const task = this.store.get('tasks', taskId);
     const audience = this.audience(task);
     const ids = this.ids(task);
@@ -108,7 +131,12 @@ class EventNotices {
       eligible: true,
       client: { id: audience.client.id, name: audience.client.name, phone: audience.phone },
       confirmationSent,
-      confirmationBody: this.render(task, 'event-confirmation', audience),
+      confirmationBody: this.render(task, 'event-confirmation', audience, confirmationTemplateId),
+      confirmationTemplates: this.library
+        .list()
+        .filter(t => t.kind === 'whatsapp' && t.purpose === 'event-confirmation')
+        .map(t => ({ id: t.id, title: t.title })),
+      confirmationTemplateId: (this.template('event-confirmation', task, confirmationTemplateId) || {}).id || '',
       reminderBody: this.render(task, 'event-reminder', audience),
       reminders: Object.keys(reminderOffsets).map(key => {
         const at = this.when(task, key);

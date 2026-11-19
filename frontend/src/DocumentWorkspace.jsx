@@ -5,8 +5,6 @@ import Templates from './Templates.jsx';
 const tabs = [
   ['files', 'Arquivos'],
   ['document', 'Modelos jurídicos'],
-  ['whatsapp', 'Modelos de WhatsApp'],
-  ['email', 'Modelos de e-mail'],
 ];
 export default function DocumentWorkspace(props) {
   const [tab, setTab] = useState('files');

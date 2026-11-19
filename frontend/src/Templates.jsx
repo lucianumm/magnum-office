@@ -1,13 +1,21 @@
 import { messageVariables } from '../../app/message-variables.mjs';
 import { messageVariableList } from '../../app/message-vars.mjs';
-import { purposes, defaultBodies } from '../../app/message-defaults.mjs';
+import { purposes, defaultBodies, eventKinds } from '../../app/message-defaults.mjs';
 import { documentVariables } from '../../app/document-template.mjs';
 import { EmailPreview } from './EmailDesign.jsx';
 import { useState } from 'react';
 import { FileText, Plus, Upload, FolderPlus, FilePenLine } from 'lucide-react';
 import { Button, Panel, Modal, PageHeading, SearchBox, Empty } from './components.jsx';
 import EmailEditor from './EmailEditor.jsx';
-export default function Templates({ data, act, reload, kind = 'document', headerExtra = null, generateDocument }) {
+export default function Templates({
+  data,
+  act,
+  reload,
+  kind = 'document',
+  headerExtra = null,
+  generateDocument,
+  embedded = false,
+}) {
   const [group, setGroup] = useState(''),
     [query, setQuery] = useState(''),
     [draft, setDraft] = useState(null),
@@ -58,33 +66,38 @@ export default function Templates({ data, act, reload, kind = 'document', header
       (!group || t.groupId === group) &&
       (t.title + ' ' + t.body).toLowerCase().includes(query.toLowerCase()),
   );
+  const actions = (
+    <>
+      <Button
+        tone="secondary"
+        icon={FolderPlus}
+        onClick={() => {
+          setError('');
+          setGroupDraft({ name: '' });
+        }}
+      >
+        Novo grupo
+      </Button>
+      <Button tone="secondary" icon={Upload} onClick={imported}>
+        Importar modelo
+      </Button>
+      {kind === 'document' && generateDocument && (
+        <Button tone="secondary" icon={FilePenLine} onClick={() => generateDocument({})}>
+          Gerar documento
+        </Button>
+      )}
+      <Button icon={Plus} onClick={() => open()}>
+        Redigir modelo
+      </Button>
+    </>
+  );
   return (
     <>
-      <PageHeading title="Documentos">
-        <>
-          <Button
-            tone="secondary"
-            icon={FolderPlus}
-            onClick={() => {
-              setError('');
-              setGroupDraft({ name: '' });
-            }}
-          >
-            Novo grupo
-          </Button>
-          <Button tone="secondary" icon={Upload} onClick={imported}>
-            Importar modelo
-          </Button>
-          {kind === 'document' && generateDocument && (
-            <Button tone="secondary" icon={FilePenLine} onClick={() => generateDocument({})}>
-              Gerar documento
-            </Button>
-          )}
-          <Button icon={Plus} onClick={() => open()}>
-            Redigir modelo
-          </Button>
-        </>
-      </PageHeading>
+      {embedded ? (
+        <div className="heading-actions template-toolbar">{actions}</div>
+      ) : (
+        <PageHeading title="Documentos">{actions}</PageHeading>
+      )}
       {headerExtra}
       <Panel>
         <div className="library-filters">
@@ -222,6 +235,47 @@ export default function Templates({ data, act, reload, kind = 'document', header
                         ? 'Este modelo é usado automaticamente nesta situação. Sem um modelo próprio, o programa usa o texto padrão.'
                         : 'Mensagem para escolher na hora de enviar.'}
                   </small>
+                  {draft.purpose?.startsWith('event-') && (
+                    <span className="template-match">
+                      <label>
+                        Para a audiência{' '}
+                        <select
+                          aria-label="Espécie da audiência"
+                          value={draft.match?.eventKind || ''}
+                          onChange={e =>
+                            setDraft({
+                              ...draft,
+                              match: { eventType: 'Audiência', ...draft.match, eventKind: e.target.value },
+                            })
+                          }
+                        >
+                          <option value="">Qualquer</option>
+                          {eventKinds['Audiência'].map(k => (
+                            <option key={k} value={k}>
+                              {k}
+                            </option>
+                          ))}
+                        </select>
+                      </label>{' '}
+                      <label>
+                        Modalidade{' '}
+                        <select
+                          aria-label="Modalidade da audiência"
+                          value={draft.match?.modality || ''}
+                          onChange={e =>
+                            setDraft({
+                              ...draft,
+                              match: { eventType: 'Audiência', ...draft.match, modality: e.target.value },
+                            })
+                          }
+                        >
+                          <option value="">Qualquer</option>
+                          <option value="presencial">Presencial</option>
+                          <option value="virtual">Por vídeo</option>
+                        </select>
+                      </label>
+                    </span>
+                  )}
                   {draft.purpose && defaultBodies[draft.purpose] && (
                     <button
                       type="button"

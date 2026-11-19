@@ -110,7 +110,7 @@ try {
       entity: { phone: '5564999990000', name: 'Cliente preservado', email: 'cliente@example.test' },
     }),
   );
-  await nav().getByRole('button', { name: 'Documentos', exact: true }).click();
+  await nav().getByRole('button', { name: 'E-mail', exact: true }).click();
   await page.getByRole('tab', { name: 'Modelos de e-mail', exact: true }).click();
   await page.getByRole('button', { name: 'Redigir modelo', exact: true }).click();
   await page.getByLabel('Título do modelo', { exact: true }).fill('Atendimento com identidade');

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.13.0 — ainda não publicada
+
+- **WhatsApp e E-mail separados**: cada um tem a sua página, com fila de envios, conexão, ferramentas e os seus próprios modelos. Os modelos de WhatsApp e de e-mail saíram de Documentos.
+- **Agendar audiência** na Agenda, com vínculo ao cliente e modelos prontos de mensagem para **audiência inicial** e **audiência de instrução**, **presencial** ou **por vídeo** (confirmação e lembrete). O programa escolhe o modelo da espécie e da modalidade; dá para trocar na janela de aviso.
+- **Intimações mais leves**: a tela pede uma página de cada vez (15 grupos), com filtros no servidor, cartões recolhidos, texto completo sob demanda e botão **Carregar mais**. Dá para organizar **por processo, tribunal, tipo ou dia** e **tratar todas** as de um grupo de uma vez.
+- **Cadastrar processo a partir da intimação** preenche número, título (autor x réu), vara, área, classe, instância, polo, parte contrária, advogado da parte contrária e notas, e busca o restante no DataJud. Quando não dá para saber o lado do cliente, pergunta.
+- **CEP, CNPJ, número do processo e intimações (DJEN) vêm ligados** em instalações novas, e as existentes recebem isso uma vez; cada consulta pode ser desligada em Configurações → Consultas públicas. Não existe consulta pública gratuita de CPF.
+- **Financeiro com senha própria** (opcional, separada da senha do programa): sem a senha, os lançamentos e os valores dos relatórios nem chegam à tela. Abre por 30 minutos. A tabela de meses do relatório fica **retrátil** e mostra os 3 últimos meses (ou os 12).
+- **Assistente de IA** (opcional, desligado): redige a resposta a cliente cadastrado que escreve algo livre, com a chave de API do serviço que você escolher (Anthropic ou compatível com a OpenAI, inclusive um modelo no seu computador) e as **diretrizes do escritório**. Só o texto do cliente, o primeiro nome e o nome do escritório saem do computador; o padrão é revisar antes de enviar.
+- **Reenvio e diário de 24 horas**: o texto das mensagens enviadas fica 24 h para o WhatsApp pedir de novo quando o celular mostrar "Aguardando mensagem" (inclusive depois de reiniciar); o diário das recebidas trata a mesma mensagem uma vez só e retoma atendimento interrompido com menos de 10 minutos, apagando o texto ao terminar. A caixa de entrada passa a guardar por 1, 7 ou 30 dias.
+
 ## 1.12.0 — 13/11/2026
 
 **WhatsApp**

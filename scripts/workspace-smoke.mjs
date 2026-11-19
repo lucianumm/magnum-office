@@ -83,7 +83,7 @@ try {
       queuePaused: true,
     }),
   );
-  await nav.getByRole('button', { name: 'Mensagens', exact: true }).click();
+  await nav.getByRole('button', { name: 'E-mail', exact: true }).click();
   await page.getByRole('button', { name: 'Campanha de e-mail', exact: true }).click();
   await page
     .getByLabel('Colar vários e-mails', { exact: true })
@@ -106,6 +106,7 @@ try {
     state.library.templates.filter(
       t =>
         t.purpose !== 'birthday' &&
+        !t.match &&
         !/^(Procuração ad judicia et extra|Substabelecimento com reserva de poderes|Contrato de honorários advocatícios|Declaração de hipossuficiência econômica|Recibo de honorários)$/.test(
           t.title,
         ),

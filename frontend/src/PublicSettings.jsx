@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Globe, RefreshCw, Save, ExternalLink } from 'lucide-react';
 import { Button, Panel, Toggle, dateTime } from './components.jsx';
 
-// Public consultations: everything starts turned off and says what leaves the computer.
+// Public consultations: CEP, CNPJ, case number and intimations start on; each says what leaves the computer.
 export default function PublicSettings({ data, act }) {
   const s = data.settings;
   const [form, setForm] = useState({
@@ -22,8 +22,9 @@ export default function PublicSettings({ data, act }) {
         <div className="settings-body">
           <p className="help-text">
             Estas consultas usam serviços públicos do CNJ, do Banco Central e dados abertos da Receita Federal. Elas vêm
-            desligadas, funcionam só com o programa aberto ou na bandeja e enviam apenas o mínimo descrito em cada uma.
-            Nenhum nome de cliente sai do computador.
+            ligadas (exceto o acompanhamento diário pelo DataJud), funcionam só com o programa aberto ou na bandeja e
+            enviam apenas o mínimo descrito em cada uma. Nenhum nome de cliente sai do computador. Desligue o que não
+            quiser usar.
           </p>
           <Toggle
             checked={form.datajudEnabled}

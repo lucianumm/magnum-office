@@ -50,7 +50,7 @@ try {
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Ana Souza')).toBeVisible();
   await expect(dialog.locator('textarea').first()).toHaveValue(
-    /audiência de instrução e julgamento.*Fórum de Goiânia, sala 3/s,
+    /audiência de instrução, presencial.*Local: Fórum de Goiânia, sala 3.*Chegue com 30 minutos/s,
   );
   await page.screenshot({ path: path.join(base, 'aviso-ao-cliente.png') });
   await dialog.getByRole('button', { name: 'Agendar avisos', exact: true }).click();
@@ -63,7 +63,7 @@ try {
   assert.equal(task.confirmationStatus, 'awaiting');
 
   // Modelos por finalidade
-  await nav('Documentos');
+  await nav('WhatsApp');
   await page.getByRole('tab', { name: 'Modelos de WhatsApp', exact: true }).click();
   await page.getByRole('button', { name: 'Redigir modelo', exact: true }).click();
   await page.getByLabel('Finalidade do modelo').selectOption('event-reminder');
@@ -76,7 +76,7 @@ try {
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   // Campanhas
-  await nav('Mensagens');
+  await nav('WhatsApp');
   await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
   const campaigns = page.getByRole('dialog', { name: 'Campanhas de WhatsApp' });
   await expect(campaigns.getByText('Nenhuma campanha ainda')).toBeVisible();
@@ -151,6 +151,10 @@ try {
         numeroprocessocommascara: '0011222-33.2024.5.18.0001',
         texto: '<p>Edital de intimação.</p>',
         link: '',
+        destinatarios: [
+          { nome: 'Carlos Lima', polo: 'A' },
+          { nome: 'Empresa Y Ltda', polo: 'P' },
+        ],
       },
     ],
   };
@@ -194,6 +198,7 @@ try {
   await page.getByRole('button', { name: 'Verificar agora', exact: true }).click();
   await expect(page.getByRole('heading', { name: '0000001-63.2024.8.09.0051' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '0011222-33.2024.5.18.0001' })).toBeVisible();
+  await page.getByRole('button', { name: 'Expandir todos' }).click();
   await expect(page.locator('mark.hl-deadline').first()).toContainText('prazo de 15 (quinze) dias úteis');
   await page.screenshot({ path: path.join(base, 'intimacoes.png') });
   await page.getByRole('button', { name: /Criar audiência na agenda/ }).click();
@@ -203,6 +208,55 @@ try {
     .getByRole('button', { name: 'Cancelar', exact: true })
     .click()
     .catch(() => {});
+  // Cadastrar processo a partir da intimação: pergunta o lado do cliente e preenche as partes.
+  await page
+    .getByRole('button', { name: 'Cancelar', exact: true })
+    .click()
+    .catch(() => {});
+  await page.getByRole('button', { name: 'Cadastrar processo', exact: true }).click();
+  const side = page.getByRole('dialog', { name: 'Cadastrar processo' });
+  await expect(side.getByText('Quem é o seu cliente neste processo?')).toBeVisible();
+  await side.getByRole('button', { name: /Autor: Carlos Lima/ }).click();
+  await expect(page.getByLabel('Título do processo')).toHaveValue('Carlos Lima x Empresa Y Ltda');
+  await expect(page.getByPlaceholder('Nome ou razão social')).toHaveValue('Empresa Y Ltda');
+  await expect(page.getByLabel('Número do processo')).toHaveValue('0011222-33.2024.5.18.0001');
+  await page.screenshot({ path: path.join(base, 'processo-da-intimacao.png') });
+  // Assistente de IA e diário de 24 horas, em Configurações → WhatsApp
+  await app.evaluate(() => {
+    globalThis.__magnumTest.aiReply.fetch = async () => ({
+      status: 200,
+      ok: true,
+      json: async () => ({ content: [{ type: 'text', text: 'Atendemos de segunda a sexta, das 9h às 18h.' }] }),
+    });
+  });
+  await page
+    .getByRole('button', { name: 'Cancelar', exact: true })
+    .click()
+    .catch(() => {});
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Agora não', exact: true })
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.getByRole('tab', { name: 'WhatsApp', exact: true }).click();
+  await expect(page.getByText('Reenvio e diário de 24 horas')).toBeVisible();
+  await page.getByRole('switch', { name: /Responder aos clientes com IA/ }).check();
+  await page.getByLabel('Modelo', { exact: true }).fill('claude-haiku-5-5');
+  await page.getByLabel('Chave de API').fill('sk-ant-chave-secreta-de-teste');
+  await page
+    .getByLabel('Diretrizes da IA')
+    .fill('Atendemos de segunda a sexta, das 9h às 18h. Nunca prometa resultado.');
+  await page.getByRole('button', { name: 'Salvar assistente', exact: true }).click();
+  await expect(page.getByPlaceholder('Chave cadastrada (digite outra para trocar)')).toBeVisible();
+  const afterAi = await page.evaluate(() => window.advocacia.state());
+  assert.equal(afterAi.settings.aiEnabled, true);
+  assert.match(afterAi.settings.aiGuidelines, /segunda a sexta/);
+  assert.ok(!JSON.stringify(afterAi).includes('sk-ant-chave-secreta'), 'the key never reaches the window');
+  assert.equal((await page.evaluate(() => window.advocacia.waStatus())).ai.hasKey, true);
+  await page.getByLabel('Testar com uma mensagem de exemplo').fill('Vocês atendem aos sábados?');
+  await page.getByRole('button', { name: 'Testar resposta', exact: true }).click();
+  await expect(page.getByText('Atendemos de segunda a sexta, das 9h às 18h.', { exact: true })).toBeVisible();
+  await page.screenshot({ path: path.join(base, 'ia-whatsapp.png'), fullPage: true });
   process.stdout.write(
     'WhatsApp: aviso ao cliente na agenda, modelos por finalidade, campanhas e intimações agrupadas verificados.\n',
   );

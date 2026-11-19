@@ -13,7 +13,21 @@ module.exports = function registerMessaging(ctx) {
     lastCleanup: ctx.settings.get().lastWaCleanup,
     lastCleanupRemoved: ctx.settings.get().lastWaCleanupRemoved || 0,
     whatsapp: ctx.messaging.wa.status,
+    retry: { stored: ctx.outbox.count(), journal: ctx.journal.status() },
+    ai: ctx.aiReply.config(),
   }));
+  ctx.register('setAiKey', key =>
+    ctx.operations.run('Chave da IA', () => ctx.aiReply.setKey(typeof key === 'string' ? key.trim() : null)),
+  );
+  // A test with a made-up message, so the office sees the style of the answers before turning them on.
+  ctx.register('testAi', input =>
+    ctx.operations.run('Teste da IA', async () => ({
+      answer: await ctx.aiReply.draft({
+        text: String(input?.text || 'Boa tarde, queria saber se vocês podem me ajudar com um assunto.').slice(0, 500),
+        firstName: 'Maria',
+      }),
+    })),
+  );
   ctx.register('cleanWhatsApp', () => ctx.operations.run('Limpeza do WhatsApp', () => ctx.messaging.cleanSessionNow()));
   ctx.register('inboxList', () => ctx.inbox.list());
   ctx.register('setInboxStatus', input => ctx.inbox.setStatus(input?.id, input?.status));

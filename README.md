@@ -56,7 +56,7 @@ Sem servidor, sem assinatura, sem mensalidade.
 | **Cálculos** | Atualização de débitos por IPCA, INPC, IGP-M, IPCA-E, Selic e Taxa Legal (Lei 14.905/2024), com índices do Banco Central e memória em PDF. Rescisão com INSS e IRRF opcionais e liquidação trabalhista (horas extras, reflexos e ADC 58). |
 | **Acompanhamento** | Andamentos pelo DataJud e intimações do Diário de Justiça Eletrônico Nacional, agrupadas por processo, com busca avulsa, certidão e atalho para calcular o prazo ou criar a audiência. Desligados por padrão. |
 | **Relatórios** | Relatório ao cliente em linguagem simples e painel do escritório: processos, prazos, atendimentos e dinheiro. |
-| **Comunicação** | WhatsApp por QR Code com modelos por finalidade, campanhas por data ou evento, regras de envio, respostas automáticas e andamento por CPF; e-mail com domínio próprio e campanhas; aniversários automáticos. |
+| **Comunicação** | WhatsApp e E-mail em páginas separadas, cada um com seus modelos. WhatsApp por QR Code com modelos por finalidade, assistente de IA opcional, campanhas por data ou evento, regras de envio, respostas automáticas e andamento por CPF; e-mail com domínio próprio e campanhas; aniversários automáticos. |
 | **Ferramentas** | PDF/A, união e divisão de PDF, diretório oficial de tribunais e importação de planilhas. Assinatura digital de PDF com certificado A1 (PAdES). |
 | **Segurança** | Dados e documentos em AES-256-GCM, chave no cofre do Windows, backups semanais e portáteis, atualizações assinadas com retorno automático se algo falhar. Senha opcional do programa e lixeira de 30 dias. |
 | **Agentes** | API local e servidor MCP, desligados por padrão, para usar o escritório com assistentes de IA de sua confiança. |

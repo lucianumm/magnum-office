@@ -46,7 +46,7 @@ try {
       .first()
       .evaluate(img => img.complete && img.naturalWidth > 0),
   );
-  await nav.getByRole('button', { name: 'Documentos', exact: true }).click();
+  await nav.getByRole('button', { name: 'WhatsApp', exact: true }).click();
   await page.getByRole('tab', { name: 'Modelos de WhatsApp', exact: true }).click();
   await page.getByRole('button', { name: 'Redigir modelo', exact: true }).click();
   await page.getByLabel('Título do modelo', { exact: true }).fill('Lembrete reutilizável');
@@ -61,7 +61,7 @@ try {
   await page.getByLabel('Texto do modelo de WhatsApp', { exact: true }).fill('Olá! Seu compromisso está confirmado.');
   await page.getByRole('button', { name: 'Salvar modelo', exact: true }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await nav.getByRole('button', { name: 'Mensagens', exact: true }).click();
+  await nav.getByRole('button', { name: 'WhatsApp', exact: true }).click();
   await page.getByRole('button', { name: 'Agendar WhatsApp', exact: true }).click();
   await page.getByLabel('Aplicar modelo de mensagem', { exact: true }).selectOption({ label: 'Lembrete reutilizável' });
   await expect(page.getByLabel('Mensagem', { exact: true })).toHaveValue('Olá! Seu compromisso está confirmado.');
@@ -73,7 +73,7 @@ try {
   assert.equal(state.messages[0].recipient, '5564999991111');
   assert.equal(state.messages[0].status, 'pending');
   assert.ok(state.messages[0].scheduledFor);
-  await nav.getByRole('button', { name: 'Documentos', exact: true }).click();
+  await nav.getByRole('button', { name: 'E-mail', exact: true }).click();
   await page.getByRole('tab', { name: 'Modelos de e-mail', exact: true }).click();
   await page.getByRole('button', { name: 'Redigir modelo', exact: true }).click();
   await page.getByLabel('Título do modelo', { exact: true }).fill('Comunicado por e-mail');
@@ -89,7 +89,7 @@ try {
       emailDNSConfirmed: true,
     }),
   );
-  await nav.getByRole('button', { name: 'Mensagens', exact: true }).click();
+  await nav.getByRole('button', { name: 'E-mail', exact: true }).click();
   await page.getByRole('button', { name: 'Campanha de e-mail', exact: true }).click();
   await page.getByLabel('Aplicar modelo de mensagem', { exact: true }).selectOption({ label: 'Comunicado por e-mail' });
   await expect(page.getByLabel('Assunto da campanha')).toHaveValue('Assunto reutilizável');

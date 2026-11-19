@@ -92,6 +92,11 @@ module.exports = function registerPublic(ctx) {
       throw new Error('Link inválido.');
     return ctx.shell.openExternal(link);
   });
+  ctx.register('intimationsPage', query => ctx.djen.pageOf(query || {}));
+  ctx.register('intimationText', id => ctx.djen.fullText(id));
+  ctx.register('setIntimations', input =>
+    ctx.operations.run('Intimações', () => ctx.djen.setStatusMany(input?.ids, input?.status)),
+  );
   ctx.register('searchIntimations', input => ctx.operations.run('Busca no DJEN', () => ctx.djen.search(input || {})));
   ctx.register('keepIntimation', id => ctx.operations.run('Intimação', () => ctx.djen.keep(id)));
   ctx.register('intimationCourts', () => ctx.djen.courts());
