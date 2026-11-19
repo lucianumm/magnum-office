@@ -88,7 +88,7 @@ export default function AgentSettings({ data, act }) {
         </p>
         <p className="notice">
           Agentes podem organizar compromissos e preparar disparos. Propostas de mensagens ficam em revisão e exigem
-          confirmação na tela Mensagens antes de entrar na fila de envio.
+          confirmação na tela WhatsApp ou E-mail antes de entrar na fila de envio.
         </p>
       </div>
     </Panel>

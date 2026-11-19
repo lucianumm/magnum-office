@@ -31,7 +31,7 @@ export function FinanceGate({ act }) {
       <Lock size={22} />
       <h3>Financeiro protegido por senha</h3>
       <p className="help-text">
-        Digite a senha do financeiro para ver os valores. Ele fecha de novo depois de um tempo sem uso.
+        Digite a senha do financeiro para ver os valores. Ele fecha de novo 30 minutos depois de aberto.
       </p>
       <input
         type="password"

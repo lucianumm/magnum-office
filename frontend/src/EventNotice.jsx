@@ -80,8 +80,8 @@ export default function EventNotice({ id, onClose, onDone }) {
         <>
           <div className="settings-body notice-body">
             <p className="help-text">
-              Mensagens para <strong>{preview.client.name}</strong> ({preview.client.phone}). Elas entram na fila de
-              Mensagens e seguem as regras de envio: só saem no horário e nos limites definidos em WhatsApp.
+              Mensagens para <strong>{preview.client.name}</strong> ({preview.client.phone}). Elas entram na fila do
+              WhatsApp e seguem as regras de envio: só saem no horário e nos limites definidos em WhatsApp.
             </p>
             <Toggle
               checked={choice.confirmation}
@@ -146,7 +146,7 @@ export default function EventNotice({ id, onClose, onDone }) {
             )}
             <small className="field-hint muted">
               Se o compromisso for remarcado ou excluído, os lembretes são refeitos ou cancelados e o aviso ao cliente
-              fica esperando a sua aprovação em Mensagens.
+              fica esperando a sua aprovação em WhatsApp.
             </small>
           </div>
           <div className="form-footer">

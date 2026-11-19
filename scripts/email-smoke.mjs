@@ -34,7 +34,7 @@ try {
     });
     return [a, b];
   });
-  await page.getByRole('navigation').getByRole('button', { name: 'Mensagens', exact: true }).click();
+  await page.getByRole('navigation').getByRole('button', { name: 'E-mail', exact: true }).click();
   await page.getByRole('button', { name: 'Campanha de e-mail', exact: true }).click();
   await page.getByText('Adicionar clientes do cadastro', { exact: true }).click();
   await page.getByRole('checkbox', { name: 'Receber e-mail: Cliente A', exact: true }).waitFor({ timeout: 10000 });

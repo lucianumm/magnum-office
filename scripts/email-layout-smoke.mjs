@@ -31,7 +31,7 @@ try {
     await window.advocacia.configureEmail('re_fixture');
   });
   const nav = () => page.getByRole('navigation');
-  await nav().getByRole('button', { name: 'Mensagens', exact: true }).click();
+  await nav().getByRole('button', { name: 'E-mail', exact: true }).click();
   await page.getByRole('button', { name: 'Campanha de e-mail', exact: true }).click();
   const addresses = Array.from({ length: 88 }, (_, i) => `cliente${i + 1}@example.test`);
   await page
@@ -58,7 +58,7 @@ try {
   assert.equal(state.messages.length, 88);
   assert.ok(state.messages.every(m => m.scheduledFor === new Date(when).toISOString()));
   assert.equal(new Set(state.messages.map(m => m.availableAt)).size, 1);
-  await page.getByRole('button', { name: 'Nova mensagem', exact: true }).click();
+  await page.getByRole('button', { name: 'Novo e-mail', exact: true }).click();
   await page.getByLabel('Canal', { exact: true }).selectOption('email');
   await page
     .getByLabel('Colar vários e-mails', { exact: true })

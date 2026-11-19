@@ -60,7 +60,7 @@ try {
   await page.getByLabel('Mensagem', { exact: true }).fill('Disparo reagendado pelo teste.');
   await page.getByRole('switch', { name: /^Confirmo o destinatário/ }).check();
   await page.getByRole('button', { name: 'Salvar disparo', exact: true }).click();
-  await nav('Mensagens');
+  await nav('WhatsApp');
   await expect(page.getByRole('table')).toContainText('Agendada');
   await page.getByRole('button', { name: 'Pausar envios', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Retomar envios', exact: true })).toBeVisible();

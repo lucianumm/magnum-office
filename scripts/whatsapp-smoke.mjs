@@ -63,7 +63,7 @@ try {
   assert.equal(task.confirmationStatus, 'awaiting');
 
   // Modelos por finalidade
-  await nav('Documentos');
+  await nav('WhatsApp');
   await page.getByRole('tab', { name: 'Modelos de WhatsApp', exact: true }).click();
   await page.getByRole('button', { name: 'Redigir modelo', exact: true }).click();
   await page.getByLabel('Finalidade do modelo').selectOption('event-reminder');
@@ -76,7 +76,7 @@ try {
   await expect(page.getByRole('dialog')).toHaveCount(0);
 
   // Campanhas
-  await nav('Mensagens');
+  await nav('WhatsApp');
   await page.getByRole('button', { name: 'Campanhas', exact: true }).click();
   const campaigns = page.getByRole('dialog', { name: 'Campanhas de WhatsApp' });
   await expect(campaigns.getByText('Nenhuma campanha ainda')).toBeVisible();

@@ -17,6 +17,7 @@ const names = [
   'new-features-smoke',
   'whatsapp-smoke',
   'letterhead-smoke',
+  'panels-smoke',
 ];
 const filter = process.argv[2] && process.argv[2] !== 'all' ? process.argv[2] : '';
 const exe = process.argv[3];

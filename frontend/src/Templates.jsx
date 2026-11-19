@@ -7,7 +7,15 @@ import { useState } from 'react';
 import { FileText, Plus, Upload, FolderPlus, FilePenLine } from 'lucide-react';
 import { Button, Panel, Modal, PageHeading, SearchBox, Empty } from './components.jsx';
 import EmailEditor from './EmailEditor.jsx';
-export default function Templates({ data, act, reload, kind = 'document', headerExtra = null, generateDocument }) {
+export default function Templates({
+  data,
+  act,
+  reload,
+  kind = 'document',
+  headerExtra = null,
+  generateDocument,
+  embedded = false,
+}) {
   const [group, setGroup] = useState(''),
     [query, setQuery] = useState(''),
     [draft, setDraft] = useState(null),
@@ -58,33 +66,38 @@ export default function Templates({ data, act, reload, kind = 'document', header
       (!group || t.groupId === group) &&
       (t.title + ' ' + t.body).toLowerCase().includes(query.toLowerCase()),
   );
+  const actions = (
+    <>
+      <Button
+        tone="secondary"
+        icon={FolderPlus}
+        onClick={() => {
+          setError('');
+          setGroupDraft({ name: '' });
+        }}
+      >
+        Novo grupo
+      </Button>
+      <Button tone="secondary" icon={Upload} onClick={imported}>
+        Importar modelo
+      </Button>
+      {kind === 'document' && generateDocument && (
+        <Button tone="secondary" icon={FilePenLine} onClick={() => generateDocument({})}>
+          Gerar documento
+        </Button>
+      )}
+      <Button icon={Plus} onClick={() => open()}>
+        Redigir modelo
+      </Button>
+    </>
+  );
   return (
     <>
-      <PageHeading title="Documentos">
-        <>
-          <Button
-            tone="secondary"
-            icon={FolderPlus}
-            onClick={() => {
-              setError('');
-              setGroupDraft({ name: '' });
-            }}
-          >
-            Novo grupo
-          </Button>
-          <Button tone="secondary" icon={Upload} onClick={imported}>
-            Importar modelo
-          </Button>
-          {kind === 'document' && generateDocument && (
-            <Button tone="secondary" icon={FilePenLine} onClick={() => generateDocument({})}>
-              Gerar documento
-            </Button>
-          )}
-          <Button icon={Plus} onClick={() => open()}>
-            Redigir modelo
-          </Button>
-        </>
-      </PageHeading>
+      {embedded ? (
+        <div className="heading-actions template-toolbar">{actions}</div>
+      ) : (
+        <PageHeading title="Documentos">{actions}</PageHeading>
+      )}
       {headerExtra}
       <Panel>
         <div className="library-filters">

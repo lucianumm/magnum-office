@@ -38,7 +38,8 @@
     "test:tools": "node scripts/tools-smoke.mjs",
     "test:new-features": "node scripts/new-features-smoke.mjs",
     "test:whatsapp": "node scripts/whatsapp-smoke.mjs",
-    "test:letterhead": "node scripts/letterhead-smoke.mjs"
+    "test:letterhead": "node scripts/letterhead-smoke.mjs",
+    "test:panels": "node scripts/panels-smoke.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
