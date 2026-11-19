@@ -258,3 +258,59 @@ function stripMeta(task) {
   void updatedAt;
   return rest;
 }
+
+test('ready-made hearing templates are offered once and the notice picks the one for the kind and modality', async t => {
+  const f = await fixture(t);
+  const ready = f.library.list().filter(m => m.match);
+  assert.equal(ready.length, 8, 'initial and instruction, in person and by video, confirmation and reminder');
+  assert.equal(
+    new (require('../backend/library.cjs').Library)(f.store).list().filter(m => m.match).length,
+    8,
+    'not offered twice',
+  );
+  const client = f.store.save('clients', { name: 'Ana Souza', phone: '5564999990000' });
+  const make = (eventKind, modality) =>
+    f.store.save('tasks', {
+      title: 'Audiência',
+      type: 'Audiência',
+      eventKind,
+      modality,
+      due: `${inDays(10)}T14:30`,
+      clientId: client.id,
+      clientReminder: true,
+      place: 'Fórum de Goiânia, sala 3',
+      roomLink: modality === 'virtual' ? 'https://sala.example/abc' : '',
+    });
+  const initialInPerson = f.notices.preview(make('inicial', 'presencial').id);
+  assert.match(initialInPerson.confirmationBody, /audiência inicial, presencial/);
+  assert.match(initialInPerson.confirmationBody, /Local: Fórum de Goiânia, sala 3\./);
+  assert.match(initialInPerson.confirmationBody, /Chegue com 30 minutos de antecedência/);
+  assert.match(initialInPerson.confirmationBody, /tenta um acordo/);
+  const instructionVideo = f.notices.preview(make('de instrução e julgamento', 'virtual').id);
+  assert.match(instructionVideo.confirmationBody, /audiência de instrução, por videoconferência/);
+  assert.match(instructionVideo.confirmationBody, /Sala virtual: https:\/\/sala\.example\/abc/);
+  assert.match(instructionVideo.confirmationBody, /Entre na sala 10 minutos antes/);
+  assert.match(instructionVideo.reminderBody, /Lembrando da sua audiência de instrução, por videoconferência/);
+  assert.equal(instructionVideo.confirmationTemplates.length, 4);
+  // Another kind falls back to the standard text; a template of another kind is never used for it.
+  const conciliation = f.notices.preview(make('de conciliação', 'presencial').id);
+  assert.match(conciliation.confirmationBody, /Confirmamos a sua audiência de conciliação/);
+  // The office can choose another template, and a template the office writes beats the standard text.
+  const other = instructionVideo.confirmationTemplates.find(m => /inicial — presencial$/.test(m.title));
+  const chosen = f.notices.preview(make('de instrução e julgamento', 'virtual').id, {
+    confirmationTemplateId: other.id,
+  });
+  assert.match(chosen.confirmationBody, /audiência inicial, presencial/);
+  f.library.save({
+    kind: 'whatsapp',
+    purpose: 'event-confirmation',
+    groupId: f.library.groups()[0].id,
+    title: 'Minha conciliação',
+    body: 'Oi {primeiro_nome}, conciliação em {data}.',
+    match: { eventType: 'Audiência', eventKind: 'de conciliação' },
+  });
+  assert.match(f.notices.preview(make('de conciliação', 'virtual').id).confirmationBody, /^Oi Ana, conciliação em /);
+  // Editing a template without sending the match keeps it.
+  const edited = f.library.save({ ...ready[0], match: undefined, body: ready[0].body + ' Obrigado.' });
+  assert.deepEqual(edited.match, ready[0].match);
+});

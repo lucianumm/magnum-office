@@ -1,6 +1,6 @@
 import { messageVariables } from '../../app/message-variables.mjs';
 import { messageVariableList } from '../../app/message-vars.mjs';
-import { purposes, defaultBodies } from '../../app/message-defaults.mjs';
+import { purposes, defaultBodies, eventKinds } from '../../app/message-defaults.mjs';
 import { documentVariables } from '../../app/document-template.mjs';
 import { EmailPreview } from './EmailDesign.jsx';
 import { useState } from 'react';
@@ -222,6 +222,47 @@ export default function Templates({ data, act, reload, kind = 'document', header
                         ? 'Este modelo é usado automaticamente nesta situação. Sem um modelo próprio, o programa usa o texto padrão.'
                         : 'Mensagem para escolher na hora de enviar.'}
                   </small>
+                  {draft.purpose?.startsWith('event-') && (
+                    <span className="template-match">
+                      <label>
+                        Para a audiência{' '}
+                        <select
+                          aria-label="Espécie da audiência"
+                          value={draft.match?.eventKind || ''}
+                          onChange={e =>
+                            setDraft({
+                              ...draft,
+                              match: { eventType: 'Audiência', ...draft.match, eventKind: e.target.value },
+                            })
+                          }
+                        >
+                          <option value="">Qualquer</option>
+                          {eventKinds['Audiência'].map(k => (
+                            <option key={k} value={k}>
+                              {k}
+                            </option>
+                          ))}
+                        </select>
+                      </label>{' '}
+                      <label>
+                        Modalidade{' '}
+                        <select
+                          aria-label="Modalidade da audiência"
+                          value={draft.match?.modality || ''}
+                          onChange={e =>
+                            setDraft({
+                              ...draft,
+                              match: { eventType: 'Audiência', ...draft.match, modality: e.target.value },
+                            })
+                          }
+                        >
+                          <option value="">Qualquer</option>
+                          <option value="presencial">Presencial</option>
+                          <option value="virtual">Por vídeo</option>
+                        </select>
+                      </label>
+                    </span>
+                  )}
                   {draft.purpose && defaultBodies[draft.purpose] && (
                     <button
                       type="button"

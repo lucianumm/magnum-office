@@ -21,6 +21,7 @@ import {
   Handshake,
   UserCheck,
   FilePenLine,
+  Gavel,
 } from 'lucide-react';
 import { personRoles, intakeStatuses } from '../../app/legal-options.mjs';
 import { localDateTime } from './MessageComposer.jsx';
@@ -789,6 +790,23 @@ export function Agenda({ data, create, edit, composeMessage, navigate, initialVi
         </Button>
         <Button tone="secondary" icon={Download} onClick={() => setExporting(true)}>
           Exportar
+        </Button>
+        <Button
+          tone="secondary"
+          icon={Gavel}
+          onClick={() =>
+            create('tasks', {
+              type: 'Audiência',
+              title: 'Audiência',
+              due: selected + 'T09:00',
+              clientReminder: true,
+              eventKind: 'inicial',
+              modality: 'presencial',
+              priority: 'Alta',
+            })
+          }
+        >
+          Agendar audiência
         </Button>
         <Button icon={Plus} onClick={() => create('tasks', { due: selected + 'T09:00' })}>
           Novo compromisso

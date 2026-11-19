@@ -135,7 +135,9 @@ module.exports = function registerRecords(ctx) {
   ctx.register('setCampaignOptOut', ({ id, value }) =>
     ctx.operations.run('Campanha', () => ctx.campaigns.optOut(id, value === true)),
   );
-  ctx.register('previewEventNotice', id => ctx.eventNotices.preview(id));
+  ctx.register('previewEventNotice', input =>
+    typeof input === 'string' ? ctx.eventNotices.preview(input) : ctx.eventNotices.preview(input.id, input),
+  );
   ctx.register('applyEventNotice', ({ id, choice }) =>
     ctx.operations.run('Aviso ao cliente', () => ctx.eventNotices.apply(id, choice)),
   );

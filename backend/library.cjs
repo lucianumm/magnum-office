@@ -7,6 +7,7 @@ class Library {
     if (!this.groups().length)
       for (const name of ['Modelos de pedidos', 'Constitutivos', 'Contratos', 'Outros']) this.saveGroup({ name });
     this.seedLegalTemplates();
+    this.seedEventTemplates();
   }
   seeded() {
     return (
@@ -27,6 +28,30 @@ class Library {
         this.save({ kind: 'document', groupId, title: t.title, html: t.html, body: blocksText(htmlBlocks(t.html)) });
       }
       this.store.db.prepare("INSERT INTO maintenance VALUES ('legal-templates', ?)").run(new Date().toISOString());
+      this.store.db.exec('COMMIT');
+    } catch (error) {
+      this.store.db.exec('ROLLBACK');
+      throw error;
+    }
+  }
+  // The ready-made hearing messages, once: if the office deletes them they do not come back.
+  seedEventTemplates() {
+    if (!this.hasMaintenance() || this.store.db.prepare("SELECT 1 FROM maintenance WHERE name='event-templates'").get())
+      return;
+    this.store.db.exec('BEGIN IMMEDIATE');
+    try {
+      const group =
+        this.groups().find(g => g.name === 'Modelos de WhatsApp') || this.saveGroup({ name: 'Modelos de WhatsApp' });
+      for (const t of require('./event-templates.cjs').eventTemplates)
+        this.save({
+          kind: 'whatsapp',
+          groupId: group.id,
+          title: t.title,
+          body: t.body,
+          purpose: t.purpose,
+          match: t.match,
+        });
+      this.store.db.prepare("INSERT INTO maintenance VALUES ('event-templates', ?)").run(new Date().toISOString());
       this.store.db.exec('COMMIT');
     } catch (error) {
       this.store.db.exec('ROLLBACK');
@@ -88,6 +113,16 @@ class Library {
       const unknown = require('../app/message-vars.mjs').unknownVariables(body);
       if (unknown.length) throw new Error(`Variável desconhecida: ${unknown.join(', ')}. Use as variáveis da lista.`);
     }
+    // Which events a hearing template is for: the kind (e.g. "inicial") and the modality, both optional.
+    let match = null;
+    const previousMatch = input.id ? this.list().find(t => t.id === id)?.match : null;
+    if (input.match === undefined && previousMatch) match = previousMatch;
+    else if (input.match && purpose.startsWith('event-')) {
+      const kindOf = text(String(input.match.eventKind || ''), 60);
+      const modality = ['presencial', 'virtual'].includes(input.match.modality) ? input.match.modality : '';
+      const eventType = text(String(input.match.eventType || ''), 20);
+      if (kindOf || modality || eventType) match = { eventType, eventKind: kindOf, modality };
+    }
     const subject = text(input.subject || '', 300);
     const emailDesign = kind === 'email' ? require('./email-design.cjs').normalize(input.emailDesign || {}) : null;
     const payload = {
@@ -95,6 +130,7 @@ class Library {
       body,
       emailDesign,
       purpose,
+      match,
       html: kind === 'whatsapp' ? '' : html,
       kind,
       subject,

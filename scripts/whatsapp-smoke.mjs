@@ -50,7 +50,7 @@ try {
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Ana Souza')).toBeVisible();
   await expect(dialog.locator('textarea').first()).toHaveValue(
-    /audiência de instrução e julgamento.*Fórum de Goiânia, sala 3/s,
+    /audiência de instrução, presencial.*Local: Fórum de Goiânia, sala 3.*Chegue com 30 minutos/s,
   );
   await page.screenshot({ path: path.join(base, 'aviso-ao-cliente.png') });
   await dialog.getByRole('button', { name: 'Agendar avisos', exact: true }).click();
