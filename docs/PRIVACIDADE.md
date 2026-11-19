@@ -56,6 +56,22 @@ Fontes oficiais de referência: [LGPD — texto atualizado](https://www2.camara.
 - **Respostas automáticas**: só respondem a número cadastrado a um cliente; a número desconhecido vai uma linha fixa por dia. O **andamento** exige o número do cadastro, o CPF do cliente (conferido e **não guardado**; o texto digitado é apagado da caixa de entrada), o consentimento marcado no cadastro (desligado por padrão), não vale para segredo de justiça e tem limite de 5 consultas por dia. O que a resposta contém é só a última movimentação pública e a data. Cada resposta vai para a auditoria sem o CPF nem o texto da movimentação.
 - **Campanhas**: o cliente que responde SAIR deixa de receber campanhas (os avisos sobre o processo continuam), e a marca fica no cadastro. Todas as mensagens seguem a janela de horário e os limites de envio. Recomenda-se um número de WhatsApp só do escritório.
 
+## Assistente de IA (opcional)
+
+Desligado por padrão. Ligado, o texto que um **cliente cadastrado** escreveu, o primeiro nome dele, o nome do escritório e as diretrizes escritas pelo escritório são enviados ao serviço de IA escolhido (Anthropic, um serviço compatível com a OpenAI ou um modelo no próprio computador) para redigir a resposta. Nunca vão CPF, dados do processo, valores nem outros campos do cadastro; número desconhecido e as respostas de menu não usam a IA. O serviço escolhido trata a mensagem conforme as suas próprias condições. A chave de API fica cifrada e não volta à tela. O padrão é revisar a resposta antes de enviar, e há limite de 3 respostas por cliente por hora e 100 por dia.
+
+## Reenvio e diário de 24 horas
+
+O texto das mensagens enviadas fica cifrado por 24 horas para permitir o reenvio quando o WhatsApp o pede de novo. O diário das mensagens recebidas, também cifrado, guarda por 24 horas apenas o fato de a mensagem ter sido tratada, evita tratar a mesma mensagem duas vezes e retoma um atendimento interrompido com menos de 10 minutos; o texto é apagado assim que o atendimento termina. A caixa de entrada que o escritório consulta é outro registro, com prazo de 1, 7 ou 30 dias à escolha.
+
+## Financeiro com senha
+
+A senha do financeiro é opcional e separada da senha do programa. Sem ela digitada, o programa não entrega os lançamentos nem os valores dos relatórios à tela; ela guarda só um resumo irreversível (scrypt). A planilha exportada continua sem criptografia e a API de agentes, se ligada, não usa esta senha.
+
+## Consultas públicas ligadas por padrão
+
+A partir da 1.13, as consultas por CEP, CNPJ, número do processo (DataJud) e as intimações (DJEN) vêm ligadas e enviam apenas o mínimo descrito em cada uma (os 8 dígitos do CEP, o CNPJ, o número do processo, o número e a UF da OAB dos advogados). Cada uma pode ser desligada em Configurações → Consultas públicas.
+
 ## Intimações e busca avulsa
 
 A busca no Diário de Justiça Eletrônico Nacional envia ao CNJ apenas os critérios digitados (OAB e UF, nome, número do processo, tribunal e datas). O resultado de uma busca avulsa só é guardado se você escolher **Guardar**.
