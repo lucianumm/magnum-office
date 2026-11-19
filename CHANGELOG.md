@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.13.0 — ainda não publicada
+## 1.13.0 — 19/11/2026
 
 - **WhatsApp e E-mail separados**: cada um tem a sua página, com fila de envios, conexão, ferramentas e os seus próprios modelos. Os modelos de WhatsApp e de e-mail saíram de Documentos.
 - **Agendar audiência** na Agenda, com vínculo ao cliente e modelos prontos de mensagem para **audiência inicial** e **audiência de instrução**, **presencial** ou **por vídeo** (confirmação e lembrete). O programa escolhe o modelo da espécie e da modalidade; dá para trocar na janela de aviso.

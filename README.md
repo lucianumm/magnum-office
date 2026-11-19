@@ -204,7 +204,8 @@ Quer contribuir? Leia o [guia de contribuição](.github/CONTRIBUTING.md), o [c�
 
 | Versão | Data | Destaques |
 | --- | --- | --- |
-| **1.12.0** | 13/11/2026 | Audiência e perícia com confirmação e lembretes por WhatsApp, campanhas, respostas automáticas e andamento por CPF, intimações por processo com busca avulsa, papel timbrado e fontes do Windows |
+| **1.13.0** | 19/11/2026 | WhatsApp e E-mail em painéis separados, agendar audiência com modelos prontos, intimações leves e organizadas, cadastro de processo a partir da intimação, consultas ligadas por padrão, financeiro com senha, assistente de IA e reenvio de 24 horas |
+| 1.12.0 | 13/11/2026 | Audiência e perícia com confirmação e lembretes por WhatsApp, campanhas, respostas automáticas e andamento por CPF, intimações por processo com busca avulsa, papel timbrado e fontes do Windows |
 | 1.11.0 | 12/11/2026 | Lixeira, senha do programa, OCR, assinatura digital A1, liquidação trabalhista, horas por processo, quadro por fase, resumo diário, prescrição, CEP, importação de processos e Linux |
 | 1.10.0 | 12/11/2026 | Atualização corrigida, perguntas separadas nos modelos, documento sem cadastro, busca por número do processo e CNPJ e calculadora de rescisão |
 | 1.9.1 | 08/11/2026 | Configuração inicial obrigatória do escritório (advogados, identidade visual e logo) e arquivos de comunidade do projeto |
