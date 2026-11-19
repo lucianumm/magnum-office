@@ -46,7 +46,14 @@ const defaults = {
   minDelaySec: 8,
   maxDelaySec: 25,
   waInboxEnabled: false,
+  waInboxKeepDays: 30,
   waFlowMode: 'review',
+  aiEnabled: false,
+  aiProvider: 'anthropic',
+  aiModel: '',
+  aiBaseUrl: '',
+  aiGuidelines: '',
+  aiMode: 'review',
   lastWaCleanup: null,
   lastWaCleanupRemoved: 0,
   logRetentionDays: 365,
@@ -334,9 +341,40 @@ class Settings {
         }),
       );
     }
+    if ('waInboxKeepDays' in data) {
+      if (![1, 7, 30].includes(data.waInboxKeepDays)) throw new Error('Prazo da caixa de entrada inválido.');
+      next.waInboxKeepDays = data.waInboxKeepDays;
+    }
     if ('waInboxEnabled' in data) {
       if (typeof data.waInboxEnabled !== 'boolean') throw new Error('Configuração inválida.');
       next.waInboxEnabled = data.waInboxEnabled;
+    }
+    // AI assistant for answering clients (off by default; the key is kept apart, encrypted).
+    if ('aiEnabled' in data) {
+      if (typeof data.aiEnabled !== 'boolean') throw new Error('Configuração da IA inválida.');
+      next.aiEnabled = data.aiEnabled;
+    }
+    if ('aiProvider' in data) {
+      if (!['anthropic', 'openai'].includes(data.aiProvider)) throw new Error('Escolha o serviço de IA.');
+      next.aiProvider = data.aiProvider;
+    }
+    if ('aiModel' in data) next.aiModel = limited(data.aiModel, 80);
+    if ('aiBaseUrl' in data) {
+      const url = limited(data.aiBaseUrl, 200);
+      if (url && !/^https:\/\/[^\s]+$|^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/[^\s]*)?$/.test(url))
+        throw new Error(
+          'O endereço da IA deve começar com https:// (ou http://localhost para um modelo neste computador).',
+        );
+      next.aiBaseUrl = url;
+    }
+    if ('aiGuidelines' in data) {
+      if (typeof data.aiGuidelines !== 'string' || data.aiGuidelines.length > 8000 || data.aiGuidelines.includes('\0'))
+        throw new Error('As diretrizes da IA devem ter até 8.000 caracteres.');
+      next.aiGuidelines = data.aiGuidelines.trim();
+    }
+    if ('aiMode' in data) {
+      if (!['review', 'auto'].includes(data.aiMode)) throw new Error('Modo de resposta da IA inválido.');
+      next.aiMode = data.aiMode;
     }
     if ('waFlowMode' in data) {
       if (!['off', 'review', 'auto'].includes(data.waFlowMode)) throw new Error('Modo de resposta inválido.');

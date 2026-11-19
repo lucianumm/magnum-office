@@ -18,8 +18,19 @@ const STALE_MS = 12 * 3600000;
 const dayKey = t => new Date(t).toISOString().slice(0, 10);
 
 class Flows {
-  constructor({ store, settings, messaging, inbox, campaigns, eventNotices, datajud, library, clock = Date.now }) {
-    Object.assign(this, { store, settings, messaging, inbox, campaigns, eventNotices, datajud, library, clock });
+  constructor({
+    store,
+    settings,
+    messaging,
+    inbox,
+    campaigns,
+    eventNotices,
+    datajud,
+    library,
+    ai = null,
+    clock = Date.now,
+  }) {
+    Object.assign(this, { store, settings, messaging, inbox, campaigns, eventNotices, datajud, library, ai, clock });
   }
   mode() {
     const mode = this.settings.get().waFlowMode;
@@ -39,7 +50,7 @@ class Flows {
   }
   // ---- sending ----
   // sensitive answers (case data) follow the office's mode; neutral ones go out by themselves.
-  reply(phone, body, { clientId, sensitive = false, kind }) {
+  reply(phone, body, { clientId, sensitive = false, kind, review = null }) {
     // What the program answered by itself needs no attention in the inbox; a stranger or a request for the team does.
     if (this.current && !['human', 'unknown'].includes(kind))
       try {
@@ -53,9 +64,9 @@ class Flows {
       body,
       ...(clientId ? { clientId } : {}),
     });
-    if (sensitive && this.mode() === 'review')
-      this.store.db.prepare("UPDATE queue SET status='needs_review' WHERE id=?").run(id);
-    this.store.audit('wa.flow.reply', { kind, review: sensitive && this.mode() === 'review' });
+    const waits = review ?? (sensitive && this.mode() === 'review');
+    if (waits) this.store.db.prepare("UPDATE queue SET status='needs_review' WHERE id=?").run(id);
+    this.store.audit('wa.flow.reply', { kind, review: waits });
     return id;
   }
   office() {
@@ -79,7 +90,9 @@ class Flows {
   }
   // ---- entry point ----
   async handle(record) {
-    if (this.mode() === 'off' || !record?.phone || record.media) return false;
+    // With the automatic answers off, only the AI (if the office turned it on) may still answer free text.
+    const aiOn = this.ai?.enabled() === true;
+    if ((this.mode() === 'off' && !aiOn) || !record?.phone || record.media) return false;
     const now = this.clock();
     const phone = record.phone;
     this.current = record.id;
@@ -105,6 +118,7 @@ class Flows {
       if (intent.intent === 'progress' || intent.intent === 'cpf') say(flowTexts.cpfBlocked, { kind: 'blocked' });
       return true;
     }
+    if (this.mode() === 'off' && intent.intent !== 'other') return false;
     switch (intent.intent) {
       case 'confirm': {
         const when = this.eventNotices.setConfirmation(awaiting.task.id, 'confirmed');
@@ -207,6 +221,18 @@ class Flows {
         return true;
       }
       default: {
+        // Free text from a registered client: the AI drafts the answer when it is on and within its limits.
+        if (aiOn && this.ai.allowed(client.id)) {
+          try {
+            const body = await this.ai.draft({ text: record.text, firstName: first });
+            this.ai.note(client.id);
+            say(body, { kind: 'ai', sensitive: true, review: this.ai.config().mode !== 'auto' });
+            return true;
+          } catch (error) {
+            this.store.audit('wa.flow.ai.failed', { code: String(error.message).slice(0, 80) });
+          }
+        }
+        if (this.mode() === 'off') return false;
         if (state.lastMenuAt && now - state.lastMenuAt < MENU_EVERY) return false;
         this.save(phone, { ...state, step: '', stepAt: 0, lastMenuAt: now });
         say(this.menuText(first), { kind: 'menu' });

@@ -66,6 +66,8 @@ const commands = [
   'backupNoticeSeen',
   'chooseBackupFolder',
   'waStatus',
+  'setAiKey',
+  'testAi',
   'cleanWhatsApp',
   'inboxList',
   'previewEventNotice',

@@ -221,6 +221,42 @@ try {
   await expect(page.getByPlaceholder('Nome ou razão social')).toHaveValue('Empresa Y Ltda');
   await expect(page.getByLabel('Número do processo')).toHaveValue('0011222-33.2024.5.18.0001');
   await page.screenshot({ path: path.join(base, 'processo-da-intimacao.png') });
+  // Assistente de IA e diário de 24 horas, em Configurações → WhatsApp
+  await app.evaluate(() => {
+    globalThis.__magnumTest.aiReply.fetch = async () => ({
+      status: 200,
+      ok: true,
+      json: async () => ({ content: [{ type: 'text', text: 'Atendemos de segunda a sexta, das 9h às 18h.' }] }),
+    });
+  });
+  await page
+    .getByRole('button', { name: 'Cancelar', exact: true })
+    .click()
+    .catch(() => {});
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Agora não', exact: true })
+    .click({ timeout: 3000 })
+    .catch(() => {});
+  await page.getByRole('tab', { name: 'WhatsApp', exact: true }).click();
+  await expect(page.getByText('Reenvio e diário de 24 horas')).toBeVisible();
+  await page.getByRole('switch', { name: /Responder aos clientes com IA/ }).check();
+  await page.getByLabel('Modelo', { exact: true }).fill('claude-haiku-5-5');
+  await page.getByLabel('Chave de API').fill('sk-ant-chave-secreta-de-teste');
+  await page
+    .getByLabel('Diretrizes da IA')
+    .fill('Atendemos de segunda a sexta, das 9h às 18h. Nunca prometa resultado.');
+  await page.getByRole('button', { name: 'Salvar assistente', exact: true }).click();
+  await expect(page.getByPlaceholder('Chave cadastrada (digite outra para trocar)')).toBeVisible();
+  const afterAi = await page.evaluate(() => window.advocacia.state());
+  assert.equal(afterAi.settings.aiEnabled, true);
+  assert.match(afterAi.settings.aiGuidelines, /segunda a sexta/);
+  assert.ok(!JSON.stringify(afterAi).includes('sk-ant-chave-secreta'), 'the key never reaches the window');
+  assert.equal((await page.evaluate(() => window.advocacia.waStatus())).ai.hasKey, true);
+  await page.getByLabel('Testar com uma mensagem de exemplo').fill('Vocês atendem aos sábados?');
+  await page.getByRole('button', { name: 'Testar resposta', exact: true }).click();
+  await expect(page.getByText('Atendemos de segunda a sexta, das 9h às 18h.', { exact: true })).toBeVisible();
+  await page.screenshot({ path: path.join(base, 'ia-whatsapp.png'), fullPage: true });
   process.stdout.write(
     'WhatsApp: aviso ao cliente na agenda, modelos por finalidade, campanhas e intimações agrupadas verificados.\n',
   );
