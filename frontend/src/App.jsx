@@ -188,14 +188,15 @@ function buildNotices(data, today) {
       go: first.kind === 'case' ? ['cases', first.id] : ['documents'],
     });
   }
-  const intimations = (data.intimations || []).filter(i => i.status === 'new');
-  if (intimations.length)
+  const newest = data.intimationSummary?.newest;
+  const intimationCount = data.intimationSummary?.counts.new || 0;
+  if (intimationCount)
     list.push({
       id: 'intimations',
       tone: 'danger',
       icon: AlertCircle,
-      title: plural(intimations.length, 'intimação nova', 'intimações novas'),
-      detail: `${intimations[0].tipo} · ${intimations[0].tribunal} · ${intimations[0].processoMascara || intimations[0].processo}`,
+      title: plural(intimationCount, 'intimação nova', 'intimações novas'),
+      detail: newest ? `${newest.tipo} · ${newest.tribunal} · ${newest.processoMascara || newest.processo}` : '',
       go: ['intimations'],
     });
   const moved = Object.keys(data.movementsNew || {});
@@ -639,7 +640,7 @@ export default function App() {
   const page = route.page;
   const attention = notices.filter(n => !n.quiet);
   const overdueCount = data.entities.tasks.filter(t => t.status !== 'Concluída' && t.due < today + 'T00:00').length;
-  const newIntimations = (data.intimations || []).filter(i => i.status === 'new').length;
+  const newIntimations = data.intimationSummary?.counts.new || 0;
   const followNotice = notice => {
     const [target, tab] = notice.go;
     if (target === 'agenda-list') go({ page: 'calendar', view: 'list' });

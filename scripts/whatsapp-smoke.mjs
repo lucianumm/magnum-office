@@ -151,6 +151,10 @@ try {
         numeroprocessocommascara: '0011222-33.2024.5.18.0001',
         texto: '<p>Edital de intimação.</p>',
         link: '',
+        destinatarios: [
+          { nome: 'Carlos Lima', polo: 'A' },
+          { nome: 'Empresa Y Ltda', polo: 'P' },
+        ],
       },
     ],
   };
@@ -194,6 +198,7 @@ try {
   await page.getByRole('button', { name: 'Verificar agora', exact: true }).click();
   await expect(page.getByRole('heading', { name: '0000001-63.2024.8.09.0051' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '0011222-33.2024.5.18.0001' })).toBeVisible();
+  await page.getByRole('button', { name: 'Expandir todos' }).click();
   await expect(page.locator('mark.hl-deadline').first()).toContainText('prazo de 15 (quinze) dias úteis');
   await page.screenshot({ path: path.join(base, 'intimacoes.png') });
   await page.getByRole('button', { name: /Criar audiência na agenda/ }).click();
@@ -203,6 +208,19 @@ try {
     .getByRole('button', { name: 'Cancelar', exact: true })
     .click()
     .catch(() => {});
+  // Cadastrar processo a partir da intimação: pergunta o lado do cliente e preenche as partes.
+  await page
+    .getByRole('button', { name: 'Cancelar', exact: true })
+    .click()
+    .catch(() => {});
+  await page.getByRole('button', { name: 'Cadastrar processo', exact: true }).click();
+  const side = page.getByRole('dialog', { name: 'Cadastrar processo' });
+  await expect(side.getByText('Quem é o seu cliente neste processo?')).toBeVisible();
+  await side.getByRole('button', { name: /Autor: Carlos Lima/ }).click();
+  await expect(page.getByLabel('Título do processo')).toHaveValue('Carlos Lima x Empresa Y Ltda');
+  await expect(page.getByPlaceholder('Nome ou razão social')).toHaveValue('Empresa Y Ltda');
+  await expect(page.getByLabel('Número do processo')).toHaveValue('0011222-33.2024.5.18.0001');
+  await page.screenshot({ path: path.join(base, 'processo-da-intimacao.png') });
   process.stdout.write(
     'WhatsApp: aviso ao cliente na agenda, modelos por finalidade, campanhas e intimações agrupadas verificados.\n',
   );

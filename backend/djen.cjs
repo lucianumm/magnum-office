@@ -34,6 +34,7 @@ class DJEN {
   constructor({ store, settings, fetch, clock = Date.now, pause = 400 }) {
     Object.assign(this, { store, settings, fetch, clock, pause });
     this.lastSearch = new Map();
+    this.cacheIndex = null;
     this.remaining = null;
   }
   // One page of the API with the given filters: { items, count, remaining }.
@@ -168,7 +169,10 @@ class DJEN {
         lastDjenResult: { at: now, found, added, partial: false },
       });
     }
-    if (added) this.store.audit('djen.checked', { code: String(added) });
+    if (added) {
+      this.cacheIndex = null;
+      this.store.audit('djen.checked', { code: String(added) });
+    }
     return { found, added, from, to };
   }
   // Remembers when failures began: three days in a row is worth a loud warning (a publication could be missed).
@@ -292,6 +296,7 @@ class DJEN {
         value.date,
         new Date(this.clock()).toISOString(),
       );
+    this.cacheIndex = null;
     this.store.audit('djen.kept', { id: value.djenId });
     return true;
   }
@@ -335,27 +340,206 @@ class DJEN {
       return [];
     }
   }
-  // Intimations already stored, newest first; the case link is refreshed for numbers typed later.
+  // Intimations already stored, newest first (for agents and the daily summary); the case link is refreshed.
   list(limit = 500) {
-    const cases = new Map(
-      this.store
-        .list('cases')
-        .map(c => [cnjDigits(c.number), c.id])
-        .filter(([digits]) => digits.length === 20),
-    );
-    return this.store.db
-      .prepare('SELECT * FROM intimations ORDER BY published DESC, created_at DESC LIMIT ?')
-      .all(limit)
-      .map(row => {
-        const value = this.store.vault.unseal(row.payload);
-        return { ...value, id: row.id, status: row.status, caseId: row.case_id || cases.get(value.processo) || '' };
+    const cases = this.caseNumbers();
+    return this.index()
+      .slice(0, limit)
+      .map(({ storedCase, deadline, event, ...value }) => {
+        void deadline;
+        void event;
+        return { ...value, caseId: storedCase || cases.get(value.processo) || '' };
       });
+  }
+  // ---- reading for the screen ----
+  // Every stored publication decrypted once and kept in memory (without being sent to the window): the screen asks
+  // for a page at a time, so opening it never loads thousands of long texts.
+  index() {
+    if (!this.cacheIndex) {
+      const { findDeadlines, findEvent } = require('../app/intimation-text.mjs');
+      this.cacheIndex = this.store.db
+        .prepare('SELECT * FROM intimations ORDER BY published DESC, created_at DESC')
+        .all()
+        .map(row => {
+          const value = this.store.vault.unseal(row.payload);
+          return {
+            ...value,
+            id: row.id,
+            status: row.status,
+            storedCase: row.case_id || '',
+            deadline: findDeadlines(value.texto || '')[0] || null,
+            event: findEvent(value.texto || ''),
+          };
+        });
+    }
+    return this.cacheIndex;
+  }
+  // Counts by status and the newest one, from the database: cheap enough for every refresh of the window.
+  summary() {
+    const counts = { new: 0, done: 0, dismissed: 0 };
+    for (const r of this.store.db.prepare('SELECT status, COUNT(*) AS n FROM intimations GROUP BY status').all())
+      counts[r.status] = r.n;
+    const row = this.store.db
+      .prepare("SELECT payload FROM intimations WHERE status='new' ORDER BY published DESC, created_at DESC LIMIT 1")
+      .get();
+    const newest = row ? this.store.vault.unseal(row.payload) : null;
+    return {
+      counts,
+      newest: newest
+        ? {
+            tipo: newest.tipo,
+            tribunal: newest.tribunal,
+            processo: newest.processo,
+            processoMascara: newest.processoMascara,
+          }
+        : null,
+    };
+  }
+  // One page of groups. query: { status, type, court, lawyer, linked, days, query, group, sort, offset, limit }.
+  pageOf(q = {}) {
+    const { kindOf, urgency } = require('../app/intimation-text.mjs');
+    const cases = this.caseNumbers();
+    const today = day(this.clock());
+    const all = this.index().map(i => ({ ...i, caseId: i.storedCase || cases.get(i.processo) || '' }));
+    const norm = s =>
+      String(s || '')
+        .toLowerCase()
+        .replace(/[.\-/]/g, '');
+    const status = ['new', 'done', 'dismissed', 'all'].includes(q.status) ? q.status : 'new';
+    const inStatus = all.filter(i => status === 'all' || i.status === status);
+    const cutoff = q.days ? day(this.clock() - Number(q.days) * 86400000) : '';
+    const needle = norm(q.query);
+    const matches = inStatus.filter(i => {
+      if (q.type && kindOf(i.tipo).key !== q.type) return false;
+      if (q.court && i.tribunal !== q.court) return false;
+      if (q.lawyer && !(i.lawyers || []).some(l => `${l.oab}/${l.uf}` === q.lawyer)) return false;
+      if (q.linked === 'yes' && !i.caseId) return false;
+      if (q.linked === 'no' && i.caseId) return false;
+      if (cutoff && i.date < cutoff) return false;
+      if (needle) {
+        const hay = norm(
+          [i.processo, i.processoMascara, i.texto, i.classe, i.orgao, ...(i.parties || []).map(p => p.nome)].join(' '),
+        );
+        if (!hay.includes(needle)) return false;
+      }
+      return true;
+    });
+    const by = ['process', 'court', 'type', 'day'].includes(q.group) ? q.group : 'process';
+    const keyOf = {
+      process: i => i.processo || 'sem-numero',
+      court: i => i.tribunal || 'sem-tribunal',
+      type: i => kindOf(i.tipo).key,
+      day: i => i.date,
+    }[by];
+    const labelOf = {
+      process: i => i.processoMascara || i.processo || 'Sem número de processo',
+      court: i => i.tribunal || 'Sem tribunal',
+      type: i => kindOf(i.tipo).label,
+      day: i => i.date,
+    }[by];
+    const groups = new Map();
+    for (const i of matches) {
+      const key = keyOf(i);
+      if (!groups.has(key)) groups.set(key, { key, label: labelOf(i), items: [] });
+      groups.get(key).items.push(i);
+    }
+    const rank = { high: 0, medium: 1, normal: 2 };
+    const list = [...groups.values()].map(g => {
+      const levels = g.items.map(i => urgency(i, today));
+      const level = levels.map(l => l.level).sort((a, b) => rank[a] - rank[b])[0] || 'normal';
+      return { ...g, level, newCount: g.items.filter(i => i.status === 'new').length, latest: g.items[0].date };
+    });
+    list.sort((a, b) => {
+      if (by === 'process' && (a.key === 'sem-numero') !== (b.key === 'sem-numero'))
+        return a.key === 'sem-numero' ? 1 : -1;
+      if (q.sort === 'urgency' && by === 'process')
+        return rank[a.level] - rank[b.level] || b.latest.localeCompare(a.latest);
+      return by === 'day'
+        ? b.key.localeCompare(a.key)
+        : b.latest.localeCompare(a.latest) || String(a.label).localeCompare(String(b.label), 'pt-BR');
+    });
+    const limit = Math.min(200, Math.max(1, Number(q.limit) || 15));
+    const offset = Math.max(0, Number(q.offset) || 0);
+    const light = i => ({
+      id: i.id,
+      status: i.status,
+      date: i.date,
+      tipo: i.tipo,
+      tribunal: i.tribunal,
+      orgao: i.orgao,
+      classe: i.classe,
+      processo: i.processo,
+      processoMascara: i.processoMascara,
+      // Long texts stay here: the window gets the beginning and asks for the rest when the person opens it.
+      texto: String(i.texto || '').slice(0, 600),
+      longText: String(i.texto || '').length > 600,
+      hash: i.hash || '',
+      link: i.link ? 'yes' : '',
+      caseId: i.caseId,
+      lawyers: i.lawyers || [],
+      parties: i.parties || [],
+      deadline: i.deadline,
+      event: i.event,
+      urgency: urgency(i, today),
+    });
+    const pageGroups = list.slice(offset, offset + limit).map(g => ({
+      key: g.key,
+      label: g.label,
+      level: g.level,
+      count: g.items.length,
+      newCount: g.newCount,
+      latest: g.latest,
+      caseId: g.items.find(i => i.caseId)?.caseId || '',
+      processo: by === 'process' ? g.items[0].processo : '',
+      mask: by === 'process' ? g.items[0].processoMascara : '',
+      items: g.items.slice(0, 30).map(light),
+      hidden: Math.max(0, g.items.length - 30),
+    }));
+    // What each filter would find inside the chosen status, for the counters.
+    const count = (list2, fn) => {
+      const out = {};
+      for (const i of list2) {
+        const k = fn(i);
+        if (k) out[k] = (out[k] || 0) + 1;
+      }
+      return out;
+    };
+    return {
+      groups: pageGroups,
+      total: list.length,
+      totalItems: matches.length,
+      offset,
+      limit,
+      facets: {
+        types: count(inStatus, i => kindOf(i.tipo).key),
+        courts: count(inStatus, i => i.tribunal),
+        lawyers: (() => {
+          const out = {};
+          for (const i of inStatus)
+            for (const l of i.lawyers || []) out[`${l.oab}/${l.uf}`] = (out[`${l.oab}/${l.uf}`] || 0) + 1;
+          return out;
+        })(),
+      },
+    };
+  }
+  // The whole text of one publication.
+  fullText(id) {
+    const row = this.index().find(i => i.id === String(id));
+    if (!row) throw new Error('Intimação não encontrada.');
+    return row.texto || '';
+  }
+  setStatusMany(ids, status) {
+    if (!Array.isArray(ids) || ids.length > 500) throw new Error('Intimações inválidas.');
+    for (const id of ids) this.setStatus(id, status);
+    return ids.length;
   }
   setStatus(id, status) {
     if (typeof id !== 'string' || !/^[\w-]{1,64}$/.test(id) || !['new', 'done', 'dismissed'].includes(status))
       throw new Error('Intimação inválida.');
     const changes = this.store.db.prepare('UPDATE intimations SET status=? WHERE id=?').run(status, id).changes;
     if (!changes) throw new Error('Intimação não encontrada.');
+    const cached = this.cacheIndex?.find(i => i.id === id);
+    if (cached) cached.status = status;
     return true;
   }
   link(id) {

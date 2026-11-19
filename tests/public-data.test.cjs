@@ -527,6 +527,7 @@ test('DJEN: queries each lawyer by OAB, pages, links cases and never stores a pu
   });
   const clock = () => Date.parse('2026-11-07T12:00:00Z');
   const djen = new DJEN({ store, settings, fetch, clock });
+  settings.save({ djenEnabled: false });
   await assert.rejects(djen.check(), /Ative a consulta/);
   settings.save({ djenEnabled: true });
   await assert.rejects(djen.check(), /Cadastre os advogados/);

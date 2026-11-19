@@ -222,6 +222,8 @@ const readOnlyCommands = new Set([
   'waStatus',
   'inboxList',
   'previewEventNotice',
+  'intimationsPage',
+  'intimationText',
   'intimationCourts',
   'systemFonts',
   'letterheadImage',
@@ -442,7 +444,8 @@ function state() {
     updates: updater.get(),
     operations: operations.status(),
     audit: store.auditList(),
-    intimations: djen ? djen.list() : [],
+    // Only counts and the newest one: the screen asks for pages (a long list made every refresh heavy).
+    intimationSummary: djen ? djen.summary() : { counts: { new: 0, done: 0, dismissed: 0 }, newest: null },
     djenHealth: djen ? djen.health() : null,
     letterheads: letterheads ? letterheads.list() : [],
     movementsNew: datajud ? datajud.newCounts() : {},

@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bell,
   Calculator,
   CalendarPlus,
   Check,
+  ChevronDown,
+  ChevronRight,
   ExternalLink,
   FileDown,
   FilePlus2,
@@ -14,18 +16,25 @@ import {
   BriefcaseBusiness,
   TriangleAlert,
 } from 'lucide-react';
-import { Badge, Button, Empty, PageHeading, Panel, dateTime } from './components.jsx';
-import { groupByProcess, kindOf, paragraphs, findDeadlines, findEvent, urgency } from '../../app/intimation-text.mjs';
+import { Badge, Button, Empty, Modal, PageHeading, Panel, dateTime } from './components.jsx';
+import { kindOf } from '../../app/intimation-text.mjs';
+import { caseFromIntimation, matchClient, joinNames } from '../../app/intimation-case.mjs';
 import PublicationText from './PublicationText.jsx';
 import IntimationSearch from './IntimationSearch.jsx';
 
 const statusLabels = { new: 'Nova', done: 'Tratada', dismissed: 'Descartada' };
 const statusTone = { new: 'amber', done: 'green', dismissed: 'neutral' };
 const poloLabels = { A: 'Polo ativo', P: 'Polo passivo', T: 'Terceiro', D: 'Destinatário' };
-const todayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const groupLabels = { process: 'Por processo', court: 'Por tribunal', type: 'Por tipo', day: 'Por dia' };
+const typeLabels = {
+  citation: 'Citação',
+  intimation: 'Intimação',
+  agenda: 'Pauta de julgamento',
+  edict: 'Edital',
+  distribution: 'Distribuição',
+  minutes: 'Ata',
 };
+const PAGE = 15;
 const br = key => (key ? key.split('-').reverse().join('/') : '');
 // The next working day (weekends only; the calculator knows the court holidays).
 function nextWorkingDay(key) {
@@ -36,7 +45,8 @@ function nextWorkingDay(key) {
 }
 const norm = s => String(s || '').toLowerCase();
 
-// Communications published in the DJEN for the office's lawyers, grouped by process, with the actions that follow.
+// Communications published in the DJEN. The list comes a page at a time from the program, grouped as chosen
+// (process, court, type or day), so opening the screen stays light however many publications there are.
 export default function Intimations({
   data,
   act,
@@ -46,56 +56,99 @@ export default function Intimations({
   create,
   composeMessage,
 }) {
-  const [status, setStatus] = useState('new');
-  const [type, setType] = useState('');
-  const [court, setCourt] = useState('');
-  const [lawyer, setLawyer] = useState('');
-  const [linked, setLinked] = useState('');
-  const [period, setPeriod] = useState('');
-  const [query, setQuery] = useState('');
-  const [sort, setSort] = useState('urgency');
-  const [expanded, setExpanded] = useState({});
+  const [filters, setFilters] = useState({
+    status: 'new',
+    type: '',
+    court: '',
+    lawyer: '',
+    linked: '',
+    days: '',
+    query: '',
+    group: 'process',
+    sort: 'urgency',
+  });
+  const [typed, setTyped] = useState('');
+  const [page, setPage] = useState({
+    groups: [],
+    total: 0,
+    totalItems: 0,
+    facets: { types: {}, courts: {}, lawyers: {} },
+  });
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState({});
+  const [fullText, setFullText] = useState({});
   const [search, setSearch] = useState(false);
-  const all = useMemo(() => data.intimations || [], [data.intimations]);
+  const [askSide, setAskSide] = useState(null);
+  const shown = useRef(PAGE);
+  const counts = data.intimationSummary?.counts || { new: 0, done: 0, dismissed: 0 };
+  const total = counts.new + counts.done + counts.dismissed;
   const cases = useMemo(() => new Map(data.entities.cases.map(c => [c.id, c])), [data.entities.cases]);
   const clients = useMemo(() => new Map(data.entities.clients.map(c => [c.id, c])), [data.entities.clients]);
   const enabled = data.settings.djenEnabled;
   const health = data.djenHealth;
-  const today = todayKey();
-  const counts = { new: 0, done: 0, dismissed: 0, all: all.length };
-  for (const i of all) counts[i.status]++;
-  const courts = [...new Set(all.map(i => i.tribunal).filter(Boolean))].sort();
-  const lawyers = [...new Set(all.flatMap(i => (i.lawyers || []).map(l => `${l.oab}/${l.uf}`)))].sort();
-  const cutoff = period ? new Date(Date.now() - Number(period) * 86400000).toISOString().slice(0, 10) : '';
-  const filtered = all.filter(i => {
-    if (status !== 'all' && i.status !== status) return false;
-    if (type && kindOf(i.tipo).key !== type) return false;
-    if (court && i.tribunal !== court) return false;
-    if (lawyer && !(i.lawyers || []).some(l => `${l.oab}/${l.uf}` === lawyer)) return false;
-    if (linked === 'yes' && !i.caseId) return false;
-    if (linked === 'no' && i.caseId) return false;
-    if (cutoff && i.date < cutoff) return false;
-    if (query) {
-      const q = norm(query).replace(/[.\-/]/g, '');
-      const hay = norm(
-        [i.processo, i.processoMascara, i.texto, i.classe, i.orgao, ...(i.parties || []).map(p => p.nome)].join(' '),
-      ).replace(/[.\-/]/g, '');
-      if (!hay.includes(q)) return false;
+  // The text box waits for a pause in typing before asking the program.
+  useEffect(() => {
+    const timer = setTimeout(() => setFilters(f => (f.query === typed ? f : { ...f, query: typed })), 300);
+    return () => clearTimeout(timer);
+  }, [typed]);
+  const load = useCallback(
+    async (offset, keep = false) => {
+      setLoading(true);
+      try {
+        const limit = keep ? Math.min(200, Math.max(PAGE, shown.current)) : PAGE;
+        const result = await window.advocacia.intimationsPage({ ...filters, offset: keep ? 0 : offset, limit });
+        setPage(current =>
+          offset > 0 && !keep ? { ...result, groups: [...current.groups, ...result.groups], offset: 0 } : result,
+        );
+        shown.current =
+          offset > 0 && !keep ? shown.current + result.groups.length : Math.max(PAGE, result.groups.length);
+      } catch {
+        /* the screen keeps what it had */
+      }
+      setLoading(false);
+    },
+    [filters],
+  );
+  // A new filter starts from the first page; a change in the counts (something was handled) keeps what is loaded.
+  useEffect(() => {
+    shown.current = PAGE;
+    void load(0);
+  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps -- load depends on filters only
+  useEffect(() => {
+    void load(0, true);
+  }, [counts.new, counts.done, counts.dismissed, total]); // eslint-disable-line react-hooks/exhaustive-deps -- refresh in place
+  const set = (ids, next, message) => act(() => window.advocacia.setIntimations({ ids, status: next }), message);
+  const readAll = async id => {
+    if (fullText[id]) return;
+    try {
+      const text = await window.advocacia.intimationText(id);
+      setFullText(current => ({ ...current, [id]: text }));
+    } catch {
+      /* keep the beginning */
     }
-    return true;
-  });
-  const groups = groupByProcess(filtered).map(g => {
-    const levels = g.items.map(i => urgency(i, today));
-    const rank = { high: 0, medium: 1, normal: 2 };
-    const level = levels.map(l => l.level).sort((a, b) => rank[a] - rank[b])[0] || 'normal';
-    return { ...g, level, caseItem: cases.get(g.items.find(i => i.caseId)?.caseId) };
-  });
-  if (sort === 'urgency') {
-    const rank = { high: 0, medium: 1, normal: 2 };
-    groups.sort((a, b) => rank[a.level] - rank[b.level]);
-  }
-  const set = (id, next) => act(() => window.advocacia.setIntimation({ id, status: next }));
+  };
   const failing = health?.failingDays >= 3;
+  const update = patch => setFilters(f => ({ ...f, ...patch }));
+
+  // Register the case with what the publication says; ask which side the client is when it cannot tell.
+  function registerCase(item) {
+    const parties = item.parties || [];
+    const known = matchClient(
+      parties.filter(p => ['A', 'P'].includes(p.polo)),
+      data.entities.clients,
+    );
+    const sides = [...new Set(known.map(k => k.party.polo))];
+    if (sides.length === 1 || !parties.length) return finishCase(item, sides[0] || '');
+    setAskSide(item);
+  }
+  function finishCase(item, side) {
+    setAskSide(null);
+    create(
+      'cases',
+      caseFromIntimation(item, { side, clients: data.entities.clients, officeLawyers: data.settings.lawyers || [] }),
+    );
+  }
+  const filtering = filters.type || filters.court || filters.lawyer || filters.linked || filters.days || filters.query;
   return (
     <>
       <PageHeading title="Intimações" count={counts.new}>
@@ -138,19 +191,19 @@ export default function Intimations({
       <Panel>
         <div className="workspace-tabs intimation-tabs" role="tablist" aria-label="Situação">
           {[
-            ['new', 'Novas'],
-            ['done', 'Tratadas'],
-            ['dismissed', 'Descartadas'],
-            ['all', 'Todas'],
-          ].map(([key, label]) => (
+            ['new', 'Novas', counts.new],
+            ['done', 'Tratadas', counts.done],
+            ['dismissed', 'Descartadas', counts.dismissed],
+            ['all', 'Todas', total],
+          ].map(([key, label, n]) => (
             <button
               key={key}
               role="tab"
-              aria-selected={status === key}
-              className={status === key ? 'active' : ''}
-              onClick={() => setStatus(key)}
+              aria-selected={filters.status === key}
+              className={filters.status === key ? 'active' : ''}
+              onClick={() => update({ status: key })}
             >
-              {label} <small>{counts[key]}</small>
+              {label} <small>{n}</small>
             </button>
           ))}
         </div>
@@ -158,60 +211,93 @@ export default function Intimations({
           <input
             aria-label="Buscar nas intimações"
             placeholder="Número, parte ou texto"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
+            value={typed}
+            onChange={e => setTyped(e.target.value)}
           />
-          <select aria-label="Tipo" value={type} onChange={e => setType(e.target.value)}>
-            <option value="">Todos os tipos</option>
-            {['citation', 'intimation', 'agenda', 'edict', 'distribution', 'minutes'].map(k => (
+          <select aria-label="Organizar" value={filters.group} onChange={e => update({ group: e.target.value })}>
+            {Object.entries(groupLabels).map(([k, v]) => (
               <option key={k} value={k}>
-                {
-                  {
-                    citation: 'Citação',
-                    intimation: 'Intimação',
-                    agenda: 'Pauta de julgamento',
-                    edict: 'Edital',
-                    distribution: 'Distribuição',
-                    minutes: 'Ata',
-                  }[k]
-                }
+                {v}
               </option>
             ))}
           </select>
-          <select aria-label="Tribunal" value={court} onChange={e => setCourt(e.target.value)}>
-            <option value="">Todos os tribunais</option>
-            {courts.map(c => (
-              <option key={c}>{c}</option>
+          <select aria-label="Tipo" value={filters.type} onChange={e => update({ type: e.target.value })}>
+            <option value="">Todos os tipos</option>
+            {Object.entries(typeLabels).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+                {page.facets.types[k] ? ` (${page.facets.types[k]})` : ''}
+              </option>
             ))}
           </select>
-          {lawyers.length > 1 && (
-            <select aria-label="Advogado (OAB)" value={lawyer} onChange={e => setLawyer(e.target.value)}>
-              <option value="">Todos os advogados</option>
-              {lawyers.map(l => (
-                <option key={l}>{l}</option>
+          <select aria-label="Tribunal" value={filters.court} onChange={e => update({ court: e.target.value })}>
+            <option value="">Todos os tribunais</option>
+            {Object.entries(page.facets.courts)
+              .sort()
+              .map(([c, n]) => (
+                <option key={c} value={c}>
+                  {c} ({n})
+                </option>
               ))}
+          </select>
+          {Object.keys(page.facets.lawyers).length > 1 && (
+            <select
+              aria-label="Advogado (OAB)"
+              value={filters.lawyer}
+              onChange={e => update({ lawyer: e.target.value })}
+            >
+              <option value="">Todos os advogados</option>
+              {Object.keys(page.facets.lawyers)
+                .sort()
+                .map(l => (
+                  <option key={l}>{l}</option>
+                ))}
             </select>
           )}
-          <select aria-label="Processo cadastrado" value={linked} onChange={e => setLinked(e.target.value)}>
+          <select
+            aria-label="Processo cadastrado"
+            value={filters.linked}
+            onChange={e => update({ linked: e.target.value })}
+          >
             <option value="">Com ou sem processo</option>
             <option value="yes">Com processo cadastrado</option>
             <option value="no">Sem processo cadastrado</option>
           </select>
-          <select aria-label="Período" value={period} onChange={e => setPeriod(e.target.value)}>
+          <select aria-label="Período" value={filters.days} onChange={e => update({ days: e.target.value })}>
             <option value="">Qualquer data</option>
             <option value="7">Últimos 7 dias</option>
             <option value="30">Últimos 30 dias</option>
             <option value="90">Últimos 90 dias</option>
           </select>
-          <select aria-label="Ordenar" value={sort} onChange={e => setSort(e.target.value)}>
-            <option value="urgency">Mais urgentes primeiro</option>
-            <option value="date">Mais recentes primeiro</option>
-          </select>
+          {filters.group === 'process' && (
+            <select aria-label="Ordenar" value={filters.sort} onChange={e => update({ sort: e.target.value })}>
+              <option value="urgency">Mais urgentes primeiro</option>
+              <option value="date">Mais recentes primeiro</option>
+            </select>
+          )}
         </div>
-        {groups.length ? (
+        {page.groups.length > 0 && (
+          <div className="intimation-summary">
+            <small>
+              {page.totalItems} publicação(ões) em {page.total} grupo(s){filtering ? ' com os filtros escolhidos' : ''}.
+            </small>
+            <span>
+              <button
+                className="text-link"
+                onClick={() => setOpen(Object.fromEntries(page.groups.map(g => [g.key, true])))}
+              >
+                Expandir todos
+              </button>{' '}
+              <button className="text-link" onClick={() => setOpen({})}>
+                Recolher todos
+              </button>
+            </span>
+          </div>
+        )}
+        {page.groups.length ? (
           <div className="intimation-groups">
-            {groups.map(g => {
-              const caseItem = g.caseItem;
+            {page.groups.map(g => {
+              const caseItem = cases.get(g.caseId);
               const client = caseItem ? clients.get(caseItem.clientId) : null;
               const first = g.items[0];
               const party = client
@@ -219,179 +305,224 @@ export default function Intimations({
                     p => norm(p.nome).includes(norm(client.name)) || norm(client.name).includes(norm(p.nome)),
                   )
                 : null;
+              const isOpen = open[g.key] === true;
+              const byProcess = filters.group === 'process';
+              const ids = g.items.filter(i => i.status === 'new').map(i => i.id);
               return (
                 <section key={g.key} className={'intimation-card urgency-' + g.level}>
                   <header>
-                    <div>
-                      <h3>{g.mask || g.processo || 'Sem número de processo'}</h3>
+                    <button
+                      className="group-toggle"
+                      aria-expanded={isOpen}
+                      onClick={() => setOpen({ ...open, [g.key]: !isOpen })}
+                    >
+                      {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                    </button>
+                    <div className="group-title">
+                      <h3>{filters.group === 'day' ? br(g.label) : g.label}</h3>
                       <small>
-                        {[client?.name, first.classe, first.orgao, first.tribunal, party && poloLabels[party.polo]]
-                          .filter(Boolean)
-                          .join(' · ')}
-                        {!caseItem && ' · processo não cadastrado'}
+                        {byProcess
+                          ? [client?.name, first.classe, first.orgao, first.tribunal, party && poloLabels[party.polo]]
+                              .filter(Boolean)
+                              .join(' · ')
+                          : `${g.count} publicação(ões)`}
+                        {byProcess && !caseItem && g.processo && ' · processo não cadastrado'}
                       </small>
                     </div>
+                    <span className="group-count">
+                      {g.count}
+                      {g.newCount ? <Badge tone="amber">{g.newCount} nova(s)</Badge> : null}
+                    </span>
                     <div className="row-actions">
-                      {caseItem ? (
-                        <Button
-                          tone="secondary"
-                          icon={BriefcaseBusiness}
-                          onClick={() => openDetail('cases', caseItem.id)}
-                        >
-                          Abrir processo
-                        </Button>
-                      ) : (
-                        g.processo && (
+                      {byProcess &&
+                        (caseItem ? (
                           <Button
                             tone="secondary"
-                            icon={FilePlus2}
-                            onClick={() => {
-                              const active = (first.parties || []).find(p => p.polo === 'A')?.nome;
-                              const passive = (first.parties || []).find(p => p.polo === 'P')?.nome;
-                              create('cases', {
-                                number: g.mask || g.processo,
-                                title:
-                                  active && passive ? `${active} x ${passive}` : first.classe || `Processo ${g.mask}`,
-                                court: first.orgao,
-                                status: 'Em andamento',
-                              });
-                            }}
+                            icon={BriefcaseBusiness}
+                            onClick={() => openDetail('cases', caseItem.id)}
                           >
-                            Cadastrar processo
+                            Abrir processo
                           </Button>
-                        )
+                        ) : (
+                          g.processo && (
+                            <Button tone="secondary" icon={FilePlus2} onClick={() => registerCase(first)}>
+                              Cadastrar processo
+                            </Button>
+                          )
+                        ))}
+                      {ids.length > 0 && (
+                        <Button
+                          tone="ghost"
+                          icon={Check}
+                          onClick={() => set(ids, 'done', `${ids.length} marcada(s) como tratada(s).`)}
+                        >
+                          Tratar {ids.length > 1 ? 'todas' : 'esta'}
+                        </Button>
                       )}
                     </div>
                   </header>
-                  <ul className="intimation-list">
-                    {g.items.map(i => {
-                      const kind = kindOf(i.tipo);
-                      const u = urgency(i, today);
-                      const deadline = findDeadlines(i.texto)[0];
-                      const event = findEvent(i.texto);
-                      const open = expanded[i.id];
-                      const published = nextWorkingDay(i.date);
-                      return (
-                        <li key={i.id} className={i.status}>
-                          <div className="intimation-head">
-                            <time>{br(i.date)}</time>
-                            <span className={'kind-tag kind-' + kind.tone}>{kind.label}</span>
-                            <Badge tone={statusTone[i.status]}>{statusLabels[i.status]}</Badge>
-                            {u.level !== 'normal' && u.daysLeft !== null && (
-                              <span className={'urgency-tag urgency-' + u.level}>
-                                {u.daysLeft < 0 ? 'Prazo aproximado vencido' : `Prazo aproximado: ${u.daysLeft} dia(s)`}
-                              </span>
+                  {!isOpen && (
+                    <p className="group-preview">
+                      <span className={'kind-tag kind-' + kindOf(first.tipo).tone}>{kindOf(first.tipo).label}</span>{' '}
+                      {br(first.date)} · {first.texto.slice(0, 160)}
+                      {first.texto.length > 160 ? '…' : ''}
+                    </p>
+                  )}
+                  {isOpen && (
+                    <ul className="intimation-list">
+                      {g.items.map(i => {
+                        const kind = kindOf(i.tipo);
+                        const text = fullText[i.id] ?? i.texto;
+                        const u = i.urgency;
+                        const event = i.event;
+                        const deadline = i.deadline;
+                        const itemCase = cases.get(i.caseId);
+                        const itemClient = itemCase ? clients.get(itemCase.clientId) : null;
+                        return (
+                          <li key={i.id} className={i.status}>
+                            <div className="intimation-head">
+                              <time>{br(i.date)}</time>
+                              <span className={'kind-tag kind-' + kind.tone}>{kind.label}</span>
+                              <Badge tone={statusTone[i.status]}>{statusLabels[i.status]}</Badge>
+                              {!byProcess && <small>{i.processoMascara || i.processo}</small>}
+                              {u.level !== 'normal' && u.daysLeft !== null && (
+                                <span className={'urgency-tag urgency-' + u.level}>
+                                  {u.daysLeft < 0
+                                    ? 'Prazo aproximado vencido'
+                                    : `Prazo aproximado: ${u.daysLeft} dia(s)`}
+                                </span>
+                              )}
+                            </div>
+                            <small className="intimation-meta">
+                              Disponibilizada em {br(i.date)}; considera-se publicada em {br(nextWorkingDay(i.date))}{' '}
+                              (dia útil seguinte).
+                              {deadline &&
+                                ` O texto cita prazo de ${deadline.days} dia(s)${deadline.unit === 'uteis' ? ' úteis' : deadline.unit === 'corridos' ? ' corridos' : ''}.`}
+                            </small>
+                            <PublicationText text={text} open={!!fullText[i.id] || !i.longText} />
+                            {i.longText && !fullText[i.id] && (
+                              <button className="text-link" onClick={() => readAll(i.id)}>
+                                Ler tudo
+                              </button>
                             )}
-                          </div>
-                          <small className="intimation-meta">
-                            Disponibilizada em {br(i.date)}; considera-se publicada em {br(published)} (dia útil
-                            seguinte).
-                            {deadline &&
-                              ` O texto cita prazo de ${deadline.days} dia(s)${deadline.unit === 'uteis' ? ' úteis' : deadline.unit === 'corridos' ? ' corridos' : ''}.`}
-                          </small>
-                          <PublicationText text={i.texto} open={open} />
-                          {paragraphs(i.texto).length > 2 || i.texto.length > 600 ? (
-                            <button className="text-link" onClick={() => setExpanded({ ...expanded, [i.id]: !open })}>
-                              {open ? 'Mostrar menos' : 'Ler tudo'}
-                            </button>
-                          ) : null}
-                          <div className="row-actions intimation-actions">
-                            <Button
-                              tone="secondary"
-                              icon={Calculator}
-                              onClick={() =>
-                                calculateDeadline(caseItem?.id || '', {
-                                  start: i.date,
-                                  mode: 'disponibilizacao',
-                                  ...(deadline ? { days: deadline.days } : {}),
-                                })
-                              }
-                            >
-                              Calcular prazo{deadline ? ` (${deadline.days} dias)` : ''}
-                            </Button>
-                            {event && (
+                            <div className="row-actions intimation-actions">
                               <Button
                                 tone="secondary"
-                                icon={CalendarPlus}
+                                icon={Calculator}
                                 onClick={() =>
-                                  create('tasks', {
-                                    title: `${event.kind} — ${i.processoMascara || i.processo}`,
-                                    type: event.kind,
-                                    due: `${event.date}T${event.time || '09:00'}`,
-                                    caseId: caseItem?.id || '',
-                                    clientId: caseItem?.clientId || '',
-                                    clientReminder: Boolean(client),
+                                  calculateDeadline(itemCase?.id || '', {
+                                    start: i.date,
+                                    mode: 'disponibilizacao',
+                                    ...(deadline ? { days: deadline.days } : {}),
                                   })
                                 }
                               >
-                                Criar {event.kind.toLowerCase()} na agenda
+                                Calcular prazo{deadline ? ` (${deadline.days} dias)` : ''}
                               </Button>
-                            )}
-                            {client && (
-                              <Button
-                                tone="ghost"
-                                icon={MessageCircle}
-                                onClick={() =>
-                                  composeMessage({
-                                    channel: 'whatsapp',
-                                    recipient: client.phone,
-                                    clientId: client.id,
-                                    caseId: caseItem.id,
-                                    body: `Olá, {primeiro_nome}! Houve uma publicação no seu processo${caseItem.number ? ` nº ${caseItem.number}` : ''} (${kind.label.toLowerCase()}, em ${br(i.date)}). A equipe do {escritorio} vai orientar os próximos passos.`,
-                                  })
-                                }
-                              >
-                                Avisar o cliente
-                              </Button>
-                            )}
-                            {(i.hash || /\/certidao$/.test(i.link || '')) && (
-                              <Button
-                                tone="ghost"
-                                icon={FileDown}
-                                onClick={() => act(() => window.advocacia.downloadCertificate(i.id), 'Certidão salva.')}
-                              >
-                                Baixar certidão
-                              </Button>
-                            )}
-                            {i.link && (
-                              <Button
-                                tone="ghost"
-                                icon={ExternalLink}
-                                onClick={() => act(() => window.advocacia.openIntimation(i.id))}
-                              >
-                                Abrir publicação
-                              </Button>
-                            )}
-                            {i.status === 'new' ? (
-                              <>
-                                <Button tone="ghost" icon={Check} onClick={() => set(i.id, 'done')}>
-                                  Marcar como tratada
+                              {event && (
+                                <Button
+                                  tone="secondary"
+                                  icon={CalendarPlus}
+                                  onClick={() =>
+                                    create('tasks', {
+                                      title: `${event.kind} — ${i.processoMascara || i.processo}`,
+                                      type: event.kind,
+                                      due: `${event.date}T${event.time || '09:00'}`,
+                                      caseId: itemCase?.id || '',
+                                      clientId: itemCase?.clientId || '',
+                                      clientReminder: Boolean(itemClient),
+                                    })
+                                  }
+                                >
+                                  Criar {event.kind.toLowerCase()} na agenda
                                 </Button>
-                                <Button tone="ghost" icon={X} onClick={() => set(i.id, 'dismissed')}>
-                                  Descartar
+                              )}
+                              {itemClient && (
+                                <Button
+                                  tone="ghost"
+                                  icon={MessageCircle}
+                                  onClick={() =>
+                                    composeMessage({
+                                      channel: 'whatsapp',
+                                      recipient: itemClient.phone,
+                                      clientId: itemClient.id,
+                                      caseId: itemCase.id,
+                                      body: `Olá, {primeiro_nome}! Houve uma publicação no seu processo${itemCase.number ? ` nº ${itemCase.number}` : ''} (${kind.label.toLowerCase()}, em ${br(i.date)}). A equipe do {escritorio} vai orientar os próximos passos.`,
+                                    })
+                                  }
+                                >
+                                  Avisar o cliente
                                 </Button>
-                              </>
-                            ) : (
-                              <Button tone="ghost" onClick={() => set(i.id, 'new')}>
-                                Voltar para novas
-                              </Button>
-                            )}
-                          </div>
+                              )}
+                              {(i.hash || i.link) && (
+                                <Button
+                                  tone="ghost"
+                                  icon={FileDown}
+                                  onClick={() =>
+                                    act(() => window.advocacia.downloadCertificate(i.id), 'Certidão salva.')
+                                  }
+                                >
+                                  Baixar certidão
+                                </Button>
+                              )}
+                              {i.link && (
+                                <Button
+                                  tone="ghost"
+                                  icon={ExternalLink}
+                                  onClick={() => act(() => window.advocacia.openIntimation(i.id))}
+                                >
+                                  Abrir publicação
+                                </Button>
+                              )}
+                              {i.status === 'new' ? (
+                                <>
+                                  <Button tone="ghost" icon={Check} onClick={() => set([i.id], 'done')}>
+                                    Marcar como tratada
+                                  </Button>
+                                  <Button tone="ghost" icon={X} onClick={() => set([i.id], 'dismissed')}>
+                                    Descartar
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button tone="ghost" onClick={() => set([i.id], 'new')}>
+                                  Voltar para novas
+                                </Button>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                      {g.hidden > 0 && (
+                        <li className="muted">
+                          Mais {g.hidden} publicação(ões) antiga(s) neste grupo. Use os filtros para vê-las.
                         </li>
-                      );
-                    })}
-                  </ul>
+                      )}
+                    </ul>
+                  )}
                 </section>
               );
             })}
+            {page.groups.length < page.total && (
+              <div className="intimation-more">
+                <Button tone="secondary" busy={loading} onClick={() => load(page.groups.length)}>
+                  Carregar mais ({page.total - page.groups.length} grupo(s) restante(s))
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <Empty
             icon={Bell}
-            title={status === 'new' && !query ? 'Nenhuma intimação nova' : 'Nada por aqui'}
+            title={
+              loading
+                ? 'Carregando...'
+                : filters.status === 'new' && !filtering
+                  ? 'Nenhuma intimação nova'
+                  : 'Nada por aqui'
+            }
             description={
               enabled
-                ? 'As publicações do Diário de Justiça Eletrônico Nacional em nome dos advogados do escritório aparecem aqui, agrupadas por processo.'
+                ? 'As publicações do Diário de Justiça Eletrônico Nacional em nome dos advogados do escritório aparecem aqui, organizadas como você escolher.'
                 : 'Ative a consulta ao DJEN em Configurações → Consultas públicas para receber as publicações em nome dos advogados do escritório.'
             }
           />
@@ -403,6 +534,33 @@ export default function Intimations({
         </p>
       </Panel>
       {search && <IntimationSearch data={data} act={act} onClose={() => setSearch(false)} />}
+      {askSide && (
+        <Modal
+          title="Cadastrar processo"
+          subtitle="Quem é o seu cliente neste processo?"
+          onClose={() => setAskSide(null)}
+        >
+          <div className="settings-body notice-body">
+            <p className="help-text">
+              A publicação traz as partes, mas não diz quem o escritório representa. Escolha para o programa preencher o
+              polo e a parte contrária.
+            </p>
+            {['A', 'P'].map(side => {
+              const list = (askSide.parties || []).filter(p => p.polo === side).map(p => p.nome);
+              return (
+                list.length > 0 && (
+                  <Button key={side} tone="secondary" onClick={() => finishCase(askSide, side)}>
+                    {side === 'A' ? 'Autor' : 'Réu'}: {joinNames(list)}
+                  </Button>
+                )
+              );
+            })}
+            <Button tone="ghost" onClick={() => finishCase(askSide, '')}>
+              Ainda não sei: preencher só o que a publicação informa
+            </Button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

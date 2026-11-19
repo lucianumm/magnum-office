@@ -33,9 +33,9 @@ const defaults = {
   courtCalendar: [],
   workflows: null,
   datajudEnabled: false,
-  caseLookupEnabled: false,
-  cnpjLookupEnabled: false,
-  cepLookupEnabled: false,
+  caseLookupEnabled: true,
+  cnpjLookupEnabled: true,
+  cepLookupEnabled: true,
   // WhatsApp: sending rules (app/send-limits.mjs), inbox and housekeeping.
   sendWindowStart: 8,
   sendWindowEnd: 19,
@@ -58,7 +58,7 @@ const defaults = {
   digestTime: '08:00',
   lastDigestDate: '',
   datajudKey: '',
-  djenEnabled: false,
+  djenEnabled: true,
   lastDatajudCheck: null,
   lastDjenCheck: null,
   datajudError: '',
@@ -170,7 +170,19 @@ class Settings {
     const policy =
       (stored.updatePolicyVersion || 0) < 1 ? { automatic: true, autoDownload: true, updatePolicyVersion: 1 } : {};
     if (stored.appDescription === 'SEU ESCRITÓRIO, CONECTADO.') stored.appDescription = defaults.appDescription;
-    this.value = { ...defaults, ...stored, ...policy, repository: build.repository, version };
+    // From 1.13 the lookups by CEP, CNPJ and case number and the intimations (DJEN) start turned on. Installations
+    // that already existed get them once; after that each choice is kept as the office left it.
+    const lookups =
+      (stored.lookupDefaultsVersion || 0) < 1
+        ? {
+            caseLookupEnabled: true,
+            cnpjLookupEnabled: true,
+            cepLookupEnabled: true,
+            djenEnabled: true,
+            lookupDefaultsVersion: 1,
+          }
+        : {};
+    this.value = { ...defaults, ...stored, ...policy, ...lookups, repository: build.repository, version };
     // Standard workflows are offered once; after that the office's list (even empty) is kept.
     if (!Array.isArray(this.value.workflows)) this.value.workflows = require('../app/workflows.mjs').defaultWorkflows;
     this.persist();
