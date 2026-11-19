@@ -3189,3 +3189,18 @@
   place-items: center;
   padding: var(--space-2);
 }
+.finance-gate {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6, 32px) var(--space-4);
+  text-align: center;
+}
+.finance-gate input {
+  width: min(320px, 100%);
+}
+.fold-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

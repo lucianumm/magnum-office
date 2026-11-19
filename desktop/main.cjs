@@ -40,6 +40,7 @@ const { EventNotices } = require('../backend/event-notices.cjs');
 const { Campaigns } = require('../backend/campaigns.cjs');
 const { Flows } = require('../backend/wa-flows.cjs');
 const { Letterheads } = require('../backend/letterhead.cjs');
+const { FinanceLock } = require('../backend/finance-lock.cjs');
 const { SystemFonts } = require('../backend/system-fonts.cjs');
 const { WorkflowRunner } = require('../backend/workflow-runner.cjs');
 const { Finance } = require('../backend/finance.cjs');
@@ -115,6 +116,7 @@ let win,
   weeklyBackups,
   birthdays,
   generator,
+  financeLock,
   letterheads,
   systemFonts,
   reminders,
@@ -273,7 +275,10 @@ let changeTimer = null;
 // Locking (idle time, Windows session lock), the morning summary and the trash cleanup.
 function startLockAndDailyTasks() {
   const lockNow = () => {
-    if (appLock?.lock()) dataChanged();
+    if (appLock?.lock()) {
+      financeLock?.lock();
+      dataChanged();
+    }
   };
   powerMonitor.on('lock-screen', () => {
     if (appLock?.config().onHide) lockNow();
@@ -432,10 +437,12 @@ function state() {
     courts,
     settings: settings.get(),
     counts: store.counts(),
+    financeLock: financeLock.config(),
+    // While the financial password is not typed, the money is not handed to the window at all.
     entities: Object.fromEntries(
       ['clients', 'cases', 'tasks', 'notes', 'documents', 'people', 'finance', 'intakes', 'time'].map(kind => [
         kind,
-        store.list(kind),
+        kind === 'finance' && financeLock.locked() ? [] : store.list(kind),
       ]),
     ),
     services: messaging.status(),
@@ -547,6 +554,9 @@ function bindHandlers() {
     },
     get letterheads() {
       return letterheads;
+    },
+    get financeLock() {
+      return financeLock;
     },
     get systemFonts() {
       return systemFonts;
@@ -892,6 +902,7 @@ async function boot() {
   cnpj = new CNPJLookup({ store, fetch: publicFetch });
   cep = new CEPLookup({ store, fetch: publicFetch });
   appLock = new AppLock({ store, settings });
+  financeLock = new FinanceLock({ store });
   inbox = new Inbox({ store, settings });
   messaging.inbox = inbox;
   campaigns = new Campaigns({ store, settings, library, messaging });

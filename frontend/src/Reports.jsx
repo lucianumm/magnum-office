@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight, Lock } from 'lucide-react';
 import { PageHeading, Panel, dayKey } from './components.jsx';
+import { FinanceGate } from './Finance.jsx';
 import { officeReport } from '../../app/reports.mjs';
 import { formatBRL } from '../../app/money.mjs';
 
@@ -45,9 +47,13 @@ function Breakdown({ title, rows, total }) {
   );
 }
 
-export default function Reports({ data }) {
+export default function Reports({ data, act }) {
   const today = dayKey(new Date());
   const [period, setPeriod] = useState('month');
+  // The monthly table starts with the last 3 months and can be folded away or opened to the full year.
+  const [monthsOpen, setMonthsOpen] = useState(true);
+  const [allMonths, setAllMonths] = useState(false);
+  const locked = data.financeLock?.locked === true;
   const r = useMemo(
     () => officeReport({ entities: data.entities, today, ...range(period, today) }),
     [data.entities, today, period],
@@ -64,10 +70,17 @@ export default function Reports({ data }) {
       r.deadlines.missed ? 'danger' : '',
     ],
     ['Atendimentos', r.intakes.total, r.intakes.conversion !== null ? `${r.intakes.conversion}% contratados` : ''],
-    ['Recebido', formatBRL(r.money.received)],
-    ['Despesas', formatBRL(r.money.expenses)],
-    ['Em atraso a receber', formatBRL(r.money.overdue), '', Number(r.money.overdue) ? 'danger' : ''],
+    ...(locked
+      ? []
+      : [
+          ['Recebido', formatBRL(r.money.received)],
+          ['Despesas', formatBRL(r.money.expenses)],
+          ['Em atraso a receber', formatBRL(r.money.overdue), '', Number(r.money.overdue) ? 'danger' : ''],
+        ]),
   ];
+  // Newest first; the folded view shows the last 3 months.
+  const months = [...r.months].reverse();
+  const shownMonths = allMonths ? months : months.slice(0, 3);
   return (
     <>
       <PageHeading title="Relatórios">
@@ -97,31 +110,54 @@ export default function Reports({ data }) {
         <Breakdown title="Todos os processos por situação" rows={r.cases.byStatus} total={r.cases.total} />
         <Breakdown title="Atendimentos por origem" rows={r.intakes.bySource} total={r.intakes.total} />
       </div>
-      <Panel title="Últimos 12 meses">
-        <div className="report-table-wrap">
-          <table className="report-table">
-            <thead>
-              <tr>
-                <th>Mês</th>
-                <th>Novos clientes</th>
-                <th>Novos processos</th>
-                <th>Recebido</th>
-                <th>Despesas</th>
-              </tr>
-            </thead>
-            <tbody>
-              {r.months.map(m => (
-                <tr key={m.month}>
-                  <td>{monthLabel(m.month)}</td>
-                  <td className="tabular">{m.newClients}</td>
-                  <td className="tabular">{m.newCases}</td>
-                  <td className="tabular">{formatBRL(m.received)}</td>
-                  <td className="tabular">{formatBRL(m.expenses)}</td>
+      {locked && (
+        <Panel title="Valores do financeiro" icon={Lock}>
+          <FinanceGate act={act} />
+        </Panel>
+      )}
+      <Panel
+        title={allMonths ? 'Últimos 12 meses' : 'Últimos meses'}
+        aside={
+          <button
+            className="text-link fold-toggle"
+            aria-expanded={monthsOpen}
+            onClick={() => setMonthsOpen(!monthsOpen)}
+          >
+            {monthsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />} {monthsOpen ? 'Recolher' : 'Expandir'}
+          </button>
+        }
+      >
+        {monthsOpen && (
+          <div className="report-table-wrap">
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th>Mês</th>
+                  <th>Novos clientes</th>
+                  <th>Novos processos</th>
+                  {!locked && <th>Recebido</th>}
+                  {!locked && <th>Despesas</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {shownMonths.map(m => (
+                  <tr key={m.month}>
+                    <td>{monthLabel(m.month)}</td>
+                    <td className="tabular">{m.newClients}</td>
+                    <td className="tabular">{m.newCases}</td>
+                    {!locked && <td className="tabular">{formatBRL(m.received)}</td>}
+                    {!locked && <td className="tabular">{formatBRL(m.expenses)}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {months.length > 3 && (
+              <button className="text-link" onClick={() => setAllMonths(!allMonths)}>
+                {allMonths ? 'Mostrar só os últimos 3 meses' : `Mostrar os ${months.length} meses`}
+              </button>
+            )}
+          </div>
+        )}
       </Panel>
       <p className="help-text">
         Os números contam o que está registrado no programa. Um prazo “vencido sem conclusão” é um prazo do período que

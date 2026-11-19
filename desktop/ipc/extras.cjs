@@ -24,6 +24,11 @@ module.exports = function registerExtras(ctx) {
 
   // Program password. unlockApp and lockConfig work while locked (see the guard in main.cjs).
   ctx.register('lockConfig', () => ctx.appLock.config());
+  // Password of the financial data (separate from the program password).
+  ctx.register('setFinancePassword', input => ctx.financeLock.setPassword(input || {}));
+  ctx.register('disableFinancePassword', input => ctx.financeLock.disable(input || {}));
+  ctx.register('unlockFinance', password => ctx.financeLock.unlock(typeof password === 'string' ? password : ''));
+  ctx.register('lockFinance', () => ctx.financeLock.lock());
   ctx.register('setLockPassword', input => ctx.appLock.setPassword(input || {}));
   ctx.register('disableLock', input => ctx.appLock.disable(input || {}));
   ctx.register('configureLock', input => ctx.appLock.configure(input || {}));

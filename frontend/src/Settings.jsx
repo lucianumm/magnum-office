@@ -306,7 +306,7 @@ export default function Settings({ data, act, reload, initialTab = 'office' }) {
           {tab === 'letterhead' && <LetterheadSettings data={data} act={act} reload={reload} />}
           {tab === 'privacy' && <PrivacySettings data={data} act={act} setLegal={setLegal} />}
           {tab === 'whatsapp' && <WhatsAppSettings data={data} act={act} reload={reload} />}
-          {tab === 'lock' && <LockSettings act={act} />}
+          {tab === 'lock' && <LockSettings data={data} act={act} />}
           {tab === 'trash' && <Trash act={act} reload={reload} />}
           {tab === 'digest' && <DigestSettings act={act} />}
           {tab === 'agents' && <AgentSettings data={data} act={act} />}
